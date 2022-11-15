@@ -3,3 +3,9 @@ pub use private_key::PrivateKey;
 
 mod public_key;
 pub use public_key::PublicKey;
+
+mod unixtime;
+pub use unixtime::Unixtime;
+
+mod url;
+pub use url::Url;
