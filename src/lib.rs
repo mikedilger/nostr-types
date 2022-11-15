@@ -27,3 +27,6 @@
 
 mod error;
 pub use error::Error;
+
+mod types;
+pub use types::{PrivateKey, PublicKey};
