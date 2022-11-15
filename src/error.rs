@@ -12,6 +12,9 @@ pub enum Error {
     /// Hex string decoding error
     HexDecode(hex::FromHexError),
 
+    /// Serialization error
+    SerdeJson(serde_json::Error),
+
     /// Unknown event kind
     UnknownEventKind(u64),
 
@@ -25,6 +28,7 @@ impl fmt::Display for Error {
             Error::Signature(ref e) => write!(f, "Signature error: {:?}", e),
             Error::Fmt(ref e) => write!(f, "Formatting error: {:?}", e),
             Error::HexDecode(ref e) => write!(f, "Hex decode error: {:?}", e),
+            Error::SerdeJson(ref e) => write!(f, "JSON (de)serialization error: {:?}", e),
             Error::UnknownEventKind(u) => write!(f, "Unknown event kind: {}", u),
             Error::WrongLengthHexString => write!(f, "Wrong length hex string"),
         }
@@ -37,6 +41,7 @@ impl std::error::Error for Error {
             Error::Signature(ref e) => Some(e),
             Error::Fmt(ref e) => Some(e),
             Error::HexDecode(ref e) => Some(e),
+            Error::SerdeJson(ref e) => Some(e),
             _ => None,
         }
     }
@@ -57,5 +62,11 @@ impl From<std::fmt::Error> for Error {
 impl From<hex::FromHexError> for Error {
     fn from(e: hex::FromHexError) -> Error {
         Error::HexDecode(e)
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Error {
+        Error::SerdeJson(e)
     }
 }
