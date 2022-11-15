@@ -7,6 +7,9 @@ pub use private_key::PrivateKey;
 mod public_key;
 pub use public_key::PublicKey;
 
+mod signature;
+pub use signature::Signature;
+
 mod unixtime;
 pub use unixtime::Unixtime;
 
