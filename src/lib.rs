@@ -24,3 +24,6 @@
     missing_docs,
     missing_copy_implementations
 )]
+
+mod error;
+pub use error::Error;
