@@ -29,4 +29,4 @@ mod error;
 pub use error::Error;
 
 mod types;
-pub use types::{Id, PrivateKey, PublicKey, Signature, Unixtime, Url};
+pub use types::{Id, PrivateKey, PublicKey, Signature, Tag, Unixtime, Url};

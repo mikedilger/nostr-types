@@ -10,6 +10,9 @@ pub use public_key::PublicKey;
 mod signature;
 pub use signature::Signature;
 
+mod tag;
+pub use tag::Tag;
+
 mod unixtime;
 pub use unixtime::Unixtime;
 
