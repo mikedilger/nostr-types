@@ -1,3 +1,6 @@
+mod client_message;
+pub use client_message::ClientMessage;
+
 mod event;
 pub use event::Event;
 
