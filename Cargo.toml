@@ -9,5 +9,6 @@ keywords = [ "nostr" ]
 license = "MIT"
 
 [dependencies]
+hex = "0.4"
 k256 = { version = "0.11", features = [ "schnorr" ] }
 rand_core = "0.6"
