@@ -12,6 +12,9 @@ pub enum Error {
     /// Hex string decoding error
     HexDecode(hex::FromHexError),
 
+    /// Unknown event kind
+    UnknownEventKind(u64),
+
     /// Wrong length hex string
     WrongLengthHexString,
 }
@@ -22,6 +25,7 @@ impl fmt::Display for Error {
             Error::Signature(ref e) => write!(f, "Signature error: {:?}", e),
             Error::Fmt(ref e) => write!(f, "Formatting error: {:?}", e),
             Error::HexDecode(ref e) => write!(f, "Hex decode error: {:?}", e),
+            Error::UnknownEventKind(u) => write!(f, "Unknown event kind: {}", u),
             Error::WrongLengthHexString => write!(f, "Wrong length hex string"),
         }
     }

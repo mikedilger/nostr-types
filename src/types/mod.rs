@@ -1,3 +1,6 @@
+mod event_kind;
+pub use event_kind::EventKind;
+
 mod id;
 pub use id::Id;
 
