@@ -22,6 +22,9 @@ pub use private_key::PrivateKey;
 mod public_key;
 pub use public_key::PublicKey;
 
+mod relay_message;
+pub use relay_message::RelayMessage;
+
 mod signature;
 pub use signature::Signature;
 

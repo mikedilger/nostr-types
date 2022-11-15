@@ -30,6 +30,6 @@ pub use error::Error;
 
 mod types;
 pub use types::{
-    ClientMessage, Event, EventKind, Filters, Id, Metadata, PrivateKey, PublicKey, Signature,
-    SubscriptionId, Tag, Unixtime, Url,
+    ClientMessage, Event, EventKind, Filters, Id, Metadata, PrivateKey, PublicKey, RelayMessage,
+    Signature, SubscriptionId, Tag, Unixtime, Url,
 };
