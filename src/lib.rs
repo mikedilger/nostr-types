@@ -2,6 +2,8 @@
 // Licensed under the MIT license <LICENSE-MIT or http://opensource.org/licenses/MIT>
 // This file may not be copied, modified, or distributed except according to those terms.
 
+//! This crate provides types for nostr protocol handling.
+
 #![deny(
     missing_debug_implementations,
     trivial_casts,
