@@ -10,3 +10,4 @@ license = "MIT"
 
 [dependencies]
 k256 = { version = "0.11", features = [ "schnorr" ] }
+rand_core = "0.6"
