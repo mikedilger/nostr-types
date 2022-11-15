@@ -10,6 +10,9 @@ pub use filter::Filters;
 mod id;
 pub use id::Id;
 
+mod metadata;
+pub use metadata::Metadata;
+
 mod private_key;
 pub use private_key::PrivateKey;
 
