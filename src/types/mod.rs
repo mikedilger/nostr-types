@@ -19,6 +19,9 @@ pub use public_key::PublicKey;
 mod signature;
 pub use signature::Signature;
 
+mod subscription_id;
+pub use subscription_id::SubscriptionId;
+
 mod tag;
 pub use tag::Tag;
 
