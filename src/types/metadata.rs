@@ -1,5 +1,7 @@
+use serde::{Deserialize, Serialize};
+
 /// Metadata about a user
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Metadata {
     /// User name
     pub name: String,

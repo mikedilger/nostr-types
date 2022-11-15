@@ -1,5 +1,9 @@
 use crate::Error;
+use serde::de::Error as DeError;
+use serde::de::{Deserialize, Deserializer, Unexpected, Visitor};
+use serde::ser::{Serialize, Serializer};
 use std::convert::TryFrom;
+use std::fmt;
 
 /// A kind of Event
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -100,5 +104,43 @@ impl From<EventKind> for u64 {
             Replaceable(u) => u,
             Ephemeral(u) => u,
         }
+    }
+}
+
+impl Serialize for EventKind {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let u: u64 = From::from(*self);
+        serializer.serialize_u64(u)
+    }
+}
+
+impl<'de> Deserialize<'de> for EventKind {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_u64(EventKindVisitor)
+    }
+}
+
+struct EventKindVisitor;
+
+impl Visitor<'_> for EventKindVisitor {
+    type Value = EventKind;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "an unsigned number that matches a known EventKind")
+    }
+
+    fn visit_u64<E>(self, v: u64) -> Result<EventKind, E>
+    where
+        E: DeError,
+    {
+        TryFrom::<u64>::try_from(v).map_err(|_| {
+            DeError::invalid_value(Unexpected::Other("u64"), &"Expected a known Event Kind")
+        })
     }
 }
