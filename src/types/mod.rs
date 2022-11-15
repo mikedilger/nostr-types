@@ -4,6 +4,9 @@ pub use event::Event;
 mod event_kind;
 pub use event_kind::EventKind;
 
+mod filter;
+pub use filter::Filters;
+
 mod id;
 pub use id::Id;
 
