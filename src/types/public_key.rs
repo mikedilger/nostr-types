@@ -1,8 +1,9 @@
 use crate::Error;
+use derive_more::{AsMut, AsRef, Deref, From, Into};
 use k256::schnorr::VerifyingKey;
 
 /// This is a public key, which identifies an actor (usually a person) and is shared.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(AsMut, AsRef, Copy, Clone, Debug, Deref, Eq, From, Into, PartialEq)]
 pub struct PublicKey(pub VerifyingKey);
 
 impl PublicKey {
