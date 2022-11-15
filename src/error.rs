@@ -9,6 +9,9 @@ pub enum Error {
     /// Formatting error
     Fmt(std::fmt::Error),
 
+    /// A hash mismatch verification error
+    HashMismatch,
+
     /// Hex string decoding error
     HexDecode(hex::FromHexError),
 
@@ -27,6 +30,7 @@ impl fmt::Display for Error {
         match *self {
             Error::Signature(ref e) => write!(f, "Signature error: {:?}", e),
             Error::Fmt(ref e) => write!(f, "Formatting error: {:?}", e),
+            Error::HashMismatch => write!(f, "Hash mismatch"),
             Error::HexDecode(ref e) => write!(f, "Hex decode error: {:?}", e),
             Error::SerdeJson(ref e) => write!(f, "JSON (de)serialization error: {:?}", e),
             Error::UnknownEventKind(u) => write!(f, "Unknown event kind: {}", u),

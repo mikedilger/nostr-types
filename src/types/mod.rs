@@ -2,7 +2,7 @@ mod client_message;
 pub use client_message::ClientMessage;
 
 mod event;
-pub use event::Event;
+pub use event::{Event, PreEvent};
 
 mod event_kind;
 pub use event_kind::EventKind;
