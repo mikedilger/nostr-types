@@ -155,14 +155,16 @@ impl Event {
         mut input: PreEvent,
         privkey: PrivateKey,
         name: String,
-        about: String,
-        picture: String,
+        about: Option<String>,
+        picture: Option<String>,
+        nip05: Option<String>,
     ) -> Result<Event, Error> {
         input.kind = EventKind::Metadata;
         let metadata = Metadata {
             name,
             about,
             picture,
+            nip05,
         };
         input.content = serde_json::to_string(&metadata)?;
         Event::new(input, privkey)
