@@ -125,7 +125,7 @@ impl Event {
         hasher.update(serialized.as_bytes());
         let id = hasher.finalize();
 
-        if &*id != self.id.0 {
+        if *id != self.id.0 {
             Err(Error::HashMismatch)
         } else {
             Ok(())
