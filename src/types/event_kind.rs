@@ -50,6 +50,12 @@ pub enum EventKind {
     Ephemeral(u64),
 }
 
+impl EventKind {
+    fn mock() -> EventKind {
+        EventKind::TextNote
+    }
+}
+
 impl TryFrom<u64> for EventKind {
     type Error = Error;
 

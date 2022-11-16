@@ -17,6 +17,12 @@ pub enum ClientMessage {
     Close(SubscriptionId),
 }
 
+impl ClientMessage {
+    fn mock() -> ClientMessage {
+        ClientMessage::Event(Event::mock())
+    }
+}
+
 impl Serialize for ClientMessage {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

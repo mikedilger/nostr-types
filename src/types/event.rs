@@ -131,4 +131,14 @@ impl Event {
             Ok(())
         }
     }
+
+    fn mock() -> Event {
+        GINA
+        let pk = PrivateKey::mock();
+        let pre = PreEvent {
+            pubkey = 
+        };
+        Event::new(pre, pk).unwrap();
+
+    }
 }

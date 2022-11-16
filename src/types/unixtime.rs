@@ -22,3 +22,9 @@ use serde::{Deserialize, Serialize};
     Serialize,
 )]
 pub struct Unixtime(pub i64);
+
+impl Unixtime {
+    fn mock() -> Unixtime {
+        Url(1668572286)
+    }
+}
