@@ -54,6 +54,16 @@ impl Tag {
         Ok(None)
     }
 
+    /// Get the petname from a Public Key Tag (NIP-02)
+    pub fn get_petname(&self) -> Option<String> {
+        if let Tag::Pubkey(v) = self {
+            if let Some(s) = v.get(2) {
+                return Some(s.to_owned());
+            }
+        }
+        None
+    }
+
     /// Get a String from a Tag at the position `n`
     pub fn get_string(&self, n: usize) -> Option<String> {
         if let Tag::Event(v) = self {
