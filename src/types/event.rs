@@ -103,7 +103,9 @@ impl Event {
         })
     }
 
-    /// Create the validity of an event
+    /// Check the validity of an event. This is useful if you deserialize an event
+    /// from the network. If you create an event using new() it should already be
+    /// trustworthy.
     pub fn verify(&self) -> Result<(), Error> {
         use k256::schnorr::signature::Verifier;
 
@@ -148,7 +150,7 @@ impl Event {
         Event::new(pre, private_key).unwrap()
     }
 
-    /// Create a Set Metadata event
+    /// Create an event that sets Metadata
     pub fn new_set_metadata(
         mut input: PreEvent,
         privkey: PrivateKey,
