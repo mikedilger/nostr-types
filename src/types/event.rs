@@ -1,4 +1,4 @@
-use super::{EventKind, Id, PrivateKey, PublicKey, Signature, Tag, Unixtime};
+use super::{EventKind, Id, Metadata, PrivateKey, PublicKey, Signature, Tag, Unixtime};
 use crate::Error;
 use k256::sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
@@ -146,6 +146,24 @@ impl Event {
             ots: None,
         };
         Event::new(pre, private_key).unwrap()
+    }
+
+    /// Create a Set Metadata event
+    pub fn new_set_metadata(
+        mut input: PreEvent,
+        privkey: PrivateKey,
+        name: String,
+        about: String,
+        picture: String,
+    ) -> Result<Event, Error> {
+        input.kind = EventKind::Metadata;
+        let metadata = Metadata {
+            name,
+            about,
+            picture,
+        };
+        input.content = serde_json::to_string(&metadata)?;
+        Event::new(input, privkey)
     }
 }
 
