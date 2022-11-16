@@ -70,7 +70,7 @@ pub struct PreEvent {
 impl Event {
     /// Create a new event
     pub fn new(input: PreEvent, privkey: PrivateKey) -> Result<Event, Error> {
-        use k256::schnorr::signature::Signer;
+        use rand_core::RngCore;
 
         let serialized: String = serialize_inner_event!(
             input.pubkey,
@@ -80,19 +80,19 @@ impl Event {
             input.content
         );
 
+        // Hash
         let mut hasher = Sha256::new();
         hasher.update(serialized.as_bytes());
         let id = hasher.finalize();
+        let id: [u8; 32] = id.into();
 
-        // FIXME: the way we are using k256 (the way it exposes itself)
-        //        it does both a SHA256 and a Schnorr signature in a
-        //        single function call.  But we need the SHA256 signature
-        //        also, so this is inefficient as SHA256 is being run
-        //        twice.
-        let signature = privkey.sign(serialized.as_bytes());
+        // Signature
+        let mut rand: [u8; 32] = [0; 32];
+        rand_core::OsRng.fill_bytes(&mut rand);
+        let signature = privkey.try_sign_prehashed(&id, &rand)?;
 
         Ok(Event {
-            id: Id(id.into()),
+            id: Id(id),
             pubkey: input.pubkey,
             created_at: input.created_at,
             kind: input.kind,
