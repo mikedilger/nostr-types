@@ -151,7 +151,44 @@ impl Event {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use crate::types::*;
 
     test_serde! {Event, test_event_serde}
+
+    #[test]
+    fn test_event_new_and_verify() {
+        let privkey = PrivateKey::mock();
+        let pubkey = privkey.public_key();
+        let preevent = PreEvent {
+            pubkey: pubkey.clone(),
+            created_at: Unixtime::mock(),
+            kind: EventKind::TextNote,
+            tags: vec![Tag::Event(vec![
+                "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f".to_string(),
+                "https://example.com".to_string(),
+            ])],
+            content: "Hello World!".to_string(),
+            ots: None,
+        };
+        let mut event = Event::new(preevent, privkey.clone()).unwrap();
+        assert!(event.verify().is_ok());
+
+        // Now make sure it fails when the message has been modified
+        event.content = "I'm changing this message".to_string();
+        let result = event.verify();
+        assert!(result.is_err());
+
+        // Change it back
+        event.content = "Hello World!".to_string();
+        let result = event.verify();
+        assert!(result.is_ok());
+
+        // Tweak the id only
+        event.id = Id([
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31,
+        ]);
+        let result = event.verify();
+        assert!(result.is_err());
+    }
 }
