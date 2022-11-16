@@ -24,7 +24,9 @@ use serde::{Deserialize, Serialize};
 pub struct Unixtime(pub i64);
 
 impl Unixtime {
-    fn mock() -> Unixtime {
-        Url(1668572286)
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> Unixtime {
+        Unixtime(1668572286)
     }
 }

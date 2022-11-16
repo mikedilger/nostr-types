@@ -51,7 +51,9 @@ pub enum EventKind {
 }
 
 impl EventKind {
-    fn mock() -> EventKind {
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> EventKind {
         EventKind::TextNote
     }
 }

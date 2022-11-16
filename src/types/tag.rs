@@ -17,6 +17,14 @@ pub enum Tag {
     Pubkey(Vec<String>),
 }
 
+impl Tag {
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> Tag {
+        Tag::Event(vec!["p".to_owned(), "blah".to_owned(), "blah".to_owned()])
+    }
+}
+
 impl Serialize for Tag {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

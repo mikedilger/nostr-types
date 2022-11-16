@@ -6,3 +6,11 @@ use serde::{Deserialize, Serialize};
     AsMut, AsRef, Clone, Debug, Deref, Deserialize, Eq, From, FromStr, Into, PartialEq, Serialize,
 )]
 pub struct SubscriptionId(pub String);
+
+impl SubscriptionId {
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> SubscriptionId {
+        SubscriptionId("lk234js09".to_owned())
+    }
+}

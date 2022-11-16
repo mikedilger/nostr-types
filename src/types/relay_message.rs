@@ -20,6 +20,14 @@ pub enum RelayMessage {
     Ok(Id, bool, String),
 }
 
+impl RelayMessage {
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> RelayMessage {
+        RelayMessage::Event(SubscriptionId::mock(), Box::new(Event::mock()))
+    }
+}
+
 impl Serialize for RelayMessage {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

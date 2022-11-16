@@ -12,3 +12,15 @@ pub struct Metadata {
     /// A url or other string representation of a picture of the user
     pub picture: String,
 }
+
+impl Metadata {
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> Metadata {
+        Metadata {
+            name: "Mike".to_owned(),
+            about: "Just some guy".to_owned(),
+            picture: "no".to_owned(),
+        }
+    }
+}

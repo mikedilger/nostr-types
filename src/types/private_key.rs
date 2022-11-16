@@ -30,4 +30,10 @@ impl PrivateKey {
         let vec: Vec<u8> = hex::decode(v)?;
         Ok(PrivateKey(SigningKey::from_bytes(&vec)?))
     }
+
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> PrivateKey {
+        PrivateKey::generate()
+    }
 }

@@ -44,3 +44,20 @@ pub struct Filters {
     #[serde(default)]
     pub limit: Option<usize>,
 }
+
+impl Filters {
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> Filters {
+        Filters {
+            ids: vec!["21345".to_string()],
+            authors: vec![],
+            kinds: vec![EventKind::TextNote, EventKind::Metadata],
+            e: vec![],
+            p: vec![],
+            since: Some(Unixtime::mock()),
+            until: None,
+            limit: None,
+        }
+    }
+}

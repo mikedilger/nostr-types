@@ -1,4 +1,4 @@
-use crate::Error;
+use crate::{Error, Event};
 use derive_more::{AsMut, AsRef, Deref, From, Into};
 use k256::ecdsa::signature::Signature as KSignatureTrait;
 use k256::schnorr::Signature as KSignature;
@@ -21,6 +21,13 @@ impl Signature {
     pub fn try_from_hex_string(v: &str) -> Result<Signature, Error> {
         let vec: Vec<u8> = hex::decode(v)?;
         Ok(Signature(KSignature::from_bytes(&vec)?))
+    }
+
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> Signature {
+        let event = Event::mock();
+        event.sig
     }
 }
 

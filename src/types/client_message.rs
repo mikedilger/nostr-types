@@ -18,8 +18,10 @@ pub enum ClientMessage {
 }
 
 impl ClientMessage {
-    fn mock() -> ClientMessage {
-        ClientMessage::Event(Event::mock())
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> ClientMessage {
+        ClientMessage::Event(Box::new(Event::mock()))
     }
 }
 

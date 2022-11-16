@@ -1,4 +1,4 @@
-use crate::Error;
+use crate::{Error, PrivateKey};
 use derive_more::{AsMut, AsRef, Deref, From, Into};
 use k256::schnorr::VerifyingKey;
 use serde::de::{Deserialize, Deserializer, Visitor};
@@ -19,6 +19,12 @@ impl PublicKey {
     pub fn try_from_hex_string(v: &str) -> Result<PublicKey, Error> {
         let vec: Vec<u8> = hex::decode(v)?;
         Ok(PublicKey(VerifyingKey::from_bytes(&vec)?))
+    }
+
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> PublicKey {
+        PrivateKey::generate().public_key()
     }
 }
 

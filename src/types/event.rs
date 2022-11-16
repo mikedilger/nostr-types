@@ -132,13 +132,19 @@ impl Event {
         }
     }
 
-    fn mock() -> Event {
-        GINA
-        let pk = PrivateKey::mock();
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> Event {
+        let private_key = PrivateKey::mock();
+        let public_key = private_key.public_key();
         let pre = PreEvent {
-            pubkey = 
+            pubkey: public_key,
+            created_at: Unixtime::mock(),
+            kind: EventKind::mock(),
+            tags: vec![Tag::mock(), Tag::mock()],
+            content: "This is a test".to_string(),
+            ots: None,
         };
-        Event::new(pre, pk).unwrap();
-
+        Event::new(pre, private_key).unwrap()
     }
 }
