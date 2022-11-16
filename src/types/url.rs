@@ -14,3 +14,10 @@ impl Url {
         Url("https://example.com".to_string())
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    test_serde! {Url, test_url_serde}
+}

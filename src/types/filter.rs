@@ -61,3 +61,10 @@ impl Filters {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    test_serde! {Filters, test_filters_serde}
+}

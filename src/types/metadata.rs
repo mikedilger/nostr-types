@@ -24,3 +24,10 @@ impl Metadata {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    test_serde! {Metadata, test_metadata_serde}
+}

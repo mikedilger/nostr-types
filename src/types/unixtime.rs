@@ -30,3 +30,10 @@ impl Unixtime {
         Unixtime(1668572286)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    test_serde! {Unixtime, test_unixtime_serde}
+}

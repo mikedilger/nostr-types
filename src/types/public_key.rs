@@ -68,3 +68,10 @@ impl Visitor<'_> for PublicKeyVisitor {
         ))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    test_serde! {PublicKey, test_public_key_serde}
+}

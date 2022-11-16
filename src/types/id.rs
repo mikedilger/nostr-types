@@ -72,3 +72,10 @@ impl Visitor<'_> for IdVisitor {
         })?))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    test_serde! {Id, test_id_serde}
+}

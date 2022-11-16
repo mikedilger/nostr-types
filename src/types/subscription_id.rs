@@ -14,3 +14,10 @@ impl SubscriptionId {
         SubscriptionId("lk234js09".to_owned())
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    test_serde! {SubscriptionId, test_subscription_id_serde}
+}

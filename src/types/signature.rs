@@ -71,3 +71,10 @@ impl Visitor<'_> for SignatureVisitor {
         Ok(Signature(ksig))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    test_serde! {Signature, test_signature_serde}
+}

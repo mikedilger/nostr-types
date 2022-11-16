@@ -148,3 +148,10 @@ impl Event {
         Event::new(pre, private_key).unwrap()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    test_serde! {Event, test_event_serde}
+}

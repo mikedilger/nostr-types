@@ -97,3 +97,10 @@ impl<'de> Visitor<'de> for TagVisitor {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    test_serde! {Tag, test_tag_serde}
+}

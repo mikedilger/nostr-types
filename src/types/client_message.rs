@@ -109,3 +109,10 @@ impl<'de> Visitor<'de> for ClientMessageVisitor {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    test_serde! {ClientMessage, test_client_message_serde}
+}

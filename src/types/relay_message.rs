@@ -124,3 +124,10 @@ impl<'de> Visitor<'de> for RelayMessageVisitor {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    test_serde! {RelayMessage, test_relay_message_serde}
+}

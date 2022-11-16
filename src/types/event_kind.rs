@@ -152,3 +152,10 @@ impl Visitor<'_> for EventKindVisitor {
         })
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    test_serde! {EventKind, test_event_kind_serde}
+}
