@@ -6,6 +6,9 @@ pub enum Error {
     /// Signature error
     Signature(k256::ecdsa::Error),
 
+    /// Event is in the future
+    EventInFuture,
+
     /// Formatting error
     Fmt(std::fmt::Error),
 
@@ -29,6 +32,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Error::Signature(ref e) => write!(f, "Signature error: {:?}", e),
+            Error::EventInFuture => write!(f, "Event is in the future!"),
             Error::Fmt(ref e) => write!(f, "Formatting error: {:?}", e),
             Error::HashMismatch => write!(f, "Hash mismatch"),
             Error::HexDecode(ref e) => write!(f, "Hex decode error: {:?}", e),

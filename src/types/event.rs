@@ -106,7 +106,7 @@ impl Event {
     /// Check the validity of an event. This is useful if you deserialize an event
     /// from the network. If you create an event using new() it should already be
     /// trustworthy.
-    pub fn verify(&self) -> Result<(), Error> {
+    pub fn verify(&self, maxtime: Option<Unixtime>) -> Result<(), Error> {
         use k256::schnorr::signature::Verifier;
 
         let serialized: String = serialize_inner_event!(
@@ -126,6 +126,13 @@ impl Event {
         let mut hasher = Sha256::new();
         hasher.update(serialized.as_bytes());
         let id = hasher.finalize();
+
+        // Optional verify that the message was in the past
+        if let Some(mt) = maxtime {
+            if self.created_at > mt {
+                return Err(Error::EventInFuture);
+            }
+        }
 
         if *id != self.id.0 {
             Err(Error::HashMismatch)
@@ -193,16 +200,16 @@ mod test {
             ots: None,
         };
         let mut event = Event::new(preevent, privkey.clone()).unwrap();
-        assert!(event.verify().is_ok());
+        assert!(event.verify(None).is_ok());
 
         // Now make sure it fails when the message has been modified
         event.content = "I'm changing this message".to_string();
-        let result = event.verify();
+        let result = event.verify(None);
         assert!(result.is_err());
 
         // Change it back
         event.content = "Hello World!".to_string();
-        let result = event.verify();
+        let result = event.verify(None);
         assert!(result.is_ok());
 
         // Tweak the id only
@@ -210,7 +217,7 @@ mod test {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
             24, 25, 26, 27, 28, 29, 30, 31,
         ]);
-        let result = event.verify();
+        let result = event.verify(None);
         assert!(result.is_err());
     }
 }

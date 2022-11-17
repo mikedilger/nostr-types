@@ -63,7 +63,7 @@ mod test {
         let message: RelayMessage = serde_json::from_str(&wire).unwrap();
         match message {
             RelayMessage::Event(_subid, event) => {
-                event.verify().unwrap();
+                event.verify(None).unwrap();
                 println!("{}", event.content);
             }
             _ => panic!("Wrong message type"),
@@ -73,7 +73,7 @@ mod test {
         let message: RelayMessage = serde_json::from_str(&wire).unwrap();
         match message {
             RelayMessage::Event(_subid, event) => {
-                event.verify().unwrap();
+                event.verify(None).unwrap();
                 println!("{}", event.content);
             }
             _ => panic!("Wrong message type"),
@@ -83,7 +83,7 @@ mod test {
         let message: RelayMessage = serde_json::from_str(&wire).unwrap();
         match message {
             RelayMessage::Event(_subid, event) => {
-                event.verify().unwrap();
+                event.verify(None).unwrap();
                 println!("{}", event.content);
             }
             _ => panic!("Wrong message type"),
@@ -93,7 +93,7 @@ mod test {
         let message: RelayMessage = serde_json::from_str(&wire).unwrap();
         match message {
             RelayMessage::Event(_subid, event) => {
-                event.verify().unwrap();
+                event.verify(None).unwrap();
                 println!("{}", event.content);
             }
             _ => panic!("Wrong message type"),
