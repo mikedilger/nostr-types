@@ -21,6 +21,9 @@ pub enum Error {
     /// Serialization error
     SerdeJson(serde_json::Error),
 
+    /// Time error
+    Time(std::time::SystemTimeError),
+
     /// Unknown event kind
     UnknownEventKind(u64),
 
@@ -37,6 +40,7 @@ impl fmt::Display for Error {
             Error::HashMismatch => write!(f, "Hash mismatch"),
             Error::HexDecode(ref e) => write!(f, "Hex decode error: {:?}", e),
             Error::SerdeJson(ref e) => write!(f, "JSON (de)serialization error: {:?}", e),
+            Error::Time(ref e) => write!(f, "System time error: {:?}", e),
             Error::UnknownEventKind(u) => write!(f, "Unknown event kind: {}", u),
             Error::WrongLengthHexString => write!(f, "Wrong length hex string"),
         }
@@ -50,6 +54,7 @@ impl std::error::Error for Error {
             Error::Fmt(ref e) => Some(e),
             Error::HexDecode(ref e) => Some(e),
             Error::SerdeJson(ref e) => Some(e),
+            Error::Time(ref e) => Some(e),
             _ => None,
         }
     }
@@ -76,5 +81,11 @@ impl From<hex::FromHexError> for Error {
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Error {
         Error::SerdeJson(e)
+    }
+}
+
+impl From<std::time::SystemTimeError> for Error {
+    fn from(e: std::time::SystemTimeError) -> Error {
+        Error::Time(e)
     }
 }
