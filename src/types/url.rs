@@ -3,7 +3,19 @@ use serde::{Deserialize, Serialize};
 
 /// A Url
 #[derive(
-    AsMut, AsRef, Clone, Debug, Deref, Deserialize, Eq, From, FromStr, Into, PartialEq, Serialize,
+    AsMut,
+    AsRef,
+    Clone,
+    Debug,
+    Deref,
+    Deserialize,
+    Eq,
+    From,
+    FromStr,
+    Hash,
+    Into,
+    PartialEq,
+    Serialize,
 )]
 pub struct Url(pub String);
 
