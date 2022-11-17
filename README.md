@@ -14,7 +14,7 @@ Basic functionality is coded for the following NIPs
 - [ ] NIP-04 - waiting on upstream library getSharedSecret from secp256k1
 - [x] NIP-05
 - [ ] NIP-06 - Not interesting to me, not being a bitcoiner; low priority
-- [/] NIP-07 - n/a
+- [ ] NIP-07 - n/a
 - [ ] NIP-08
 - [ ] NIP-09
 - [ ] NIP-10
@@ -22,7 +22,7 @@ Basic functionality is coded for the following NIPs
 - [ ] NIP-12
 - [ ] NIP-13
 - [ ] NIP-14
-- [/] NIP-15 - n/a
+- [ ] NIP-15 - n/a
 - [x] NIP-16
 - [ ] NIP-20
 - [ ] NIP-22
