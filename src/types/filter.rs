@@ -1,4 +1,4 @@
-use super::{EventKind, Id, Unixtime};
+use super::{EventKind, Id, PublicKey, Unixtime};
 use serde::{Deserialize, Serialize};
 
 /// Filters which specify what events a client is looking for
@@ -27,7 +27,7 @@ pub struct Filters {
     /// Events when referenced in a 'p' tag
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
-    pub p: Vec<Id>,
+    pub p: Vec<PublicKey>,
 
     /// Events occuring after this date
     #[serde(skip_serializing_if = "Option::is_none")]
