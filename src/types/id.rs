@@ -5,7 +5,9 @@ use serde::ser::{Serialize, Serializer};
 use std::fmt;
 
 /// An event identifier, constructed as a SHA256 hash of the event fields according to NIP-01
-#[derive(AsMut, AsRef, Clone, Copy, Debug, Deref, Eq, From, Hash, Into, Ord, PartialEq, PartialOrd)]
+#[derive(
+    AsMut, AsRef, Clone, Copy, Debug, Deref, Eq, From, Hash, Into, Ord, PartialEq, PartialOrd,
+)]
 pub struct Id(pub [u8; 32]);
 
 impl Id {
