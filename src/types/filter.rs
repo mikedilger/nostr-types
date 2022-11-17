@@ -114,9 +114,13 @@ impl Filters {
         Default::default()
     }
 
-    /// Add an Id (or prefix) to the filter
+    /// Add an Id (or prefix) to the filter.
+    /// `prefix_length` is measured in hex characters
     pub fn add_id(&mut self, id: &Id, prefix_length: Option<usize>) {
-        let new_id = if let Some(len) = prefix_length {
+        let new_id = if let Some(mut len) = prefix_length {
+            if len > 64 {
+                len = 64
+            }
             id.as_hex_string()[..len].to_owned()
         } else {
             id.as_hex_string()
@@ -126,8 +130,12 @@ impl Filters {
     }
 
     /// Delete an Id (or prefix) from the filter
+    /// `prefix_length` is measured in hex characters
     pub fn del_id(&mut self, id: &Id, prefix_length: Option<usize>) {
-        let to_remove = if let Some(len) = prefix_length {
+        let to_remove = if let Some(mut len) = prefix_length {
+            if len > 64 {
+                len = 64
+            }
             id.as_hex_string()[..len].to_owned()
         } else {
             id.as_hex_string()
@@ -137,8 +145,12 @@ impl Filters {
     }
 
     /// Add a PublicKey (or prefix) to the filter
+    /// `prefix_length` is measured in hex characters
     pub fn add_author(&mut self, public_key: &PublicKey, prefix_length: Option<usize>) {
-        let new_author = if let Some(len) = prefix_length {
+        let new_author = if let Some(mut len) = prefix_length {
+            if len > 64 {
+                len = 64
+            }
             public_key.as_hex_string()[..len].to_owned()
         } else {
             public_key.as_hex_string()
@@ -148,8 +160,12 @@ impl Filters {
     }
 
     /// Delete a PublicKey (or prefix) from the filter
+    /// `prefix_length` is measured in hex characters
     pub fn del_author(&mut self, public_key: &PublicKey, prefix_length: Option<usize>) {
-        let to_remove = if let Some(len) = prefix_length {
+        let to_remove = if let Some(mut len) = prefix_length {
+            if len > 64 {
+                len = 64
+            }
             public_key.as_hex_string()[..len].to_owned()
         } else {
             public_key.as_hex_string()
@@ -272,6 +288,8 @@ mod test {
         filters.add_id(&diff, Some(25));
         filters.del_id(&base, Some(10));
         assert_eq!(filters.ids.len(), 0); // deletes both since both match the 10-prefix
+
+        filters.add_id(&base, Some(3000));
     }
 
     // add_remove_author would be very similar to the above
