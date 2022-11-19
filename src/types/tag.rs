@@ -1,4 +1,4 @@
-use crate::{Error, Id, PublicKey, Url};
+use crate::{Id, PublicKey, Url};
 use serde::de::Error as DeError;
 use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
@@ -10,79 +10,71 @@ pub enum Tag {
     /// This is a reference to an event, where the first string is the event Id.
     /// The second string is defined in NIP-01 as an optional URL, but subsequent
     /// NIPs define more data and interpretations.
-    Event(Vec<String>),
+    Event {
+        /// The Id of some other event that this event refers to
+        id: Id,
+
+        /// A recommended relay URL to find that other event
+        recommended_relay_url: Option<Url>,
+
+        /// A marker (commonly things like 'reply')
+        marker: Option<String>,
+    },
 
     /// This is a reference to a user by public key, where the first string is
     /// the PublicKey. The second string is defined in NIP-01 as an optional URL,
     /// but subsqeuent NIPs define more data and interpretations.
-    Pubkey(Vec<String>),
+    Pubkey {
+        /// The public key of the identity that this event refers to
+        pubkey: PublicKey,
+
+        /// A recommended relay URL to find information on that public key
+        recommended_relay_url: Option<Url>,
+
+        /// A petname given to this identity by the event author
+        petname: Option<String>,
+    },
+
+    /// A hashtag
+    Hashtag(String),
+
+    /// A reference to a URL
+    Reference(Url),
+
+    /// A geohash
+    Geohash(String),
+
+    /// A subject. The first string is the subject. Should only be in TextNote events.
+    Subject(String),
+
+    /// A nonce tag for Proof of Work
+    Nonce {
+        /// A random number that makes the event hash meet the proof of work required
+        nonce: String,
+
+        /// The target number of bits for the proof of work
+        target: Option<String>,
+    },
+
+    /// Any other tag
+    Other {
+        /// The tag name
+        tag: String,
+
+        /// The subsequent fields
+        data: Vec<String>
+    },
 }
 
 impl Tag {
-    /// Get the ID field from an Event Tag
-    pub fn get_id(&self) -> Result<Option<Id>, Error> {
-        if let Tag::Event(v) = self {
-            if let Some(st) = v.get(0) {
-                return Ok(Some(serde_json::from_str(st)?));
-            }
-        }
-        Ok(None)
-    }
-
-    /// Get the URL field from a Tag
-    pub fn get_url(&self) -> Result<Option<Url>, Error> {
-        if let Tag::Event(v) = self {
-            if let Some(u) = v.get(1) {
-                return Ok(Some(Url(u.to_owned())));
-            }
-        }
-        if let Tag::Pubkey(v) = self {
-            if let Some(u) = v.get(1) {
-                return Ok(Some(Url(u.to_owned())));
-            }
-        }
-        Ok(None)
-    }
-
-    /// Get the PublicKey from a Public Key Tag
-    pub fn get_public_key(&self) -> Result<Option<PublicKey>, Error> {
-        if let Tag::Pubkey(v) = self {
-            if let Some(p) = v.get(0) {
-                return Ok(Some(serde_json::from_str(p)?));
-            }
-        }
-        Ok(None)
-    }
-
-    /// Get the petname from a Public Key Tag (NIP-02)
-    pub fn get_petname(&self) -> Option<String> {
-        if let Tag::Pubkey(v) = self {
-            if let Some(s) = v.get(2) {
-                return Some(s.to_owned());
-            }
-        }
-        None
-    }
-
-    /// Get a String from a Tag at the position `n`
-    pub fn get_string(&self, n: usize) -> Option<String> {
-        if let Tag::Event(v) = self {
-            if let Some(s) = v.get(n) {
-                return Some(s.to_owned());
-            }
-        }
-        if let Tag::Pubkey(v) = self {
-            if let Some(s) = v.get(n) {
-                return Some(s.to_owned());
-            }
-        }
-        None
-    }
-
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> Tag {
-        Tag::Event(vec!["p".to_owned(), "blah".to_owned(), "blah".to_owned()])
+        Tag::Event {
+            id: Id::mock(),
+            recommended_relay_url: Some(Url::mock()),
+            marker: None
+        }
     }
 }
 
@@ -92,18 +84,71 @@ impl Serialize for Tag {
         S: Serializer,
     {
         match self {
-            Tag::Event(vec) => {
-                let mut seq = serializer.serialize_seq(Some(1 + vec.len()))?;
+            Tag::Event { id, recommended_relay_url, marker } => {
+                let mut seq = serializer.serialize_seq(None)?;
                 seq.serialize_element("e")?;
-                for s in vec.iter() {
-                    seq.serialize_element(s)?;
+                seq.serialize_element(id)?;
+                if let Some(rru) = recommended_relay_url {
+                    seq.serialize_element(rru)?;
+                } else {
+                    seq.serialize_element("")?;
+                }
+                if let Some(m) = marker {
+                    seq.serialize_element(m)?;
                 }
                 seq.end()
-            }
-            Tag::Pubkey(vec) => {
-                let mut seq = serializer.serialize_seq(Some(1 + vec.len()))?;
+            },
+            Tag::Pubkey { pubkey, recommended_relay_url, petname } => {
+                let mut seq = serializer.serialize_seq(None)?;
                 seq.serialize_element("p")?;
-                for s in vec.iter() {
+                seq.serialize_element(pubkey)?;
+                if let Some(rru) = recommended_relay_url {
+                    seq.serialize_element(rru)?;
+                } else {
+                    seq.serialize_element("")?;
+                }
+                if let Some(pn) = petname {
+                    seq.serialize_element(pn)?;
+                }
+                seq.end()
+            },
+            Tag::Hashtag(hashtag) => {
+                let mut seq = serializer.serialize_seq(None)?;
+                seq.serialize_element("t")?;
+                seq.serialize_element(hashtag)?;
+                seq.end()
+            },
+            Tag::Reference(reference) => {
+                let mut seq = serializer.serialize_seq(None)?;
+                seq.serialize_element("r")?;
+                seq.serialize_element(reference)?;
+                seq.end()
+            },
+            Tag::Geohash(geohash) => {
+                let mut seq = serializer.serialize_seq(None)?;
+                seq.serialize_element("g")?;
+                seq.serialize_element(geohash)?;
+                seq.end()
+            },
+            Tag::Subject(subject) => {
+                let mut seq = serializer.serialize_seq(None)?;
+                seq.serialize_element("subject")?;
+                seq.serialize_element(subject)?;
+                seq.end()
+            },
+            Tag::Nonce { nonce, target } => {
+                let mut seq = serializer.serialize_seq(None)?;
+                seq.serialize_element("nonce")?;
+                seq.serialize_element(nonce)?;
+                if let Some(t) = target {
+                    seq.serialize_element(t)?;
+                }
+                seq.end()
+            },
+            Tag::Other { tag, data } => {
+                let mut seq = serializer.serialize_seq(None)?;
+                seq.serialize_element(tag)?;
+                for s in data.iter() {
                     seq.serialize_element(s)?;
                 }
                 seq.end()
@@ -134,27 +179,52 @@ impl<'de> Visitor<'de> for TagVisitor {
     where
         A: SeqAccess<'de>,
     {
-        let letter: &str = seq
+        let tagname: &str = seq
             .next_element()?
-            .ok_or_else(|| DeError::custom("Tag missing initial letter field"))?;
-        if letter == "e" {
-            let mut v: Vec<String> = Vec::new();
-            loop {
-                match seq.next_element()? {
-                    None => return Ok(Tag::Event(v)),
-                    Some(s) => v.push(s),
-                }
-            }
-        } else if letter == "p" {
-            let mut v: Vec<String> = Vec::new();
-            loop {
-                match seq.next_element()? {
-                    None => return Ok(Tag::Pubkey(v)),
-                    Some(s) => v.push(s),
-                }
-            }
+            .ok_or(DeError::custom("Tag missing initial tagname field"))?;
+        if tagname == "e" {
+            let id: Id = seq.next_element()?
+                .ok_or(DeError::custom(format!("Tag 'e' missing data'")))?;
+            let recommended_relay_url: Option<Url> = seq.next_element()?;
+            let marker: Option<String> = seq.next_element()?;
+            Ok(Tag::Event { id, recommended_relay_url, marker })
+        } else if tagname == "p" {
+            let pubkey: PublicKey = seq.next_element()?
+                .ok_or(DeError::custom(format!("Tag 'p' missing data'")))?;
+            let recommended_relay_url: Option<Url> = seq.next_element()?;
+            let petname: Option<String> = seq.next_element()?;
+            Ok(Tag::Pubkey { pubkey, recommended_relay_url, petname })
+        } else if tagname == "t" {
+            let tag = seq.next_element()?
+                .ok_or(DeError::custom(format!("Tag 't' missing data'")))?;
+            Ok(Tag::Hashtag(tag))
+        } else if tagname == "r" {
+            let refr = seq.next_element()?
+                .ok_or(DeError::custom(format!("Tag 'r' missing data'")))?;
+            Ok(Tag::Reference(refr))
+        } else if tagname == "g" {
+            let geo = seq.next_element()?
+                .ok_or(DeError::custom(format!("Tag 'g' missing data'")))?;
+            Ok(Tag::Geohash(geo))
+        } else if tagname == "subject" {
+            let sub = seq.next_element()?
+                .ok_or(DeError::custom(format!("Tag 'subject' missing data'")))?;
+            Ok(Tag::Subject(sub))
+        } else if tagname == "nonce" {
+            let nonce = seq.next_element()?
+                .ok_or(DeError::custom(format!("Tag 'subject' missing data'")))?;
+            let target: Option<String> = seq.next_element()?;
+            Ok(Tag::Nonce { nonce, target })
         } else {
-            Err(DeError::custom(format!("Unknown Tag: {}", letter)))
+            let tag = seq.next_element()?
+                .ok_or(DeError::custom(format!("Tag missing tagname'")))?;
+            let mut data = Vec::new();
+            loop {
+                match seq.next_element()? {
+                    None => return Ok(Tag::Other { tag, data }),
+                    Some(s) => data.push(s),
+                }
+            }
         }
     }
 }

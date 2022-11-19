@@ -192,10 +192,11 @@ mod test {
             pubkey: pubkey.clone(),
             created_at: Unixtime::mock(),
             kind: EventKind::TextNote,
-            tags: vec![Tag::Event(vec![
-                "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f".to_string(),
-                "https://example.com".to_string(),
-            ])],
+            tags: vec![Tag::Event {
+                id: Id::mock(),
+                recommended_relay_url: Some(Url::mock()),
+                marker: None
+            }],
             content: "Hello World!".to_string(),
             ots: None,
         };
