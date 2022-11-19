@@ -69,6 +69,21 @@ pub enum Tag {
 }
 
 impl Tag {
+    /// Get the tag name for the tag (the first string in the array)a
+    pub fn tagname(&self) -> String {
+        match self {
+            Tag::Event { .. } => "e".to_string(),
+            Tag::Pubkey { .. } => "p".to_string(),
+            Tag::Hashtag(_) => "t".to_string(),
+            Tag::Reference(_) => "r".to_string(),
+            Tag::Geohash(_) => "g".to_string(),
+            Tag::Subject(_) => "subject".to_string(),
+            Tag::Nonce { .. } => "nonce".to_string(),
+            Tag::Other { tag, .. } => tag.clone(),
+            Tag::Empty => panic!("empty tags have no tagname")
+        }
+    }
+
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> Tag {
