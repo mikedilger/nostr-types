@@ -1,5 +1,4 @@
 use crate::{Id, PublicKey, Url};
-use serde::de::Error as DeError;
 use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
 use std::fmt;
@@ -64,6 +63,9 @@ pub enum Tag {
         /// The subsequent fields
         data: Vec<String>
     },
+
+    /// An empty array (kept so signature remains valid across ser/de)
+    Empty
 }
 
 impl Tag {
@@ -152,6 +154,10 @@ impl Serialize for Tag {
                     seq.serialize_element(s)?;
                 }
                 seq.end()
+            },
+            Tag::Empty => {
+                let seq = serializer.serialize_seq(Some(0))?;
+                seq.end()
             }
         }
     }
@@ -179,49 +185,76 @@ impl<'de> Visitor<'de> for TagVisitor {
     where
         A: SeqAccess<'de>,
     {
-        let tagname: &str = seq
-            .next_element()?
-            .ok_or(DeError::custom("Tag missing initial tagname field"))?;
+        let tagname: &str = match seq.next_element()? {
+            Some(e) => e,
+            None => return Ok(Tag::Empty),
+        };
         if tagname == "e" {
-            let id: Id = seq.next_element()?
-                .ok_or(DeError::custom(format!("Tag 'e' missing data'")))?;
+            let id: Id = match seq.next_element()? {
+                Some(id) => id,
+                None => {
+                    return Ok(Tag::Other { tag: tagname.to_string(), data: vec![] });
+                }
+            };
             let recommended_relay_url: Option<Url> = seq.next_element()?;
             let marker: Option<String> = seq.next_element()?;
             Ok(Tag::Event { id, recommended_relay_url, marker })
         } else if tagname == "p" {
-            let pubkey: PublicKey = seq.next_element()?
-                .ok_or(DeError::custom(format!("Tag 'p' missing data'")))?;
+            let pubkey: PublicKey = match seq.next_element()? {
+                Some(p) => p,
+                None => {
+                    return Ok(Tag::Other { tag: tagname.to_string(), data: vec![] });
+                }
+            };
             let recommended_relay_url: Option<Url> = seq.next_element()?;
             let petname: Option<String> = seq.next_element()?;
             Ok(Tag::Pubkey { pubkey, recommended_relay_url, petname })
         } else if tagname == "t" {
-            let tag = seq.next_element()?
-                .ok_or(DeError::custom(format!("Tag 't' missing data'")))?;
+            let tag = match seq.next_element()? {
+                Some(t) => t,
+                None => {
+                    return Ok(Tag::Other { tag: tagname.to_string(), data: vec![] });
+                }
+            };
             Ok(Tag::Hashtag(tag))
         } else if tagname == "r" {
-            let refr = seq.next_element()?
-                .ok_or(DeError::custom(format!("Tag 'r' missing data'")))?;
+            let refr = match seq.next_element()? {
+                Some(r) => r,
+                None => {
+                    return Ok(Tag::Other { tag: tagname.to_string(), data: vec![] });
+                }
+            };
             Ok(Tag::Reference(refr))
         } else if tagname == "g" {
-            let geo = seq.next_element()?
-                .ok_or(DeError::custom(format!("Tag 'g' missing data'")))?;
+            let geo = match seq.next_element()? {
+                Some(g) => g,
+                None => {
+                    return Ok(Tag::Other { tag: tagname.to_string(), data: vec![] });
+                }
+            };
             Ok(Tag::Geohash(geo))
         } else if tagname == "subject" {
-            let sub = seq.next_element()?
-                .ok_or(DeError::custom(format!("Tag 'subject' missing data'")))?;
+            let sub = match seq.next_element()? {
+                Some(s) => s,
+                None => {
+                    return Ok(Tag::Other { tag: tagname.to_string(), data: vec![] });
+                }
+            };
             Ok(Tag::Subject(sub))
         } else if tagname == "nonce" {
-            let nonce = seq.next_element()?
-                .ok_or(DeError::custom(format!("Tag 'subject' missing data'")))?;
+            let nonce = match seq.next_element()? {
+                Some(n) => n,
+                None => {
+                    return Ok(Tag::Other { tag: tagname.to_string(), data: vec![] });
+                }
+            };
             let target: Option<String> = seq.next_element()?;
             Ok(Tag::Nonce { nonce, target })
         } else {
-            let tag = seq.next_element()?
-                .ok_or(DeError::custom(format!("Tag missing tagname'")))?;
             let mut data = Vec::new();
             loop {
                 match seq.next_element()? {
-                    None => return Ok(Tag::Other { tag, data }),
+                    None => return Ok(Tag::Other { tag: tagname.to_string(), data }),
                     Some(s) => data.push(s),
                 }
             }
