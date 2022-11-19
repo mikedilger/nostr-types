@@ -90,7 +90,7 @@ impl Serialize for Tag {
                 seq.serialize_element(id)?;
                 if let Some(rru) = recommended_relay_url {
                     seq.serialize_element(rru)?;
-                } else {
+                } else if marker.is_some() {
                     seq.serialize_element("")?;
                 }
                 if let Some(m) = marker {
@@ -104,7 +104,7 @@ impl Serialize for Tag {
                 seq.serialize_element(pubkey)?;
                 if let Some(rru) = recommended_relay_url {
                     seq.serialize_element(rru)?;
-                } else {
+                } else if petname.is_some() {
                     seq.serialize_element("")?;
                 }
                 if let Some(pn) = petname {
