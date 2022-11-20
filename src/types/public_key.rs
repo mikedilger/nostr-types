@@ -62,6 +62,12 @@ impl Visitor<'_> for PublicKeyVisitor {
         let vec: Vec<u8> =
             hex::decode(v).map_err(|e| serde::de::Error::custom(format!("{}", e)))?;
 
+        // If we don't catch this ourselves, the below from_bytes will panic when it
+        // gets into an assertion within generic-array
+        if vec.len() != 32 {
+            return Err(serde::de::Error::custom("Public key is not 32 bytes long"));
+        }
+
         Ok(PublicKey(
             VerifyingKey::from_bytes(&vec)
                 .map_err(|e| serde::de::Error::custom(format!("{}", e)))?,

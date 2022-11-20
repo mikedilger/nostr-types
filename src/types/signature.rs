@@ -65,6 +65,12 @@ impl Visitor<'_> for SignatureVisitor {
         let vec: Vec<u8> =
             hex::decode(v).map_err(|e| serde::de::Error::custom(format!("{}", e)))?;
 
+        // If we don't catch this ourselves, the below from_bytes will panic when it
+        // gets into an assertion within generic-array
+        if vec.len() != 64 {
+            return Err(serde::de::Error::custom("Signature is not 64 bytes long"));
+        }
+
         let ksig: KSignature =
             KSignature::from_bytes(&vec).map_err(|e| DeError::custom(format!("{}", e)))?;
 
