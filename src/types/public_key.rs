@@ -4,6 +4,7 @@ use k256::schnorr::VerifyingKey;
 use serde::de::{Deserialize, Deserializer, Visitor};
 use serde::ser::{Serialize, Serializer};
 use std::fmt;
+use std::hash::{Hash, Hasher};
 
 /// This is a public key, which identifies an actor (usually a person) and is shared.
 #[derive(AsMut, AsRef, Copy, Clone, Debug, Deref, Eq, From, Into, PartialEq)]
@@ -72,6 +73,12 @@ impl Visitor<'_> for PublicKeyVisitor {
             VerifyingKey::from_bytes(&vec)
                 .map_err(|e| serde::de::Error::custom(format!("{}", e)))?,
         ))
+    }
+}
+
+impl Hash for PublicKey {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.as_hex_string().hash(state);
     }
 }
 
