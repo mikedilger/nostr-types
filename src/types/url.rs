@@ -1,4 +1,4 @@
-use derive_more::{AsMut, AsRef, Deref, From, FromStr, Into};
+use derive_more::{AsMut, AsRef, Deref, Display, From, FromStr, Into};
 use serde::{Deserialize, Serialize};
 
 /// A Url
@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
     Debug,
     Deref,
     Deserialize,
+    Display,
     Eq,
     From,
     FromStr,
