@@ -195,7 +195,7 @@ mod test {
             tags: vec![Tag::Event {
                 id: Id::mock(),
                 recommended_relay_url: Some(Url::mock()),
-                marker: None
+                marker: None,
             }],
             content: "Hello World!".to_string(),
             ots: None,

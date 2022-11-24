@@ -1,7 +1,8 @@
 use crate::Error;
-use derive_more::{AsMut, AsRef, Deref, From, Into};
-use serde::de::{Deserialize, Deserializer, Visitor};
-use serde::ser::{Serialize, Serializer};
+use derive_more::{AsMut, AsRef, Deref, Display, From, FromStr, Into};
+use serde::de::{Deserializer, Visitor};
+use serde::ser::Serializer;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// An event identifier, constructed as a SHA256 hash of the event fields according to NIP-01
@@ -72,6 +73,41 @@ impl Visitor<'_> for IdVisitor {
                 e.len()
             ))
         })?))
+    }
+}
+
+/// An event identifier, constructed as a SHA256 hash of the event fields according to NIP-01, as a hex string
+///
+/// You can convert from an `Id` into this with `From`/`Into`.  You can convert this back to an `Id` with `TryFrom`/`TryInto`.
+#[derive(
+    AsMut,
+    AsRef,
+    Clone,
+    Debug,
+    Deref,
+    Deserialize,
+    Display,
+    Eq,
+    From,
+    FromStr,
+    Hash,
+    Into,
+    PartialEq,
+    Serialize,
+)]
+pub struct IdHex(pub String);
+
+impl From<Id> for IdHex {
+    fn from(i: Id) -> IdHex {
+        IdHex(i.as_hex_string())
+    }
+}
+
+impl TryFrom<IdHex> for Id {
+    type Error = Error;
+
+    fn try_from(h: IdHex) -> Result<Id, Error> {
+        Id::try_from_hex_string(&h.0)
     }
 }
 

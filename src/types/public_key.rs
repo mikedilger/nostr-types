@@ -1,8 +1,9 @@
 use crate::{Error, PrivateKey};
-use derive_more::{AsMut, AsRef, Deref, From, Into};
+use derive_more::{AsMut, AsRef, Deref, Display, From, FromStr, Into};
 use k256::schnorr::VerifyingKey;
-use serde::de::{Deserialize, Deserializer, Visitor};
-use serde::ser::{Serialize, Serializer};
+use serde::de::{Deserializer, Visitor};
+use serde::ser::Serializer;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
@@ -76,9 +77,45 @@ impl Visitor<'_> for PublicKeyVisitor {
     }
 }
 
+#[allow(clippy::derive_hash_xor_eq)]
 impl Hash for PublicKey {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.as_hex_string().hash(state);
+    }
+}
+
+/// This is a public key, which identifies an actor (usually a person) and is shared, as a hex string
+///
+/// You can convert from a `PublicKey` into this with `From`/`Into`.  You can convert this back to a `PublicKey` with `TryFrom`/`TryInto`.
+#[derive(
+    AsMut,
+    AsRef,
+    Clone,
+    Debug,
+    Deref,
+    Deserialize,
+    Display,
+    Eq,
+    From,
+    FromStr,
+    Hash,
+    Into,
+    PartialEq,
+    Serialize,
+)]
+pub struct PublicKeyHex(pub String);
+
+impl From<PublicKey> for PublicKeyHex {
+    fn from(pk: PublicKey) -> PublicKeyHex {
+        PublicKeyHex(pk.as_hex_string())
+    }
+}
+
+impl TryFrom<PublicKeyHex> for PublicKey {
+    type Error = Error;
+
+    fn try_from(pkh: PublicKeyHex) -> Result<PublicKey, Error> {
+        PublicKey::try_from_hex_string(&pkh.0)
     }
 }
 

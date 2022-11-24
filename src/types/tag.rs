@@ -61,11 +61,11 @@ pub enum Tag {
         tag: String,
 
         /// The subsequent fields
-        data: Vec<String>
+        data: Vec<String>,
     },
 
     /// An empty array (kept so signature remains valid across ser/de)
-    Empty
+    Empty,
 }
 
 impl Tag {
@@ -80,7 +80,7 @@ impl Tag {
             Tag::Subject(_) => "subject".to_string(),
             Tag::Nonce { .. } => "nonce".to_string(),
             Tag::Other { tag, .. } => tag.clone(),
-            Tag::Empty => panic!("empty tags have no tagname")
+            Tag::Empty => panic!("empty tags have no tagname"),
         }
     }
 
@@ -90,7 +90,7 @@ impl Tag {
         Tag::Event {
             id: Id::mock(),
             recommended_relay_url: Some(Url::mock()),
-            marker: None
+            marker: None,
         }
     }
 }
@@ -101,7 +101,11 @@ impl Serialize for Tag {
         S: Serializer,
     {
         match self {
-            Tag::Event { id, recommended_relay_url, marker } => {
+            Tag::Event {
+                id,
+                recommended_relay_url,
+                marker,
+            } => {
                 let mut seq = serializer.serialize_seq(None)?;
                 seq.serialize_element("e")?;
                 seq.serialize_element(id)?;
@@ -114,8 +118,12 @@ impl Serialize for Tag {
                     seq.serialize_element(m)?;
                 }
                 seq.end()
-            },
-            Tag::Pubkey { pubkey, recommended_relay_url, petname } => {
+            }
+            Tag::Pubkey {
+                pubkey,
+                recommended_relay_url,
+                petname,
+            } => {
                 let mut seq = serializer.serialize_seq(None)?;
                 seq.serialize_element("p")?;
                 seq.serialize_element(pubkey)?;
@@ -128,31 +136,31 @@ impl Serialize for Tag {
                     seq.serialize_element(pn)?;
                 }
                 seq.end()
-            },
+            }
             Tag::Hashtag(hashtag) => {
                 let mut seq = serializer.serialize_seq(None)?;
                 seq.serialize_element("t")?;
                 seq.serialize_element(hashtag)?;
                 seq.end()
-            },
+            }
             Tag::Reference(reference) => {
                 let mut seq = serializer.serialize_seq(None)?;
                 seq.serialize_element("r")?;
                 seq.serialize_element(reference)?;
                 seq.end()
-            },
+            }
             Tag::Geohash(geohash) => {
                 let mut seq = serializer.serialize_seq(None)?;
                 seq.serialize_element("g")?;
                 seq.serialize_element(geohash)?;
                 seq.end()
-            },
+            }
             Tag::Subject(subject) => {
                 let mut seq = serializer.serialize_seq(None)?;
                 seq.serialize_element("subject")?;
                 seq.serialize_element(subject)?;
                 seq.end()
-            },
+            }
             Tag::Nonce { nonce, target } => {
                 let mut seq = serializer.serialize_seq(None)?;
                 seq.serialize_element("nonce")?;
@@ -161,7 +169,7 @@ impl Serialize for Tag {
                     seq.serialize_element(t)?;
                 }
                 seq.end()
-            },
+            }
             Tag::Other { tag, data } => {
                 let mut seq = serializer.serialize_seq(None)?;
                 seq.serialize_element(tag)?;
@@ -169,7 +177,7 @@ impl Serialize for Tag {
                     seq.serialize_element(s)?;
                 }
                 seq.end()
-            },
+            }
             Tag::Empty => {
                 let seq = serializer.serialize_seq(Some(0))?;
                 seq.end()
@@ -208,27 +216,44 @@ impl<'de> Visitor<'de> for TagVisitor {
             let id: Id = match seq.next_element()? {
                 Some(id) => id,
                 None => {
-                    return Ok(Tag::Other { tag: tagname.to_string(), data: vec![] });
+                    return Ok(Tag::Other {
+                        tag: tagname.to_string(),
+                        data: vec![],
+                    });
                 }
             };
             let recommended_relay_url: Option<Url> = seq.next_element()?;
             let marker: Option<String> = seq.next_element()?;
-            Ok(Tag::Event { id, recommended_relay_url, marker })
+            Ok(Tag::Event {
+                id,
+                recommended_relay_url,
+                marker,
+            })
         } else if tagname == "p" {
             let pubkey: PublicKey = match seq.next_element()? {
                 Some(p) => p,
                 None => {
-                    return Ok(Tag::Other { tag: tagname.to_string(), data: vec![] });
+                    return Ok(Tag::Other {
+                        tag: tagname.to_string(),
+                        data: vec![],
+                    });
                 }
             };
             let recommended_relay_url: Option<Url> = seq.next_element()?;
             let petname: Option<String> = seq.next_element()?;
-            Ok(Tag::Pubkey { pubkey, recommended_relay_url, petname })
+            Ok(Tag::Pubkey {
+                pubkey,
+                recommended_relay_url,
+                petname,
+            })
         } else if tagname == "t" {
             let tag = match seq.next_element()? {
                 Some(t) => t,
                 None => {
-                    return Ok(Tag::Other { tag: tagname.to_string(), data: vec![] });
+                    return Ok(Tag::Other {
+                        tag: tagname.to_string(),
+                        data: vec![],
+                    });
                 }
             };
             Ok(Tag::Hashtag(tag))
@@ -236,7 +261,10 @@ impl<'de> Visitor<'de> for TagVisitor {
             let refr = match seq.next_element()? {
                 Some(r) => r,
                 None => {
-                    return Ok(Tag::Other { tag: tagname.to_string(), data: vec![] });
+                    return Ok(Tag::Other {
+                        tag: tagname.to_string(),
+                        data: vec![],
+                    });
                 }
             };
             Ok(Tag::Reference(refr))
@@ -244,7 +272,10 @@ impl<'de> Visitor<'de> for TagVisitor {
             let geo = match seq.next_element()? {
                 Some(g) => g,
                 None => {
-                    return Ok(Tag::Other { tag: tagname.to_string(), data: vec![] });
+                    return Ok(Tag::Other {
+                        tag: tagname.to_string(),
+                        data: vec![],
+                    });
                 }
             };
             Ok(Tag::Geohash(geo))
@@ -252,7 +283,10 @@ impl<'de> Visitor<'de> for TagVisitor {
             let sub = match seq.next_element()? {
                 Some(s) => s,
                 None => {
-                    return Ok(Tag::Other { tag: tagname.to_string(), data: vec![] });
+                    return Ok(Tag::Other {
+                        tag: tagname.to_string(),
+                        data: vec![],
+                    });
                 }
             };
             Ok(Tag::Subject(sub))
@@ -260,7 +294,10 @@ impl<'de> Visitor<'de> for TagVisitor {
             let nonce = match seq.next_element()? {
                 Some(n) => n,
                 None => {
-                    return Ok(Tag::Other { tag: tagname.to_string(), data: vec![] });
+                    return Ok(Tag::Other {
+                        tag: tagname.to_string(),
+                        data: vec![],
+                    });
                 }
             };
             let target: Option<String> = seq.next_element()?;
@@ -269,7 +306,12 @@ impl<'de> Visitor<'de> for TagVisitor {
             let mut data = Vec::new();
             loop {
                 match seq.next_element()? {
-                    None => return Ok(Tag::Other { tag: tagname.to_string(), data }),
+                    None => {
+                        return Ok(Tag::Other {
+                            tag: tagname.to_string(),
+                            data,
+                        })
+                    }
                     Some(s) => data.push(s),
                 }
             }
