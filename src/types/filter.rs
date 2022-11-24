@@ -1,6 +1,7 @@
-use super::{EventKind, Id, PublicKey, Unixtime};
+use super::{EventKind, IdHex, PublicKeyHex, Unixtime};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
+use std::ops::Deref;
 
 /// Filters which specify what events a client is looking for
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
@@ -8,12 +9,12 @@ pub struct Filters {
     /// Events which match these ids
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
-    pub ids: Vec<String>,
+    pub ids: Vec<IdHex>, // ID as hex, or prefix thereof
 
     /// Events which match these authors
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
-    pub authors: Vec<String>, // public key prefix
+    pub authors: Vec<PublicKeyHex>, // PublicKey as hex, or prefix thereof
 
     /// Events which match these kinds
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -23,12 +24,12 @@ pub struct Filters {
     /// Events when referenced in an 'e' tag
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
-    pub e: Vec<Id>,
+    pub e: Vec<IdHex>,
 
     /// Events when referenced in a 'p' tag
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
-    pub p: Vec<PublicKey>,
+    pub p: Vec<PublicKeyHex>,
 
     /// Events occuring after this date
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -80,9 +81,9 @@ fn prefix_match(s1: &str, s2: &str) -> PrefixMatch {
     }
 }
 
-fn add_substr(vec: &mut Vec<String>, add: String) {
+fn add_substr<T: Deref<Target=String>>(vec: &mut Vec<T>, add: T) {
     for (index, existing) in vec.iter().enumerate() {
-        match prefix_match(existing, &add) {
+        match prefix_match(&*existing, &*add) {
             PrefixMatch::Equal | PrefixMatch::Shorter => return,
             PrefixMatch::Longer => {
                 vec[index] = add;
@@ -95,10 +96,10 @@ fn add_substr(vec: &mut Vec<String>, add: String) {
     vec.push(add);
 }
 
-fn del_substr(vec: &mut Vec<String>, del: String) {
+fn del_substr<T: Deref<Target=String>>(vec: &mut Vec<T>, del: T) {
     let mut marked: Vec<usize> = Vec::new();
     for (index, existing) in vec.iter().enumerate() {
-        match prefix_match(existing, &del) {
+        match prefix_match(&*existing, &*del) {
             PrefixMatch::Equal | PrefixMatch::Shorter => marked.push(index),
             _ => {}
         }
@@ -116,14 +117,14 @@ impl Filters {
 
     /// Add an Id (or prefix) to the filter.
     /// `prefix_length` is measured in hex characters
-    pub fn add_id(&mut self, id: &Id, prefix_length: Option<usize>) {
+    pub fn add_id(&mut self, id_hex: &IdHex, prefix_length: Option<usize>) {
         let new_id = if let Some(mut len) = prefix_length {
             if len > 64 {
                 len = 64
             }
-            id.as_hex_string()[..len].to_owned()
+            IdHex(id_hex[..len].to_owned())
         } else {
-            id.as_hex_string()
+            id_hex.to_owned()
         };
 
         add_substr(&mut self.ids, new_id);
@@ -131,14 +132,14 @@ impl Filters {
 
     /// Delete an Id (or prefix) from the filter
     /// `prefix_length` is measured in hex characters
-    pub fn del_id(&mut self, id: &Id, prefix_length: Option<usize>) {
+    pub fn del_id(&mut self, id_hex: &IdHex, prefix_length: Option<usize>) {
         let to_remove = if let Some(mut len) = prefix_length {
             if len > 64 {
                 len = 64
             }
-            id.as_hex_string()[..len].to_owned()
+            IdHex(id_hex[..len].to_owned())
         } else {
-            id.as_hex_string()
+            id_hex.to_owned()
         };
 
         del_substr(&mut self.ids, to_remove);
@@ -146,14 +147,14 @@ impl Filters {
 
     /// Add a PublicKey (or prefix) to the filter
     /// `prefix_length` is measured in hex characters
-    pub fn add_author(&mut self, public_key: &PublicKey, prefix_length: Option<usize>) {
+    pub fn add_author(&mut self, public_key_hex: &PublicKeyHex, prefix_length: Option<usize>) {
         let new_author = if let Some(mut len) = prefix_length {
             if len > 64 {
                 len = 64
             }
-            public_key.as_hex_string()[..len].to_owned()
+            PublicKeyHex(public_key_hex[..len].to_owned())
         } else {
-            public_key.as_hex_string()
+            public_key_hex.to_owned()
         };
 
         add_substr(&mut self.authors, new_author);
@@ -161,14 +162,14 @@ impl Filters {
 
     /// Delete a PublicKey (or prefix) from the filter
     /// `prefix_length` is measured in hex characters
-    pub fn del_author(&mut self, public_key: &PublicKey, prefix_length: Option<usize>) {
+    pub fn del_author(&mut self, public_key_hex: &PublicKeyHex, prefix_length: Option<usize>) {
         let to_remove = if let Some(mut len) = prefix_length {
             if len > 64 {
                 len = 64
             }
-            public_key.as_hex_string()[..len].to_owned()
+            PublicKeyHex(public_key_hex[..len].to_owned())
         } else {
-            public_key.as_hex_string()
+            public_key_hex.to_owned()
         };
 
         del_substr(&mut self.authors, to_remove);
@@ -190,31 +191,31 @@ impl Filters {
     }
 
     /// Add an e-tag Id to the filter
-    pub fn add_e_tag_ids(&mut self, id: Id) {
-        if self.e.contains(&id) {
+    pub fn add_e_tag_ids(&mut self, id_hex: IdHex) {
+        if self.e.contains(&id_hex) {
             return;
         }
-        self.e.push(id);
+        self.e.push(id_hex);
     }
 
     /// Delete an e-tag Id from the filter
-    pub fn del_e_tag_ids(&mut self, id: &Id) {
-        if let Some(position) = self.e.iter().position(|x| x == id) {
+    pub fn del_e_tag_ids(&mut self, id_hex: &IdHex) {
+        if let Some(position) = self.e.iter().position(|x| x == id_hex) {
             let _ = self.e.swap_remove(position);
         }
     }
 
     /// Add a PublicKey to the filter
-    pub fn add_p_tag_public_key(&mut self, public_key: PublicKey) {
-        if self.p.contains(&public_key) {
+    pub fn add_p_tag_public_key(&mut self, public_key_hex: PublicKeyHex) {
+        if self.p.contains(&public_key_hex) {
             return;
         }
-        self.p.push(public_key);
+        self.p.push(public_key_hex);
     }
 
     /// Delete a PublicKey from the filter
-    pub fn del_p_tag_public_key(&mut self, public_key: &PublicKey) {
-        if let Some(position) = self.p.iter().position(|x| x == public_key) {
+    pub fn del_p_tag_public_key(&mut self, public_key_hex: &PublicKeyHex) {
+        if let Some(position) = self.p.iter().position(|x| x == public_key_hex) {
             let _ = self.p.swap_remove(position);
         }
     }
@@ -223,7 +224,7 @@ impl Filters {
     #[allow(dead_code)]
     pub(crate) fn mock() -> Filters {
         Filters {
-            ids: vec!["21345".to_string()],
+            ids: vec![IdHex("21345".to_string())],
             authors: vec![],
             kinds: vec![EventKind::TextNote, EventKind::Metadata],
             e: vec![],
@@ -256,7 +257,7 @@ mod test {
 
     #[test]
     fn test_add_remove_id() {
-        let mock = Id::mock();
+        let mock = IdHex::mock();
 
         let mut filters: Filters = Filters::new();
         filters.add_id(&mock, Some(20));
@@ -274,22 +275,16 @@ mod test {
         filters.del_id(&mock, Some(20)); // now it deletes
         assert_eq!(filters.ids.len(), 0);
 
-        let base = Id([
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-            24, 25, 26, 27, 28, 29, 30, 31,
-        ]);
-        let diff = Id([
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0,
-        ]);
+        let base_hex = IdHex("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".to_string());
+        let diff_hex = IdHex("ffffffffffffffffffffffffffffffffffffffffffff00000000000000000000".to_string());
 
         let mut filters: Filters = Filters::new();
-        filters.add_id(&base, Some(25));
-        filters.add_id(&diff, Some(25));
-        filters.del_id(&base, Some(10));
+        filters.add_id(&base_hex, Some(25));
+        filters.add_id(&diff_hex, Some(25));
+        filters.del_id(&base_hex, Some(10));
         assert_eq!(filters.ids.len(), 0); // deletes both since both match the 10-prefix
 
-        filters.add_id(&base, Some(3000));
+        filters.add_id(&base_hex, Some(3000));
     }
 
     // add_remove_author would be very similar to the above

@@ -105,6 +105,14 @@ impl Hash for PublicKey {
 )]
 pub struct PublicKeyHex(pub String);
 
+impl PublicKeyHex {
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> PublicKeyHex {
+        From::from(PublicKey::mock())
+    }
+}
+
 impl From<PublicKey> for PublicKeyHex {
     fn from(pk: PublicKey) -> PublicKeyHex {
         PublicKeyHex(pk.as_hex_string())

@@ -97,6 +97,14 @@ impl Visitor<'_> for IdVisitor {
 )]
 pub struct IdHex(pub String);
 
+impl IdHex {
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> IdHex {
+        From::from(Id::mock())
+    }
+}
+
 impl From<Id> for IdHex {
     fn from(i: Id) -> IdHex {
         IdHex(i.as_hex_string())
