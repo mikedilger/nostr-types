@@ -176,6 +176,21 @@ impl Event {
         input.content = serde_json::to_string(&metadata)?;
         Event::new(input, privkey)
     }
+
+    /// Is the event a reply?
+    pub fn is_reply(&self) -> bool {
+        if self.kind != EventKind::TextNote {
+            return false;
+        }
+
+        for tag in self.tags.iter() {
+            if let Tag::Event { .. } = tag {
+                return true;
+            }
+        }
+
+        false
+    }
 }
 
 #[cfg(test)]

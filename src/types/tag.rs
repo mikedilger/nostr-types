@@ -8,7 +8,7 @@ use std::fmt;
 pub enum Tag {
     /// This is a reference to an event, where the first string is the event Id.
     /// The second string is defined in NIP-01 as an optional URL, but subsequent
-    /// NIPs define more data and interpretations.
+    /// 'e' NIPs define more data and interpretations.
     Event {
         /// The Id of some other event that this event refers to
         id: Id,
@@ -20,7 +20,7 @@ pub enum Tag {
         marker: Option<String>,
     },
 
-    /// This is a reference to a user by public key, where the first string is
+    /// 'p' This is a reference to a user by public key, where the first string is
     /// the PublicKey. The second string is defined in NIP-01 as an optional URL,
     /// but subsqeuent NIPs define more data and interpretations.
     Pubkey {
@@ -34,13 +34,13 @@ pub enum Tag {
         petname: Option<String>,
     },
 
-    /// A hashtag
+    /// 't' A hashtag
     Hashtag(String),
 
-    /// A reference to a URL
+    /// 'r' A reference to a URL
     Reference(Url),
 
-    /// A geohash
+    /// 'g' A geohash
     Geohash(String),
 
     /// A subject. The first string is the subject. Should only be in TextNote events.

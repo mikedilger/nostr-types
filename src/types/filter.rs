@@ -81,9 +81,9 @@ fn prefix_match(s1: &str, s2: &str) -> PrefixMatch {
     }
 }
 
-fn add_substr<T: Deref<Target=String>>(vec: &mut Vec<T>, add: T) {
+fn add_substr<T: Deref<Target = String>>(vec: &mut Vec<T>, add: T) {
     for (index, existing) in vec.iter().enumerate() {
-        match prefix_match(&*existing, &*add) {
+        match prefix_match(existing, &add) {
             PrefixMatch::Equal | PrefixMatch::Shorter => return,
             PrefixMatch::Longer => {
                 vec[index] = add;
@@ -96,10 +96,10 @@ fn add_substr<T: Deref<Target=String>>(vec: &mut Vec<T>, add: T) {
     vec.push(add);
 }
 
-fn del_substr<T: Deref<Target=String>>(vec: &mut Vec<T>, del: T) {
+fn del_substr<T: Deref<Target = String>>(vec: &mut Vec<T>, del: T) {
     let mut marked: Vec<usize> = Vec::new();
     for (index, existing) in vec.iter().enumerate() {
-        match prefix_match(&*existing, &*del) {
+        match prefix_match(existing, &del) {
             PrefixMatch::Equal | PrefixMatch::Shorter => marked.push(index),
             _ => {}
         }
@@ -275,8 +275,10 @@ mod test {
         filters.del_id(&mock, Some(20)); // now it deletes
         assert_eq!(filters.ids.len(), 0);
 
-        let base_hex = IdHex("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".to_string());
-        let diff_hex = IdHex("ffffffffffffffffffffffffffffffffffffffffffff00000000000000000000".to_string());
+        let base_hex =
+            IdHex("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".to_string());
+        let diff_hex =
+            IdHex("ffffffffffffffffffffffffffffffffffffffffffff00000000000000000000".to_string());
 
         let mut filters: Filters = Filters::new();
         filters.add_id(&base_hex, Some(25));
