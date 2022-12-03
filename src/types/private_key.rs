@@ -12,20 +12,27 @@ use zeroize::Zeroize;
 /// secret key material was handled carefully. If the secret is exposed in any
 /// way, or leaked and the memory not zeroed, the key security drops to Weak.
 ///
+/// This is a Best Effort tag. There are ways to leak the key and still have this
+/// tag claim the key is Medium security. So Medium really means it might not
+/// have leaked, whereas Weak means we know that it definately did leak.
+///
 /// We offer no Strong security via the PrivateKey structure. If we support
 /// hardware tokens in the future, it will probably be via a different structure.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum KeySecurity {
     /// This means that the key was exposed in a way such that this library
     /// cannot ensure it's secrecy, usually either by being exported as a hex string,
-    /// or by being imported from the same.
+    /// or by being imported from the same. Often in these cases it is displayed
+    /// on the screen or left in the cut buffer or in freed memory that was not
+    /// subsequently zeroed.
     Weak,
 
-    /// This means that the key has not been directly exposed by the library, but
-    /// there are plenty of ways you might have leaked it including: using unsafe
-    /// rust or transmutation to inspect inside this type, decrypting an exported
-    /// encrypted key, memory scanning by a privileged process, etc.  If you behave,
-    /// this tag can help you remember if the key is still reasonably secret.
+    /// This means that the key might not have been directly exposed. But it still
+    /// might have as there are numerous ways you can leak it such as exporting it
+    /// and then decrypting the exported key, using unsafe rust, transmuting it into
+    /// a different type that doesn't protect it, or using a privileged process to
+    /// scan memory. Additionally, more advanced techniques can get at your key such
+    /// as hardware attacks like spectre, rowhammer, and power analysis.
     Medium,
 }
 
