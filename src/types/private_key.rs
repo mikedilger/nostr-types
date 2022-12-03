@@ -116,7 +116,7 @@ impl PrivateKey {
 
     /// Import an encrypted private key which was exported with `export_encrypted()`
     /// or a compatible function in different software.
-    pub fn import_encrypted(encrypted: String, password: &str) -> Result<PrivateKey, Error> {
+    pub fn import_encrypted(encrypted: &str, password: &str) -> Result<PrivateKey, Error> {
         let key = Self::password_to_key(password)?;
 
         // Base64 decode
