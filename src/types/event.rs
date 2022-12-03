@@ -70,8 +70,6 @@ pub struct PreEvent {
 impl Event {
     /// Create a new event
     pub fn new(input: PreEvent, privkey: PrivateKey) -> Result<Event, Error> {
-        use rand_core::RngCore;
-
         let serialized: String = serialize_inner_event!(
             input.pubkey,
             input.created_at,
@@ -85,21 +83,20 @@ impl Event {
         hasher.update(serialized.as_bytes());
         let id = hasher.finalize();
         let id: [u8; 32] = id.into();
+        let id: Id = Id(id);
 
         // Signature
-        let mut rand: [u8; 32] = [0; 32];
-        rand_core::OsRng.fill_bytes(&mut rand);
-        let signature = privkey.try_sign_prehashed(&id, &rand)?;
+        let signature = privkey.sign_id(id)?;
 
         Ok(Event {
-            id: Id(id),
+            id,
             pubkey: input.pubkey,
             created_at: input.created_at,
             kind: input.kind,
             tags: input.tags,
             content: input.content,
             ots: input.ots,
-            sig: Signature(signature),
+            sig: signature,
         })
     }
 
@@ -215,7 +212,7 @@ mod test {
             content: "Hello World!".to_string(),
             ots: None,
         };
-        let mut event = Event::new(preevent, privkey.clone()).unwrap();
+        let mut event = Event::new(preevent, privkey).unwrap();
         assert!(event.verify(None).is_ok());
 
         // Now make sure it fails when the message has been modified
