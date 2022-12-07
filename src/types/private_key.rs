@@ -1,12 +1,14 @@
 use crate::{Error, Id, PublicKey, Signature};
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
+use hmac::Hmac;
 use k256::schnorr::SigningKey;
-use pbkdf2::{
-    password_hash::{PasswordHasher, SaltString},
-    Pbkdf2,
-};
+use pbkdf2::pbkdf2;
 use rand_core::{OsRng, RngCore};
+use sha2::Sha256;
 use zeroize::Zeroize;
+
+// This allows us to detect bad decryptions with wrong passwords.
+const CHECK_VALUE: [u8; 16] = [15,91,241,148,90,143,101,12,172,255,0,252,8,103,154,216];
 
 /// This indicates the security of the key by keeping track of whether the
 /// secret key material was handled carefully. If the secret is exposed in any
@@ -88,6 +90,9 @@ impl PrivateKey {
     /// not attempt to decrypt it, only use `import_encrypted()` on it, or
     /// something similar in another library/client which also respects key
     /// security.
+    ///
+    /// We recommend you zeroize() the password you pass in after you are
+    /// done with it.
     pub fn export_encrypted(&self, password: &str) -> Result<String, Error> {
         let key = Self::password_to_key(password)?;
 
@@ -99,16 +104,22 @@ impl PrivateKey {
         // SECURITY NOTICE: SigningKey has a Drop trait that zeroizes. But here
         //    we are extracting the secret bytes so we can encrypt them.
         //    The variable `inner_secret` then needs to be zeroized afterwards.
-        let mut inner_secret = self.0.to_bytes();
+        let mut inner_secret: Vec<u8> = self.0.to_bytes().to_vec();
+
+        // Add a 16-byte (128-bit) check value. If decryption doesn't yield this check
+        // value we then know the decryption password was wrong.
+        inner_secret.extend(&CHECK_VALUE); // now 48 bytes
+
         let ciphertext = cbc::Encryptor::<aes::Aes256>::new(&key.into(), &iv.into())
-            .encrypt_padded_vec_mut::<Pkcs7>(&inner_secret);
+            .encrypt_padded_vec_mut::<Pkcs7>(&inner_secret); // now 64 bytes (padded)
+
         // Here we zeroize that `inner_secret`
         inner_secret.zeroize();
 
         // Combine IV and ciphertext
         let mut iv_plus_ciphertext: Vec<u8> = Vec::new();
         iv_plus_ciphertext.extend(iv);
-        iv_plus_ciphertext.extend(ciphertext);
+        iv_plus_ciphertext.extend(ciphertext); // now 80 bytes
 
         // Base64 encode
         Ok(base64::encode(iv_plus_ciphertext))
@@ -116,23 +127,36 @@ impl PrivateKey {
 
     /// Import an encrypted private key which was exported with `export_encrypted()`
     /// or a compatible function in different software.
+    ///
+    /// We recommend you zeroize() the password you pass in after you are
+    /// done with it.
     pub fn import_encrypted(encrypted: &str, password: &str) -> Result<PrivateKey, Error> {
         let key = Self::password_to_key(password)?;
 
         // Base64 decode
-        let iv_plus_ciphertext = base64::decode(encrypted)?;
+        let iv_plus_ciphertext = base64::decode(encrypted)?; // 80 bytes
+
+        if iv_plus_ciphertext.len() < 48 { // Should be 64 from padding, but we pushed in 48
+            return Err(Error::InvalidEncryptedPrivateKey);
+        }
 
         // Pull the IV off
         let iv: [u8; 16] = iv_plus_ciphertext[..16].try_into()?;
-        let ciphertext = &iv_plus_ciphertext[16..];
+        let ciphertext = &iv_plus_ciphertext[16..]; // 64 bytes
 
         // AES-256-CBC decrypt
         // SECURITY NOTICE: SigningKey has a Drop trait that zeroizes.  But here
         //    we are decrypting the the secret bytes. The variabler `pt`
         //    needs to be zeroized
         let mut pt = cbc::Decryptor::<aes::Aes256>::new(&key.into(), &iv.into())
-            .decrypt_padded_vec_mut::<Pkcs7>(ciphertext)?;
-        let output = PrivateKey(SigningKey::from_bytes(&pt)?, KeySecurity::Medium);
+            .decrypt_padded_vec_mut::<Pkcs7>(ciphertext)?; // 48 bytes
+
+        // Verify the check value
+        if &pt[pt.len()-16..] != &CHECK_VALUE {
+            return Err(Error::WrongDecryptionPassword);
+        }
+        let output = PrivateKey(SigningKey::from_bytes(&pt[..pt.len()-16])?, KeySecurity::Medium);
+
         // Here we zeroize pt:
         pt.zeroize();
 
@@ -141,10 +165,9 @@ impl PrivateKey {
 
     // Hash/Stretch password with pbkdf2 into a 32-byte (256-bit) key
     fn password_to_key(password: &str) -> Result<[u8; 32], Error> {
-        let salt = SaltString::b64_encode(b"nostr")?;
-        let password_hash = Pbkdf2.hash_password(password.as_bytes(), &salt)?;
-        let password_hash_inner = password_hash.hash.unwrap();
-        let key: [u8; 32] = password_hash_inner.as_bytes()[..32].try_into()?;
+        let salt = b"nostr";
+        let mut key: [u8; 32] = [0; 32];
+        pbkdf2::<Hmac<Sha256>>(password.as_bytes(), salt, 4096, &mut key);
         Ok(key)
     }
 
@@ -163,12 +186,19 @@ mod test {
     fn test_export_import() {
         let pk = PrivateKey::generate();
         let exported = pk.export_encrypted("secret").unwrap();
-        let imported_pk = PrivateKey::import_encrypted(exported, "secret").unwrap();
+        let imported_pk = PrivateKey::import_encrypted(&exported, "secret").unwrap();
 
         // Be sure the keys generate identical public keys
         assert_eq!(pk.public_key(), imported_pk.public_key());
 
         // Be sure the security level is still Medium
         assert_eq!(pk.key_security(), KeySecurity::Medium)
+    }
+    #[test]
+
+    fn test_bad_password() {
+        let pk = PrivateKey::generate();
+        let exported = pk.export_encrypted("rightsecret").unwrap();
+        assert!(PrivateKey::import_encrypted(&exported, "wrongsecret").is_err());
     }
 }

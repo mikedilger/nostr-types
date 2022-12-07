@@ -21,8 +21,8 @@ pub enum Error {
     /// Hex string decoding error
     HexDecode(hex::FromHexError),
 
-    /// Pbkdf2
-    Pbkdf2(pbkdf2::password_hash::Error),
+    /// Invalid encrypted private key
+    InvalidEncryptedPrivateKey,
 
     /// Serialization error
     SerdeJson(serde_json::Error),
@@ -41,6 +41,9 @@ pub enum Error {
 
     /// Wrong length hex string
     WrongLengthHexString,
+
+    /// Wrong Decryption Password
+    WrongDecryptionPassword,
 }
 
 impl fmt::Display for Error {
@@ -52,13 +55,14 @@ impl fmt::Display for Error {
             Error::Fmt(ref e) => write!(f, "Formatting error: {:?}", e),
             Error::HashMismatch => write!(f, "Hash mismatch"),
             Error::HexDecode(ref e) => write!(f, "Hex decode error: {:?}", e),
-            Error::Pbkdf2(ref e) => write!(f, "PBKDF2 error: {}", e),
+            Error::InvalidEncryptedPrivateKey => write!(f, "Invalid encrypted private key"),
             Error::SerdeJson(ref e) => write!(f, "JSON (de)serialization error: {:?}", e),
             Error::Slice(ref e) => write!(f, "Try from slice error: {}", e),
             Error::Time(ref e) => write!(f, "System time error: {:?}", e),
             Error::UnknownEventKind(u) => write!(f, "Unknown event kind: {}", u),
             Error::Unpad(e) => write!(f, "AES decrypt unpad error: {}", e),
             Error::WrongLengthHexString => write!(f, "Wrong length hex string"),
+            Error::WrongDecryptionPassword => write!(f, "Wrong decryption password"),
         }
     }
 }
@@ -100,12 +104,6 @@ impl From<std::fmt::Error> for Error {
 impl From<hex::FromHexError> for Error {
     fn from(e: hex::FromHexError) -> Error {
         Error::HexDecode(e)
-    }
-}
-
-impl From<pbkdf2::password_hash::Error> for Error {
-    fn from(e: pbkdf2::password_hash::Error) -> Error {
-        Error::Pbkdf2(e)
     }
 }
 
