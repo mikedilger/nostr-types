@@ -36,6 +36,9 @@ pub enum Error {
     /// Unknown event kind
     UnknownEventKind(u64),
 
+    /// Unknown Key Security
+    UnknownKeySecurity(u8),
+
     /// Unpad error
     Unpad(aes::cipher::block_padding::UnpadError),
 
@@ -60,6 +63,7 @@ impl fmt::Display for Error {
             Error::Slice(ref e) => write!(f, "Try from slice error: {}", e),
             Error::Time(ref e) => write!(f, "System time error: {:?}", e),
             Error::UnknownEventKind(u) => write!(f, "Unknown event kind: {}", u),
+            Error::UnknownKeySecurity(i) => write!(f, "Unknown key security: {}", i),
             Error::Unpad(e) => write!(f, "AES decrypt unpad error: {}", e),
             Error::WrongLengthHexString => write!(f, "Wrong length hex string"),
             Error::WrongDecryptionPassword => write!(f, "Wrong decryption password"),

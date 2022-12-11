@@ -5,12 +5,11 @@ use k256::schnorr::SigningKey;
 use pbkdf2::pbkdf2;
 use rand_core::{OsRng, RngCore};
 use sha2::Sha256;
+use std::convert::TryFrom;
 use zeroize::Zeroize;
 
 // This allows us to detect bad decryptions with wrong passwords.
-const CHECK_VALUE: [u8; 16] = [
-    15, 91, 241, 148, 90, 143, 101, 12, 172, 255, 0, 252, 8, 103, 154, 216,
-];
+const CHECK_VALUE: [u8; 11] = [15, 91, 241, 148, 90, 143, 101, 12, 172, 255, 103];
 
 /// This indicates the security of the key by keeping track of whether the
 /// secret key material was handled carefully. If the secret is exposed in any
@@ -23,13 +22,14 @@ const CHECK_VALUE: [u8; 16] = [
 /// We offer no Strong security via the PrivateKey structure. If we support
 /// hardware tokens in the future, it will probably be via a different structure.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[repr(u8)]
 pub enum KeySecurity {
     /// This means that the key was exposed in a way such that this library
     /// cannot ensure it's secrecy, usually either by being exported as a hex string,
     /// or by being imported from the same. Often in these cases it is displayed
     /// on the screen or left in the cut buffer or in freed memory that was not
     /// subsequently zeroed.
-    Weak,
+    Weak = 0,
 
     /// This means that the key might not have been directly exposed. But it still
     /// might have as there are numerous ways you can leak it such as exporting it
@@ -37,7 +37,21 @@ pub enum KeySecurity {
     /// a different type that doesn't protect it, or using a privileged process to
     /// scan memory. Additionally, more advanced techniques can get at your key such
     /// as hardware attacks like spectre, rowhammer, and power analysis.
-    Medium,
+    Medium = 1,
+}
+
+impl TryFrom<u8> for KeySecurity {
+    type Error = Error;
+
+    fn try_from(i: u8) -> Result<KeySecurity, Error> {
+        if i == 0 {
+            Ok(KeySecurity::Weak)
+        } else if i == 1 {
+            Ok(KeySecurity::Medium)
+        } else {
+            Err(Error::UnknownKeySecurity(i))
+        }
+    }
 }
 
 /// This is a private key which is to be kept secret and is used to prove identity
@@ -87,10 +101,10 @@ impl PrivateKey {
         Ok(Signature(signature))
     }
 
-    /// Export in an encrypted form. This does not downgrade the security of
-    /// the key, but you are responsible to keep it encrypted.  You should
-    /// not attempt to decrypt it, only use `import_encrypted()` on it, or
-    /// something similar in another library/client which also respects key
+    /// Export in a (non-portable) encrypted form. This does not downgrade
+    /// the security of the key, but you are responsible to keep it encrypted.
+    /// You should not attempt to decrypt it, only use `import_encrypted()` on
+    /// it, or something similar in another library/client which also respects key
     /// security.
     ///
     /// We recommend you zeroize() the password you pass in after you are
@@ -108,9 +122,10 @@ impl PrivateKey {
         //    The variable `inner_secret` then needs to be zeroized afterwards.
         let mut inner_secret: Vec<u8> = self.0.to_bytes().to_vec();
 
-        // Add a 16-byte (128-bit) check value. If decryption doesn't yield this check
+        // Add a 11-byte (128-bit) check value. If decryption doesn't yield this check
         // value we then know the decryption password was wrong.
-        inner_secret.extend(CHECK_VALUE); // now 48 bytes
+        inner_secret.extend(CHECK_VALUE); // now 43 bytes
+        inner_secret.push(self.1 as u8); // now 44 bytes
 
         let ciphertext = cbc::Encryptor::<aes::Aes256>::new(&key.into(), &iv.into())
             .encrypt_padded_vec_mut::<Pkcs7>(&inner_secret); // now 64 bytes (padded)
@@ -127,8 +142,7 @@ impl PrivateKey {
         Ok(base64::encode(iv_plus_ciphertext))
     }
 
-    /// Import an encrypted private key which was exported with `export_encrypted()`
-    /// or a compatible function in different software.
+    /// Import an encrypted private key which was exported with `export_encrypted()`.
     ///
     /// We recommend you zeroize() the password you pass in after you are
     /// done with it.
@@ -155,13 +169,13 @@ impl PrivateKey {
             .decrypt_padded_vec_mut::<Pkcs7>(ciphertext)?; // 48 bytes
 
         // Verify the check value
-        if pt[pt.len() - 16..] != CHECK_VALUE {
+        if pt[pt.len() - 12..pt.len() - 1] != CHECK_VALUE {
             return Err(Error::WrongDecryptionPassword);
         }
-        let output = PrivateKey(
-            SigningKey::from_bytes(&pt[..pt.len() - 16])?,
-            KeySecurity::Medium,
-        );
+
+        // Get the key security
+        let ks = KeySecurity::try_from(pt[pt.len() - 1])?;
+        let output = PrivateKey(SigningKey::from_bytes(&pt[..pt.len() - 12])?, ks);
 
         // Here we zeroize pt:
         pt.zeroize();
@@ -192,6 +206,7 @@ mod test {
     fn test_export_import() {
         let pk = PrivateKey::generate();
         let exported = pk.export_encrypted("secret").unwrap();
+        println!("{}", exported);
         let imported_pk = PrivateKey::import_encrypted(&exported, "secret").unwrap();
 
         // Be sure the keys generate identical public keys
