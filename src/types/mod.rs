@@ -38,6 +38,9 @@ pub use public_key::{PublicKey, PublicKeyHex};
 mod relay_message;
 pub use relay_message::RelayMessage;
 
+mod relay_information_document;
+pub use relay_information_document::RelayInformationDocument;
+
 mod signature;
 pub use signature::Signature;
 
