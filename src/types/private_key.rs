@@ -8,7 +8,9 @@ use sha2::Sha256;
 use zeroize::Zeroize;
 
 // This allows us to detect bad decryptions with wrong passwords.
-const CHECK_VALUE: [u8; 16] = [15,91,241,148,90,143,101,12,172,255,0,252,8,103,154,216];
+const CHECK_VALUE: [u8; 16] = [
+    15, 91, 241, 148, 90, 143, 101, 12, 172, 255, 0, 252, 8, 103, 154, 216,
+];
 
 /// This indicates the security of the key by keeping track of whether the
 /// secret key material was handled carefully. If the secret is exposed in any
@@ -108,7 +110,7 @@ impl PrivateKey {
 
         // Add a 16-byte (128-bit) check value. If decryption doesn't yield this check
         // value we then know the decryption password was wrong.
-        inner_secret.extend(&CHECK_VALUE); // now 48 bytes
+        inner_secret.extend(CHECK_VALUE); // now 48 bytes
 
         let ciphertext = cbc::Encryptor::<aes::Aes256>::new(&key.into(), &iv.into())
             .encrypt_padded_vec_mut::<Pkcs7>(&inner_secret); // now 64 bytes (padded)
@@ -136,7 +138,8 @@ impl PrivateKey {
         // Base64 decode
         let iv_plus_ciphertext = base64::decode(encrypted)?; // 80 bytes
 
-        if iv_plus_ciphertext.len() < 48 { // Should be 64 from padding, but we pushed in 48
+        if iv_plus_ciphertext.len() < 48 {
+            // Should be 64 from padding, but we pushed in 48
             return Err(Error::InvalidEncryptedPrivateKey);
         }
 
@@ -152,10 +155,13 @@ impl PrivateKey {
             .decrypt_padded_vec_mut::<Pkcs7>(ciphertext)?; // 48 bytes
 
         // Verify the check value
-        if &pt[pt.len()-16..] != &CHECK_VALUE {
+        if pt[pt.len() - 16..] != CHECK_VALUE {
             return Err(Error::WrongDecryptionPassword);
         }
-        let output = PrivateKey(SigningKey::from_bytes(&pt[..pt.len()-16])?, KeySecurity::Medium);
+        let output = PrivateKey(
+            SigningKey::from_bytes(&pt[..pt.len() - 16])?,
+            KeySecurity::Medium,
+        );
 
         // Here we zeroize pt:
         pt.zeroize();
