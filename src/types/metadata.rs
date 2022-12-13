@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Metadata {
     /// User name
-    pub name: String,
+    pub name: Option<String>,
 
     /// About the user
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -27,7 +27,7 @@ impl Metadata {
     #[allow(dead_code)]
     pub(crate) fn mock() -> Metadata {
         Metadata {
-            name: "Mike".to_owned(),
+            name: Some("Mike".to_owned()),
             about: Some("Just some guy".to_owned()),
             picture: None,
             nip05: None,

@@ -158,7 +158,7 @@ impl Event {
     pub fn new_set_metadata(
         mut input: PreEvent,
         privkey: PrivateKey,
-        name: String,
+        name: Option<String>,
         about: Option<String>,
         picture: Option<String>,
         nip05: Option<String>,
