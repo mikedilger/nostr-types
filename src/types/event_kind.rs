@@ -44,6 +44,8 @@ pub enum EventKind {
     PublicChatReserved48,
     /// Reserved for future public channel usage
     PublicChatReserved49,
+    /// Relays List (NIP-23)
+    RelaysList,
     /// Relay-specific replaceable event
     Replaceable(u64),
     /// Ephemeral event, sent to all clients with matching filters and should not be stored
@@ -81,6 +83,7 @@ impl TryFrom<u64> for EventKind {
             47 => PublicChatReserved47,
             48 => PublicChatReserved48,
             49 => PublicChatReserved49,
+            10001 => RelaysList,
             x if (10_000..20_000).contains(&x) => Replaceable(x),
             x if (20_000..30_000).contains(&x) => Ephemeral(x),
             x => return Err(Error::UnknownEventKind(x)),
@@ -109,6 +112,7 @@ impl From<EventKind> for u64 {
             PublicChatReserved47 => 47,
             PublicChatReserved48 => 48,
             PublicChatReserved49 => 49,
+            RelaysList => 10001,
             Replaceable(u) => u,
             Ephemeral(u) => u,
         }
