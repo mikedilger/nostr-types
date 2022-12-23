@@ -14,6 +14,8 @@ pub struct PublicKey(pub VerifyingKey);
 
 impl PublicKey {
     /// Render into a hexadecimal string
+    ///
+    /// Consider converting `.into()` a `PublicKeyHex` which is a wrapped type rather than a naked `String`
     pub fn as_hex_string(&self) -> String {
         hex::encode(self.0.to_bytes())
     }

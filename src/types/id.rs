@@ -13,6 +13,8 @@ pub struct Id(pub [u8; 32]);
 
 impl Id {
     /// Render into a hexadecimal string
+    ///
+    /// Consider converting `.into()` an `IdHex` which is a wrapped type rather than a naked `String`
     pub fn as_hex_string(&self) -> String {
         hex::encode(self.0)
     }
