@@ -235,17 +235,60 @@ impl Event {
             }
         }
 
-        // otherwise use the last unmarked 'e' tag
-        for tag in self.tags.iter().rev() {
+        // otherwise use the last 'e' tag if unmarked
+        if let Some(Tag::Event {
+            id,
+            recommended_relay_url,
+            marker,
+        }) = self.tags.iter().rev().next()
+        {
+            if marker.is_none() {
+                return Some((*id, recommended_relay_url.to_owned()));
+            }
+        }
+
+        None
+    }
+
+    /// If this event replies to a thread, get that threads root event Id if
+    /// available, along with an optional recommended_relay_url
+    pub fn replies_to_root(&self) -> Option<(Id, Option<Url>)> {
+        if self.kind != EventKind::TextNote {
+            return None;
+        }
+
+        // look for an 'e' tag with marker 'root'
+        for tag in self.tags.iter() {
             if let Tag::Event {
                 id,
                 recommended_relay_url,
                 marker,
             } = tag
             {
-                if marker.is_none() {
+                if marker.is_some() && marker.as_deref().unwrap() == "root" {
                     return Some((*id, recommended_relay_url.to_owned()));
                 }
+            }
+        }
+
+        let num_e_tags = self
+            .tags
+            .iter()
+            .filter(|e| matches!(e, Tag::Event { .. }))
+            .count();
+        if num_e_tags < 2 {
+            return None;
+        }
+
+        // otherwise use the first 'e' tag if unmarked
+        if let Some(Tag::Event {
+            id,
+            recommended_relay_url,
+            marker,
+        }) = self.tags.first()
+        {
+            if marker.is_none() {
+                return Some((*id, recommended_relay_url.to_owned()));
             }
         }
 
