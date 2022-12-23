@@ -2,14 +2,14 @@
 
 [![Crates.io][crates-badge]][crates-url]
 [![MIT licensed][mit-badge]][mit-url]
-[![Docs.rs][doc-badge]][doc-url]
-[![Temp Docs][doc2-badge]][doc2-url]
+[![Stable Docs][doc-badge]][doc-url]
+[![Master Docs][doc2-badge]][doc2-url]
 
 [crates-badge]: https://img.shields.io/crates/v/nostr-types.svg
 [crates-url]: https://crates.io/crates/nostr-types
-[doc-badge]: https://img.shields.io/badge/docs.rs-green.svg
+[doc-badge]: https://img.shields.io/badge/docs-stable-green.svg
 [doc-url]: https://docs.rs/nostr-types
-[doc2-badge]: https://img.shields.io/badge/tempdocs-green.svg
+[doc2-badge]: https://img.shields.io/badge/docs-master-yellow.svg
 [doc2-url]: https://mikedilger.com/docs/nostr-types/nostr_types/
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: https://github.com/mikedilger/nostr-types/blob/master/LICENSE-MIT
