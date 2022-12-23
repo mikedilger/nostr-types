@@ -7,6 +7,14 @@ pub enum Error {
     #[error("Base64 Decoding Error: {0}")]
     Base64(#[from] base64::DecodeError),
 
+    /// Bech32 error
+    #[error("Bech32 Error: {0}")]
+    Bech32(#[from] bech32::Error),
+
+    /// Bech32 error
+    #[error("Wrong Bech32 Kind: Expected {0} found {0}")]
+    WrongBech32(String, String),
+
     /// Signature error
     #[error("ECDSA Signature Error: {0}")]
     Signature(#[from] k256::ecdsa::Error),

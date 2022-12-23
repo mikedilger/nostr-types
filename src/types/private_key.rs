@@ -1,5 +1,6 @@
 use crate::{Error, Id, PublicKey, Signature};
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
+use bech32::{FromBase32, ToBase32};
 use hmac::Hmac;
 use k256::schnorr::SigningKey;
 use pbkdf2::pbkdf2;
@@ -91,6 +92,36 @@ impl PrivateKey {
     pub fn try_from_hex_string(v: &str) -> Result<PrivateKey, Error> {
         let vec: Vec<u8> = hex::decode(v)?;
         Ok(PrivateKey(SigningKey::from_bytes(&vec)?, KeySecurity::Weak))
+    }
+
+    /// Export as a bech32 encoded string
+    ///
+    /// WARNING: This weakens the security of your key. Your key will be marked
+    /// with `KeySecurity::Weak` if you execute this.
+    pub fn try_as_bech32_string(&mut self) -> Result<String, Error> {
+        self.1 = KeySecurity::Weak;
+        Ok(bech32::encode(
+            "nsec",
+            self.0.to_bytes().to_vec().to_base32(),
+            bech32::Variant::Bech32,
+        )?)
+    }
+
+    /// Import from a bech32 encoded string
+    ///
+    /// This creates a key with `KeySecurity::Weak`.  Use `generate()` or
+    /// `import_encrypted()` for `KeySecurity::Medium`
+    pub fn try_from_bech32_string(s: &str) -> Result<PrivateKey, Error> {
+        let data = bech32::decode(s)?;
+        if data.0 != "nsec" {
+            Err(Error::WrongBech32("nsec".to_string(), data.0))
+        } else {
+            let decoded = Vec::<u8>::from_base32(&data.1)?;
+            Ok(PrivateKey(
+                SigningKey::from_bytes(&decoded)?,
+                KeySecurity::Weak,
+            ))
+        }
     }
 
     /// Sign a 32-bit hash
@@ -215,11 +246,24 @@ mod test {
         // Be sure the security level is still Medium
         assert_eq!(pk.key_security(), KeySecurity::Medium)
     }
-    #[test]
 
+    #[test]
     fn test_bad_password() {
         let pk = PrivateKey::generate();
         let exported = pk.export_encrypted("rightsecret").unwrap();
         assert!(PrivateKey::import_encrypted(&exported, "wrongsecret").is_err());
+    }
+
+    #[test]
+    fn test_privkey_bech32() {
+        let mut pk = PrivateKey::mock();
+
+        let encoded = pk.try_as_bech32_string().unwrap();
+        println!("bech32: {}", encoded);
+
+        let decoded = PrivateKey::try_from_bech32_string(&encoded).unwrap();
+
+        assert_eq!(pk.0.to_bytes(), decoded.0.to_bytes());
+        assert_eq!(decoded.1, KeySecurity::Weak);
     }
 }

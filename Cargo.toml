@@ -11,6 +11,7 @@ license = "MIT"
 [dependencies]
 aes = "0.8"
 base64 = "0.13"
+bech32 = "0.9"
 cbc = { version = "0.1", features = [ "std" ] }
 derive_more = "0.99"
 hex = "0.4"

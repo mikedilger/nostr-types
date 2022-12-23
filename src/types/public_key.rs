@@ -1,4 +1,5 @@
 use crate::{Error, PrivateKey};
+use bech32::{FromBase32, ToBase32};
 use derive_more::{AsMut, AsRef, Deref, Display, From, FromStr, Into};
 use k256::schnorr::VerifyingKey;
 use serde::de::{Deserializer, Visitor};
@@ -21,6 +22,26 @@ impl PublicKey {
     pub fn try_from_hex_string(v: &str) -> Result<PublicKey, Error> {
         let vec: Vec<u8> = hex::decode(v)?;
         Ok(PublicKey(VerifyingKey::from_bytes(&vec)?))
+    }
+
+    /// Export as a bech32 encoded string
+    pub fn try_as_bech32_string(&self) -> Result<String, Error> {
+        Ok(bech32::encode(
+            "npub",
+            self.0.to_bytes().to_vec().to_base32(),
+            bech32::Variant::Bech32,
+        )?)
+    }
+
+    /// Import from a bech32 encoded string
+    pub fn try_from_bech32_string(s: &str) -> Result<PublicKey, Error> {
+        let data = bech32::decode(s)?;
+        if data.0 != "npub" {
+            Err(Error::WrongBech32("npub".to_string(), data.0))
+        } else {
+            let decoded = Vec::<u8>::from_base32(&data.1)?;
+            Ok(PublicKey(VerifyingKey::from_bytes(&decoded)?))
+        }
     }
 
     // Mock data for testing
@@ -132,4 +153,16 @@ mod test {
     use super::*;
 
     test_serde! {PublicKey, test_public_key_serde}
+
+    #[test]
+    fn test_pubkey_bech32() {
+        let pk = PublicKey::mock();
+
+        let encoded = pk.try_as_bech32_string().unwrap();
+        println!("bech32: {}", encoded);
+
+        let decoded = PublicKey::try_from_bech32_string(&encoded).unwrap();
+
+        assert_eq!(pk, decoded);
+    }
 }
