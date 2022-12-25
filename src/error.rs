@@ -39,6 +39,18 @@ pub enum Error {
     #[error("Invalid Encrypted Private Key")]
     InvalidEncryptedPrivateKey,
 
+    /// Invalid URL
+    #[error("Invalid URL: {0}")]
+    InvalidUrl(#[from] http::uri::InvalidUri),
+
+    /// Invalid URL Scheme
+    #[error("Invalid URL Scheme: {0}")]
+    InvalidUrlScheme(String),
+
+    /// Missing URL Scheme
+    #[error("Missing URL Scheme")]
+    MissingUrlScheme,
+
     /// Serialization error
     #[error("JSON (de)serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
