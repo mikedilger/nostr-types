@@ -295,6 +295,28 @@ impl Event {
         None
     }
 
+    /// If this event replies to a thread, get all ancestors in that thread
+    pub fn replies_to_ancestors(&self) -> Vec<(Id, Option<Url>)> {
+        if self.kind != EventKind::TextNote {
+            return vec![];
+        }
+
+        let mut output: Vec<(Id, Option<Url>)> = Vec::new();
+
+        for tag in self.tags.iter() {
+            if let Tag::Event {
+                id,
+                recommended_relay_url,
+                marker: _,
+            } = tag
+            {
+                output.push((*id, recommended_relay_url.to_owned()));
+            }
+        }
+
+        output
+    }
+
     /// If this event reacts to another, get that other event's Id,
     /// the reaction content, and an optional Recommended relay Url
     pub fn reacts_to(&self) -> Option<(Id, String, Option<Url>)> {
