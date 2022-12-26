@@ -33,7 +33,7 @@ impl EncryptedPrivateKey {
     /// We recommend you zeroize() the password you pass in after you are
     /// done with it.
     pub fn decrypt(&self, password: &str) -> Result<PrivateKey, Error> {
-        PrivateKey::import_encrypted(&self, password)
+        PrivateKey::import_encrypted(self, password)
     }
 }
 
