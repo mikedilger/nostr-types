@@ -30,7 +30,7 @@ mod metadata;
 pub use metadata::Metadata;
 
 mod private_key;
-pub use private_key::{KeySecurity, PrivateKey};
+pub use private_key::{EncryptedPrivateKey, KeySecurity, PrivateKey};
 
 mod public_key;
 pub use public_key::{PublicKey, PublicKeyHex};
