@@ -1,16 +1,41 @@
 use crate::{Error, Id, PublicKey, Signature};
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use bech32::{FromBase32, ToBase32};
+use derive_more::Display;
 use hmac::Hmac;
 use k256::schnorr::SigningKey;
 use pbkdf2::pbkdf2;
 use rand_core::{OsRng, RngCore};
+use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::convert::TryFrom;
+use std::ops::Deref;
 use zeroize::Zeroize;
 
 // This allows us to detect bad decryptions with wrong passwords.
 const CHECK_VALUE: [u8; 11] = [15, 91, 241, 148, 90, 143, 101, 12, 172, 255, 103];
+
+/// This is an encrypted private key.
+#[derive(Clone, Debug, Display, Serialize, Deserialize)]
+pub struct EncryptedPrivateKey(pub String);
+
+impl Deref for EncryptedPrivateKey {
+    type Target = String;
+
+    fn deref(&self) -> &String {
+        &self.0
+    }
+}
+
+impl EncryptedPrivateKey {
+    /// Decrypt into a Private Key with a passphrase.
+    ///
+    /// We recommend you zeroize() the password you pass in after you are
+    /// done with it.
+    pub fn decrypt(&self, password: &str) -> Result<PrivateKey, Error> {
+        PrivateKey::import_encrypted(&self, password)
+    }
+}
 
 /// This indicates the security of the key by keeping track of whether the
 /// secret key material was handled carefully. If the secret is exposed in any
@@ -140,7 +165,7 @@ impl PrivateKey {
     ///
     /// We recommend you zeroize() the password you pass in after you are
     /// done with it.
-    pub fn export_encrypted(&self, password: &str) -> Result<String, Error> {
+    pub fn export_encrypted(&self, password: &str) -> Result<EncryptedPrivateKey, Error> {
         let key = Self::password_to_key(password)?;
 
         // Generate a Random IV
@@ -170,18 +195,21 @@ impl PrivateKey {
         iv_plus_ciphertext.extend(ciphertext); // now 80 bytes
 
         // Base64 encode
-        Ok(base64::encode(iv_plus_ciphertext))
+        Ok(EncryptedPrivateKey(base64::encode(iv_plus_ciphertext)))
     }
 
     /// Import an encrypted private key which was exported with `export_encrypted()`.
     ///
     /// We recommend you zeroize() the password you pass in after you are
     /// done with it.
-    pub fn import_encrypted(encrypted: &str, password: &str) -> Result<PrivateKey, Error> {
+    pub fn import_encrypted(
+        encrypted: &EncryptedPrivateKey,
+        password: &str,
+    ) -> Result<PrivateKey, Error> {
         let key = Self::password_to_key(password)?;
 
         // Base64 decode
-        let iv_plus_ciphertext = base64::decode(encrypted)?; // 80 bytes
+        let iv_plus_ciphertext = base64::decode(&encrypted.0)?; // 80 bytes
 
         if iv_plus_ciphertext.len() < 48 {
             // Should be 64 from padding, but we pushed in 48
