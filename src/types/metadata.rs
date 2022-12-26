@@ -20,6 +20,12 @@ pub struct Metadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
     pub nip05: Option<String>,
+
+    /// Lightning Network Address (lnurl)
+    /// This is not standardized but in common use
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub lud16: Option<String>,
 }
 
 impl Metadata {
@@ -31,6 +37,7 @@ impl Metadata {
             about: Some("Just some guy".to_owned()),
             picture: None,
             nip05: None,
+            lud16: None,
         }
     }
 }

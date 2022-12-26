@@ -162,6 +162,7 @@ impl Event {
         about: Option<String>,
         picture: Option<String>,
         nip05: Option<String>,
+        lud16: Option<String>
     ) -> Result<Event, Error> {
         input.kind = EventKind::Metadata;
         let metadata = Metadata {
@@ -169,6 +170,7 @@ impl Event {
             about,
             picture,
             nip05,
+            lud16
         };
         input.content = serde_json::to_string(&metadata)?;
         Event::new(input, privkey)
