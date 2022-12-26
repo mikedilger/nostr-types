@@ -29,6 +29,9 @@ pub use id::{Id, IdHex};
 mod metadata;
 pub use metadata::Metadata;
 
+mod nip05;
+pub use nip05::Nip05;
+
 mod private_key;
 pub use private_key::{EncryptedPrivateKey, KeySecurity, PrivateKey};
 
