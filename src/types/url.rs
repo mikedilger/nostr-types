@@ -17,6 +17,8 @@ use serde::{Deserialize, Serialize};
     Hash,
     Into,
     PartialEq,
+    PartialOrd,
+    Ord,
     Serialize,
 )]
 pub struct Url(pub String);
