@@ -69,7 +69,7 @@ pub struct PreEvent {
 
 impl Event {
     /// Create a new event
-    pub fn new(input: PreEvent, privkey: PrivateKey) -> Result<Event, Error> {
+    pub fn new(input: PreEvent, privkey: &PrivateKey) -> Result<Event, Error> {
         let serialized: String = serialize_inner_event!(
             input.pubkey,
             input.created_at,
@@ -151,13 +151,13 @@ impl Event {
             content: "This is a test".to_string(),
             ots: None,
         };
-        Event::new(pre, private_key).unwrap()
+        Event::new(pre, &private_key).unwrap()
     }
 
     /// Create an event that sets Metadata
     pub fn new_set_metadata(
         mut input: PreEvent,
-        privkey: PrivateKey,
+        privkey: &PrivateKey,
         name: Option<String>,
         about: Option<String>,
         picture: Option<String>,
@@ -477,7 +477,7 @@ mod test {
             content: "Hello World!".to_string(),
             ots: None,
         };
-        let mut event = Event::new(preevent, privkey).unwrap();
+        let mut event = Event::new(preevent, &privkey).unwrap();
         assert!(event.verify(None).is_ok());
 
         // Now make sure it fails when the message has been modified
