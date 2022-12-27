@@ -40,16 +40,24 @@ pub enum Error {
     InvalidEncryptedPrivateKey,
 
     /// Invalid URL
-    #[error("Invalid URL: {0}")]
+    #[error("Invalid URL: \"{0}\"")]
     InvalidUrl(#[from] http::uri::InvalidUri),
 
+    /// Invalid URL Host
+    #[error("Invalid URL Host: \"{0}\"")]
+    InvalidUrlHost(String),
+
     /// Invalid URL Scheme
-    #[error("Invalid URL Scheme: {0}")]
+    #[error("Invalid URL Scheme: \"{0}\"")]
     InvalidUrlScheme(String),
+
+    /// Missing URL Authority
+    #[error("Missing URL Authority")]
+    InvalidUrlMissingAuthority,
 
     /// Missing URL Scheme
     #[error("Missing URL Scheme")]
-    MissingUrlScheme,
+    InvalidUrlMissingScheme,
 
     /// Serialization error
     #[error("JSON (de)serialization error: {0}")]
