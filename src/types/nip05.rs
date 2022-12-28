@@ -31,8 +31,8 @@ impl Nip05 {
         let _ = relays.insert(
             pubkey,
             vec![
-                Url("wss:/relay.example.com".to_string()),
-                Url("wss://relay2.example.com".to_string()),
+                Url::new("wss://relay.example.com"),
+                Url::new("wss://relay2.example.com"),
             ],
         );
 
@@ -70,8 +70,8 @@ mod test {
         assert_eq!(
             bobs_relays,
             vec![
-                Url("wss://relay.example.com".to_string()),
-                Url("wss://relay2.example.com".to_string())
+                Url::new("wss://relay.example.com"),
+                Url::new("wss://relay2.example.com")
             ]
         );
     }
