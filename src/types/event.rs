@@ -219,7 +219,18 @@ impl Event {
     /// If this event replies to another, get that other event's Id along with
     /// an optional recommended_relay_url
     pub fn replies_to(&self) -> Option<(Id, Option<Url>)> {
+        // must be a text note
         if self.kind != EventKind::TextNote {
+            return None;
+        }
+
+        // If there are no 'e' tags, then none
+        let num_e_tags = self
+            .tags
+            .iter()
+            .filter(|e| matches!(e, Tag::Event { .. }))
+            .count();
+        if num_e_tags == 0 {
             return None;
         }
 
@@ -237,7 +248,21 @@ impl Event {
             }
         }
 
-        // otherwise use the last 'e' tag if unmarked
+        // look for an 'e' tag with marker 'root'
+        for tag in self.tags.iter() {
+            if let Tag::Event {
+                id,
+                recommended_relay_url,
+                marker,
+            } = tag
+            {
+                if marker.is_some() && marker.as_deref().unwrap() == "root" {
+                    return Some((*id, recommended_relay_url.to_owned()));
+                }
+            }
+        }
+
+        // Use the last 'e' tag if unmarked
         if let Some(Tag::Event {
             id,
             recommended_relay_url,
@@ -252,6 +277,9 @@ impl Event {
                 return Some((*id, recommended_relay_url.to_owned()));
             }
         }
+
+        // Otherwise there are 'e' tags but they have unrecognized markings
+        // so we will not consider them as replies.
 
         None
     }
