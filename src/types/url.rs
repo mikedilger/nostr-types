@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
 use serde::de::{Deserializer, Visitor};
 use serde::ser::Serializer;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// A String representing a Url with a notion of whether it is a valid nostr URL or not
@@ -32,11 +32,11 @@ impl Url {
                 if scheme.as_str() == "wss" || scheme.as_str() == "ws" {
                     if let Some(authority) = uri.authority() {
                         let host = authority.host();
-                        if host == host.trim() &&
-                            !host.starts_with("localhost") &&
-                            !host.starts_with("127.") &&
-                            !host.starts_with("[::1/") &&
-                            !host.starts_with("[0:")
+                        if host == host.trim()
+                            && !host.starts_with("localhost")
+                            && !host.starts_with("127.")
+                            && !host.starts_with("[::1/")
+                            && !host.starts_with("[0:")
                         {
                             output.1 = true;
                         }
