@@ -574,7 +574,7 @@ impl Event {
             }
         }
 
-        zeroes.max(target_zeroes)
+        zeroes.min(target_zeroes)
     }
 }
 
