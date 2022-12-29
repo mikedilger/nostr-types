@@ -2,6 +2,10 @@ use super::{EventKind, Id, Metadata, PrivateKey, PublicKey, Signature, Tag, Unix
 use crate::Error;
 use k256::sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::Arc;
+use std::thread;
+use std::thread::JoinHandle;
 
 /// The main event type
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -41,11 +45,11 @@ macro_rules! serialize_inner_event {
      $content:expr) => {{
         format!(
             "[0,{},{},{},{},{}]",
-            serde_json::to_string(&$pubkey)?,
-            serde_json::to_string(&$created_at)?,
-            serde_json::to_string(&$kind)?,
-            serde_json::to_string(&$tags)?,
-            serde_json::to_string(&$content)?
+            serde_json::to_string($pubkey)?,
+            serde_json::to_string($created_at)?,
+            serde_json::to_string($kind)?,
+            serde_json::to_string($tags)?,
+            serde_json::to_string($content)?
         )
     }};
 }
@@ -68,14 +72,13 @@ pub struct PreEvent {
 }
 
 impl Event {
-    /// Create a new event
-    pub fn new(input: PreEvent, privkey: &PrivateKey) -> Result<Event, Error> {
+    fn hash(input: &PreEvent) -> Result<Id, Error> {
         let serialized: String = serialize_inner_event!(
-            input.pubkey,
-            input.created_at,
-            input.kind,
-            input.tags,
-            input.content
+            &input.pubkey,
+            &input.created_at,
+            &input.kind,
+            &input.tags,
+            &input.content
         );
 
         // Hash
@@ -83,7 +86,101 @@ impl Event {
         hasher.update(serialized.as_bytes());
         let id = hasher.finalize();
         let id: [u8; 32] = id.into();
-        let id: Id = Id(id);
+        Ok(Id(id))
+    }
+
+    /// Create a new event
+    pub fn new(input: PreEvent, privkey: &PrivateKey) -> Result<Event, Error> {
+        // Generate Id
+        let id = Self::hash(&input)?;
+
+        // Generate Signature
+        let signature = privkey.sign_id(id)?;
+
+        Ok(Event {
+            id,
+            pubkey: input.pubkey,
+            created_at: input.created_at,
+            kind: input.kind,
+            tags: input.tags,
+            content: input.content,
+            ots: input.ots,
+            sig: signature,
+        })
+    }
+
+    /// Create a new event with proof of work.
+    ///
+    /// This can take a long time, and is only cancellable by killing the thread.
+    pub fn new_with_pow(
+        mut input: PreEvent,
+        privkey: &PrivateKey,
+        zero_bits: u8,
+    ) -> Result<Event, Error> {
+        let target = Some(format!("{}", zero_bits));
+
+        // Strip any pre-existing nonce tags
+        input.tags.retain(|t| !matches!(t, Tag::Nonce { .. }));
+
+        // Add nonce tag to the end
+        input.tags.push(Tag::Nonce {
+            nonce: "0".to_string(),
+            target: target.clone(),
+        });
+        let index = input.tags.len() - 1;
+
+        let cores = num_cpus::get();
+
+        let quitting = Arc::new(AtomicBool::new(false));
+        let nonce = Arc::new(AtomicU64::new(0)); // will store the nonce that works
+
+        let mut join_handles: Vec<JoinHandle<_>> = Vec::with_capacity(cores);
+
+        for core in 0..cores {
+            let mut attempt: u64 = core as u64 * (u64::MAX / cores as u64);
+            let mut input = input.clone();
+            let target = target.clone();
+            let index = index;
+            let quitting = quitting.clone();
+            let nonce = nonce.clone();
+            let zero_bits = zero_bits;
+            let join_handle = thread::spawn(move || {
+                loop {
+                    if quitting.load(Ordering::Relaxed) {
+                        break;
+                    }
+
+                    input.tags[index] = Tag::Nonce {
+                        nonce: format!("{}", attempt),
+                        target: target.clone(),
+                    };
+
+                    let id = Self::hash(&input).unwrap();
+
+                    if get_leading_zero_bits(&id.0) >= zero_bits {
+                        nonce.store(attempt, Ordering::Relaxed);
+                        quitting.store(true, Ordering::Relaxed);
+                        break;
+                    }
+
+                    attempt += 1;
+
+                    // We don't update created_at, which is a bit tricky to synchronize.
+                }
+            });
+            join_handles.push(join_handle);
+        }
+
+        for joinhandle in join_handles {
+            let _ = joinhandle.join();
+        }
+
+        // We found the nonce. Do it for reals
+        input.tags[index] = Tag::Nonce {
+            nonce: format!("{}", nonce.load(Ordering::Relaxed)),
+            target,
+        };
+        let id = Self::hash(&input).unwrap();
 
         // Signature
         let signature = privkey.sign_id(id)?;
@@ -107,11 +204,11 @@ impl Event {
         use k256::schnorr::signature::Verifier;
 
         let serialized: String = serialize_inner_event!(
-            self.pubkey,
-            self.created_at,
-            self.kind,
-            self.tags,
-            self.content
+            &self.pubkey,
+            &self.created_at,
+            &self.kind,
+            &self.tags,
+            &self.content
         );
 
         // Verify the signature
@@ -462,24 +559,16 @@ impl Event {
     }
 
     /// Get the proof-of-work count of leading bits
-    pub fn pow(&self) -> usize {
+    pub fn pow(&self) -> u8 {
         // Count leading bits in the Id field
-        let mut zeroes: usize = 0;
-        for byte in self.id.0 {
-            if byte == 0 {
-                zeroes += 8;
-            } else {
-                zeroes += byte.leading_zeros() as usize;
-                break;
-            }
-        }
+        let zeroes: u8 = get_leading_zero_bits(&self.id.0);
 
         // Check that they meant it
-        let mut target_zeroes: usize = 0;
+        let mut target_zeroes: u8 = 0;
         for tag in self.tags.iter() {
             if let Tag::Nonce { nonce: _, target } = tag {
                 if let Some(t) = target {
-                    target_zeroes = t.parse::<usize>().unwrap_or(0);
+                    target_zeroes = t.parse::<u8>().unwrap_or(0);
                 }
                 break;
             }
@@ -487,6 +576,20 @@ impl Event {
 
         zeroes.max(target_zeroes)
     }
+}
+
+#[inline]
+fn get_leading_zero_bits(bytes: &[u8]) -> u8 {
+    let mut res = 0_u8;
+    for b in bytes {
+        if *b == 0 {
+            res += 8;
+        } else {
+            res += b.leading_zeros() as u8;
+            return res;
+        }
+    }
+    res
 }
 
 #[cfg(test)]
