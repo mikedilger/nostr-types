@@ -242,7 +242,11 @@ impl Event {
             id,
             recommended_relay_url,
             marker,
-        }) = self.tags.iter().rev().next()
+        }) = self
+            .tags
+            .iter()
+            .rev()
+            .find(|t| matches!(t, Tag::Event { .. }))
         {
             if marker.is_none() {
                 return Some((*id, recommended_relay_url.to_owned()));
@@ -287,7 +291,7 @@ impl Event {
             id,
             recommended_relay_url,
             marker,
-        }) = self.tags.first()
+        }) = self.tags.iter().find(|t| matches!(t, Tag::Event { .. }))
         {
             if marker.is_none() {
                 return Some((*id, recommended_relay_url.to_owned()));
@@ -327,15 +331,17 @@ impl Event {
         }
 
         // The last 'e' tag is it
-        for tag in self.tags.iter().rev() {
-            if let Tag::Event {
-                id,
-                recommended_relay_url,
-                marker: _,
-            } = tag
-            {
-                return Some((*id, self.content.clone(), recommended_relay_url.to_owned()));
-            }
+        if let Some(Tag::Event {
+            id,
+            recommended_relay_url,
+            marker: _,
+        }) = self
+            .tags
+            .iter()
+            .rev()
+            .find(|t| matches!(t, Tag::Event { .. }))
+        {
+            return Some((*id, self.content.clone(), recommended_relay_url.to_owned()));
         }
 
         None
