@@ -11,6 +11,7 @@ pub struct Url(String, bool);
 
 impl std::ops::Deref for Url {
     type Target = str;
+    #[allow(clippy::explicit_auto_deref)]
     fn deref(&self) -> &Self::Target {
         &*self.0
     }
