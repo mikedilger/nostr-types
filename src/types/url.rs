@@ -26,9 +26,17 @@ impl fmt::Display for Url {
 impl Url {
     /// Create a new Url from a string
     pub fn new(s: &str) -> Url {
-        let mut output = Url(s.to_owned(), false);
+        Url(s.to_owned(), s.parse::<http::Uri>().is_ok())
+    }
 
-        if let Ok(uri) = s.parse::<http::Uri>() {
+    /// Get reference to inner string
+    pub fn inner(&self) -> &str {
+        &self.0
+    }
+
+    /// Check if the URL is a valid relay URL
+    pub fn is_valid_relay_url(&self) -> bool {
+        if let Ok(uri) = self.0.parse::<http::Uri>() {
             if let Some(scheme) = uri.scheme() {
                 if scheme.as_str() == "wss" || scheme.as_str() == "ws" {
                     if let Some(authority) = uri.authority() {
@@ -39,22 +47,16 @@ impl Url {
                             && !host.starts_with("[::1/")
                             && !host.starts_with("[0:")
                         {
-                            output.1 = true;
+                            return true;
                         }
                     }
                 }
             }
         }
-
-        output
+        false
     }
 
-    /// Get reference to inner string
-    pub fn inner(&self) -> &str {
-        &self.0
-    }
-
-    /// If the Url represents a valid nostr URL
+    /// If the Url represents a valid URL
     pub fn is_valid(&self) -> bool {
         self.1
     }
