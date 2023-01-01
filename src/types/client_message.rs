@@ -1,4 +1,4 @@
-use super::{Event, Filters, SubscriptionId};
+use super::{Event, Filter, SubscriptionId};
 use serde::de::Error as DeError;
 use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
@@ -11,7 +11,7 @@ pub enum ClientMessage {
     Event(Box<Event>),
 
     /// A subscription request
-    Req(SubscriptionId, Vec<Filters>),
+    Req(SubscriptionId, Vec<Filter>),
 
     /// A request to close a subscription
     Close(SubscriptionId),
@@ -90,9 +90,9 @@ impl<'de> Visitor<'de> for ClientMessageVisitor {
             let id: SubscriptionId = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing id field"))?;
-            let mut filters: Vec<Filters> = vec![];
+            let mut filters: Vec<Filter> = vec![];
             loop {
-                let f: Option<Filters> = seq.next_element()?;
+                let f: Option<Filter> = seq.next_element()?;
                 match f {
                     None => break,
                     Some(fil) => filters.push(fil),

@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::ops::Deref;
 
-/// Filters which specify what events a client is looking for
+/// Filter which specify what events a client is looking for
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-pub struct Filters {
+pub struct Filter {
     /// Events which match these ids
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
@@ -109,9 +109,9 @@ fn del_substr<T: Deref<Target = String>>(vec: &mut Vec<T>, del: T) {
     }
 }
 
-impl Filters {
-    /// Create a new Filters object
-    pub fn new() -> Filters {
+impl Filter {
+    /// Create a new Filter object
+    pub fn new() -> Filter {
         Default::default()
     }
 
@@ -222,8 +222,8 @@ impl Filters {
 
     // Mock data for testing
     #[allow(dead_code)]
-    pub(crate) fn mock() -> Filters {
-        Filters {
+    pub(crate) fn mock() -> Filter {
+        Filter {
             ids: vec![IdHex("21345".to_string())],
             authors: vec![],
             kinds: vec![EventKind::TextNote, EventKind::Metadata],
@@ -240,7 +240,7 @@ impl Filters {
 mod test {
     use super::*;
 
-    test_serde! {Filters, test_filters_serde}
+    test_serde! {Filter, test_filters_serde}
 
     #[test]
     fn test_prefix_match() {
@@ -259,7 +259,7 @@ mod test {
     fn test_add_remove_id() {
         let mock = IdHex::mock();
 
-        let mut filters: Filters = Filters::new();
+        let mut filters: Filter = Filter::new();
         filters.add_id(&mock, Some(20));
         assert_eq!(filters.ids.len(), 1);
         filters.add_id(&mock, None); // overwrites
@@ -267,7 +267,7 @@ mod test {
         filters.del_id(&mock, None);
         assert!(filters.ids.is_empty());
 
-        let mut filters: Filters = Filters::new();
+        let mut filters: Filter = Filter::new();
         filters.add_id(&mock, Some(20));
         assert_eq!(filters.ids.len(), 1);
         filters.del_id(&mock, None); // keeps because it is shorter
@@ -280,7 +280,7 @@ mod test {
         let diff_hex =
             IdHex("ffffffffffffffffffffffffffffffffffffffffffff00000000000000000000".to_string());
 
-        let mut filters: Filters = Filters::new();
+        let mut filters: Filter = Filter::new();
         filters.add_id(&base_hex, Some(25));
         filters.add_id(&diff_hex, Some(25));
         filters.del_id(&base_hex, Some(10));

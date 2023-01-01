@@ -21,7 +21,7 @@ mod event_kind;
 pub use event_kind::EventKind;
 
 mod filter;
-pub use filter::Filters;
+pub use filter::Filter;
 
 mod id;
 pub use id::{Id, IdHex};
