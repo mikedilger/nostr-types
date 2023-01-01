@@ -1,6 +1,8 @@
 use crate::Error;
 use derive_more::{AsMut, AsRef, Deref, Display, From, Into};
 use serde::{Deserialize, Serialize};
+use std::ops::{Add, Sub};
+use std::time::Duration;
 
 /// An integer count of the number of seconds from 1st January 1970.
 /// This does not count any of the leap seconds that have occurred, it
@@ -38,6 +40,30 @@ impl Unixtime {
     }
 }
 
+impl Add<Duration> for Unixtime {
+    type Output = Self;
+
+    fn add(self, rhs: Duration) -> Self::Output {
+        Unixtime(self.0 + rhs.as_secs() as i64)
+    }
+}
+
+impl Sub<Duration> for Unixtime {
+    type Output = Self;
+
+    fn sub(self, rhs: Duration) -> Self::Output {
+        Unixtime(self.0 - rhs.as_secs() as i64)
+    }
+}
+
+impl Sub<Unixtime> for Unixtime {
+    type Output = Duration;
+
+    fn sub(self, rhs: Unixtime) -> Self::Output {
+        Duration::from_secs((self.0 - rhs.0).unsigned_abs())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -47,5 +73,16 @@ mod test {
     #[test]
     fn test_print_now() {
         println!("NOW: {}", Unixtime::now().unwrap());
+    }
+
+    #[test]
+    fn test_unixtime_math() {
+        let now = Unixtime::now().unwrap();
+        let fut = now + std::time::Duration::from_secs(70);
+        assert!(fut > now);
+        assert_eq!(fut.0 - now.0, 70);
+        let back = fut - std::time::Duration::from_secs(70);
+        assert_eq!(now, back);
+        assert_eq!(now - back, std::time::Duration::ZERO);
     }
 }
