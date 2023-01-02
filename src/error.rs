@@ -3,6 +3,10 @@ use thiserror::Error;
 /// Errors that can occur in the nostr-proto crate
 #[derive(Error, Debug)]
 pub enum Error {
+    /// Assertion failed
+    #[error("Assertion failed: {0}")]
+    AssertionFailed(String),
+
     /// Base64 error
     #[error("Base64 Decoding Error: {0}")]
     Base64(#[from] base64::DecodeError),

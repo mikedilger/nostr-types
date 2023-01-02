@@ -166,7 +166,14 @@ impl PrivateKey {
     /// We recommend you zeroize() the password you pass in after you are
     /// done with it.
     pub fn export_encrypted(&self, password: &str) -> Result<EncryptedPrivateKey, Error> {
-        let key = Self::password_to_key(password)?;
+        // Generate a random 16-byte salt
+        let mut salt: [u8; 16] = [0; 16];
+        OsRng.fill_bytes(&mut salt);
+        // But force the first byte to a 1
+        salt[0] = 0x01;
+
+        // Key derivation
+        let key = Self::password_to_key(password, &salt)?;
 
         // Generate a Random IV
         let mut iv: [u8; 16] = [0; 16];
@@ -182,20 +189,36 @@ impl PrivateKey {
         // value we then know the decryption password was wrong.
         inner_secret.extend(CHECK_VALUE); // now 43 bytes
         inner_secret.push(self.1 as u8); // now 44 bytes
+        if inner_secret.len() != 44 {
+            return Err(Error::AssertionFailed(
+                "Export encrypted inner secret len != 44".to_owned(),
+            ));
+        }
 
         let ciphertext = cbc::Encryptor::<aes::Aes256>::new(&key.into(), &iv.into())
-            .encrypt_padded_vec_mut::<Pkcs7>(&inner_secret); // now 64 bytes (padded)
+            .encrypt_padded_vec_mut::<Pkcs7>(&inner_secret); // now 48 bytes
+        if ciphertext.len() != 48 {
+            return Err(Error::AssertionFailed(
+                "Export encrypted ciphertext len != 48".to_owned(),
+            ));
+        }
 
         // Here we zeroize that `inner_secret`
         inner_secret.zeroize();
 
-        // Combine IV and ciphertext
-        let mut iv_plus_ciphertext: Vec<u8> = Vec::new();
-        iv_plus_ciphertext.extend(iv);
-        iv_plus_ciphertext.extend(ciphertext); // now 80 bytes
+        // Combine salt, IV and ciphertext
+        let mut concatenation: Vec<u8> = Vec::new();
+        concatenation.extend(salt);
+        concatenation.extend(iv);
+        concatenation.extend(ciphertext); // now 80 bytes
+        if concatenation.len() != 80 {
+            return Err(Error::AssertionFailed(
+                "Export encrypted concatenation len != 80".to_owned(),
+            ));
+        }
 
         // Base64 encode
-        Ok(EncryptedPrivateKey(base64::encode(iv_plus_ciphertext)))
+        Ok(EncryptedPrivateKey(base64::encode(concatenation)))
     }
 
     /// Import an encrypted private key which was exported with `export_encrypted()`.
@@ -206,47 +229,53 @@ impl PrivateKey {
         encrypted: &EncryptedPrivateKey,
         password: &str,
     ) -> Result<PrivateKey, Error> {
-        let key = Self::password_to_key(password)?;
-
         // Base64 decode
-        let iv_plus_ciphertext = base64::decode(&encrypted.0)?; // 80 bytes
-
-        if iv_plus_ciphertext.len() < 48 {
-            // Should be 64 from padding, but we pushed in 48
+        let concatenation = base64::decode(&encrypted.0)?; // 80 bytes
+        if concatenation.len() != 80 {
             return Err(Error::InvalidEncryptedPrivateKey);
+            //return Err(Error::AssertionFailed("Import encrypted concatenation len != 80".to_owned()));
         }
 
-        // Pull the IV off
-        let iv: [u8; 16] = iv_plus_ciphertext[..16].try_into()?;
-        let ciphertext = &iv_plus_ciphertext[16..]; // 64 bytes
+        // Break into parts
+        let salt: [u8; 16] = concatenation[..16].try_into()?;
+        let iv: [u8; 16] = concatenation[16..32].try_into()?;
+        let ciphertext = &concatenation[32..]; // 48 bytes
+
+        let key = Self::password_to_key(password, &salt)?;
 
         // AES-256-CBC decrypt
         // SECURITY NOTICE: SigningKey has a Drop trait that zeroizes.  But here
-        //    we are decrypting the the secret bytes. The variabler `pt`
+        //    we are decrypting the the secret bytes. The variable `plaintext`
         //    needs to be zeroized
-        let mut pt = cbc::Decryptor::<aes::Aes256>::new(&key.into(), &iv.into())
-            .decrypt_padded_vec_mut::<Pkcs7>(ciphertext)?; // 48 bytes
+        let mut plaintext = cbc::Decryptor::<aes::Aes256>::new(&key.into(), &iv.into())
+            .decrypt_padded_vec_mut::<Pkcs7>(ciphertext)?; // 44 bytes
+        if plaintext.len() != 44 {
+            return Err(Error::InvalidEncryptedPrivateKey);
+            //return Err(Error::AssertionFailed("Import encrypted plaintext len != 44".to_owned()));
+        }
 
         // Verify the check value
-        if pt[pt.len() - 12..pt.len() - 1] != CHECK_VALUE {
+        if plaintext[plaintext.len() - 12..plaintext.len() - 1] != CHECK_VALUE {
             return Err(Error::WrongDecryptionPassword);
         }
 
         // Get the key security
-        let ks = KeySecurity::try_from(pt[pt.len() - 1])?;
-        let output = PrivateKey(SigningKey::from_bytes(&pt[..pt.len() - 12])?, ks);
+        let ks = KeySecurity::try_from(plaintext[plaintext.len() - 1])?;
+        let output = PrivateKey(
+            SigningKey::from_bytes(&plaintext[..plaintext.len() - 12])?,
+            ks,
+        );
 
-        // Here we zeroize pt:
-        pt.zeroize();
+        // Here we zeroize plaintext:
+        plaintext.zeroize();
 
         Ok(output)
     }
 
     // Hash/Stretch password with pbkdf2 into a 32-byte (256-bit) key
-    fn password_to_key(password: &str) -> Result<[u8; 32], Error> {
-        let salt = b"nostr";
+    fn password_to_key(password: &str, salt: &[u8]) -> Result<[u8; 32], Error> {
         let mut key: [u8; 32] = [0; 32];
-        pbkdf2::<Hmac<Sha256>>(password.as_bytes(), salt, 4096, &mut key);
+        pbkdf2::<Hmac<Sha256>>(password.as_bytes(), salt, 100_000, &mut key);
         Ok(key)
     }
 
