@@ -1,8 +1,7 @@
-use crate::Error;
 use serde::de::Error as DeError;
-use serde::de::{Deserialize, Deserializer, Unexpected, Visitor};
+use serde::de::{Deserialize, Deserializer, Visitor};
 use serde::ser::{Serialize, Serializer};
-use std::convert::TryFrom;
+use std::convert::From;
 use std::fmt;
 
 /// A kind of Event
@@ -50,6 +49,8 @@ pub enum EventKind {
     Replaceable(u64),
     /// Ephemeral event, sent to all clients with matching filters and should not be stored
     Ephemeral(u64),
+    /// Something else?
+    Other(u64),
 }
 
 impl EventKind {
@@ -60,12 +61,10 @@ impl EventKind {
     }
 }
 
-impl TryFrom<u64> for EventKind {
-    type Error = Error;
-
-    fn try_from(u: u64) -> Result<Self, Error> {
+impl From<u64> for EventKind {
+    fn from(u: u64) -> Self {
         use EventKind::*;
-        Ok(match u {
+        match u {
             0 => Metadata,
             1 => TextNote,
             2 => RecommendRelay,
@@ -86,8 +85,8 @@ impl TryFrom<u64> for EventKind {
             10001 => RelaysList,
             x if (10_000..20_000).contains(&x) => Replaceable(x),
             x if (20_000..30_000).contains(&x) => Ephemeral(x),
-            x => return Err(Error::UnknownEventKind(x)),
-        })
+            x => Other(x),
+        }
     }
 }
 
@@ -115,6 +114,7 @@ impl From<EventKind> for u64 {
             RelaysList => 10001,
             Replaceable(u) => u,
             Ephemeral(u) => u,
+            Other(u) => u,
         }
     }
 }
@@ -151,9 +151,7 @@ impl Visitor<'_> for EventKindVisitor {
     where
         E: DeError,
     {
-        TryFrom::<u64>::try_from(v).map_err(|_| {
-            DeError::invalid_value(Unexpected::Other("u64"), &"Expected a known Event Kind")
-        })
+        Ok(From::<u64>::from(v))
     }
 }
 
