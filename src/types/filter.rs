@@ -23,11 +23,13 @@ pub struct Filter {
 
     /// Events when referenced in an 'e' tag
     #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(rename = "#e")]
     #[serde(default)]
     pub e: Vec<IdHex>,
 
     /// Events when referenced in a 'p' tag
     #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(rename = "#p")]
     #[serde(default)]
     pub p: Vec<PublicKeyHex>,
 
@@ -227,9 +229,9 @@ impl Filter {
             ids: vec![IdHex("21345".to_string())],
             authors: vec![],
             kinds: vec![EventKind::TextNote, EventKind::Metadata],
-            e: vec![],
-            p: vec![],
-            since: Some(Unixtime::mock()),
+            e: vec![IdHex::mock()],
+            p: vec![PublicKeyHex("221115830ced1ca94352002485fcc7a75dcfe30d1b07f5f6fbe9c0407cfa59a1".to_owned())],
+            since: Some(Unixtime(1668572286)),
             until: None,
             limit: None,
         }
@@ -241,6 +243,14 @@ mod test {
     use super::*;
 
     test_serde! {Filter, test_filters_serde}
+
+    #[test]
+    fn test_mock() {
+        assert_eq!(
+            &serde_json::to_string(&Filter::mock()).unwrap(),
+            r##"{"ids":["21345"],"kinds":[1,0],"#e":["5df64b33303d62afc799bdc36d178c07b2e1f0d824f31b7dc812219440affab6"],"#p":["221115830ced1ca94352002485fcc7a75dcfe30d1b07f5f6fbe9c0407cfa59a1"],"since":1668572286}"##
+        );
+    }
 
     #[test]
     fn test_prefix_match() {
