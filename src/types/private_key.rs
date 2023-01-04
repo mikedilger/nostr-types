@@ -14,6 +14,7 @@ use zeroize::Zeroize;
 
 // This allows us to detect bad decryptions with wrong passwords.
 const CHECK_VALUE: [u8; 11] = [15, 91, 241, 148, 90, 143, 101, 12, 172, 255, 103];
+const HMAC_ROUNDS: u32 = 100_000;
 
 /// This is an encrypted private key.
 #[derive(Clone, Debug, Display, Serialize, Deserialize)]
@@ -173,7 +174,7 @@ impl PrivateKey {
         salt[0] = 0x01;
 
         // Key derivation
-        let key = Self::password_to_key(password, &salt)?;
+        let key = Self::password_to_key(password, &salt, HMAC_ROUNDS)?;
 
         // Generate a Random IV
         let mut iv: [u8; 16] = [0; 16];
@@ -225,12 +226,17 @@ impl PrivateKey {
     ///
     /// We recommend you zeroize() the password you pass in after you are
     /// done with it.
+    ///
+    /// This is backwards-compatible with keys that were exported with older code.
     pub fn import_encrypted(
         encrypted: &EncryptedPrivateKey,
         password: &str,
     ) -> Result<PrivateKey, Error> {
         // Base64 decode
         let concatenation = base64::decode(&encrypted.0)?; // 80 bytes
+        if concatenation.len() == 64 {
+            return Self::import_encrypted_presalt(encrypted, password);
+        }
         if concatenation.len() != 80 {
             return Err(Error::InvalidEncryptedPrivateKey);
             //return Err(Error::AssertionFailed("Import encrypted concatenation len != 80".to_owned()));
@@ -241,7 +247,7 @@ impl PrivateKey {
         let iv: [u8; 16] = concatenation[16..32].try_into()?;
         let ciphertext = &concatenation[32..]; // 48 bytes
 
-        let key = Self::password_to_key(password, &salt)?;
+        let key = Self::password_to_key(password, &salt, HMAC_ROUNDS)?;
 
         // AES-256-CBC decrypt
         // SECURITY NOTICE: SigningKey has a Drop trait that zeroizes.  But here
@@ -272,10 +278,57 @@ impl PrivateKey {
         Ok(output)
     }
 
+    fn import_encrypted_presalt(
+        encrypted: &EncryptedPrivateKey,
+        password: &str,
+    ) -> Result<PrivateKey, Error> {
+        let key = Self::password_to_key_presalt(password)?;
+
+        // Base64 decode
+        let iv_plus_ciphertext = base64::decode(&encrypted.0)?; // 80 bytes
+
+        if iv_plus_ciphertext.len() < 48 {
+            // Should be 64 from padding, but we pushed in 48
+            return Err(Error::InvalidEncryptedPrivateKey);
+        }
+
+        // Pull the IV off
+        let iv: [u8; 16] = iv_plus_ciphertext[..16].try_into()?;
+        let ciphertext = &iv_plus_ciphertext[16..]; // 64 bytes
+
+        // AES-256-CBC decrypt
+        // SECURITY NOTICE: SigningKey has a Drop trait that zeroizes.  But here
+        //    we are decrypting the the secret bytes. The variabler `pt`
+        //    needs to be zeroized
+        let mut pt = cbc::Decryptor::<aes::Aes256>::new(&key.into(), &iv.into())
+            .decrypt_padded_vec_mut::<Pkcs7>(ciphertext)?; // 48 bytes
+
+        // Verify the check value
+        if pt[pt.len() - 12..pt.len() - 1] != CHECK_VALUE {
+            return Err(Error::WrongDecryptionPassword);
+        }
+
+        // Get the key security
+        let ks = KeySecurity::try_from(pt[pt.len() - 1])?;
+        let output = PrivateKey(SigningKey::from_bytes(&pt[..pt.len() - 12])?, ks);
+
+        // Here we zeroize pt:
+        pt.zeroize();
+
+        Ok(output)
+    }
+
     // Hash/Stretch password with pbkdf2 into a 32-byte (256-bit) key
-    fn password_to_key(password: &str, salt: &[u8]) -> Result<[u8; 32], Error> {
+    fn password_to_key(password: &str, salt: &[u8], rounds: u32) -> Result<[u8; 32], Error> {
         let mut key: [u8; 32] = [0; 32];
-        pbkdf2::<Hmac<Sha256>>(password.as_bytes(), salt, 100_000, &mut key);
+        pbkdf2::<Hmac<Sha256>>(password.as_bytes(), salt, rounds, &mut key);
+        Ok(key)
+    }
+
+    fn password_to_key_presalt(password: &str) -> Result<[u8; 32], Error> {
+        let salt = b"nostr";
+        let mut key: [u8; 32] = [0; 32];
+        pbkdf2::<Hmac<Sha256>>(password.as_bytes(), salt, 4096, &mut key);
         Ok(key)
     }
 
