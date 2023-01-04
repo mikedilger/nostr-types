@@ -230,7 +230,9 @@ impl Filter {
             authors: vec![],
             kinds: vec![EventKind::TextNote, EventKind::Metadata],
             e: vec![IdHex::mock()],
-            p: vec![PublicKeyHex("221115830ced1ca94352002485fcc7a75dcfe30d1b07f5f6fbe9c0407cfa59a1".to_owned())],
+            p: vec![PublicKeyHex(
+                "221115830ced1ca94352002485fcc7a75dcfe30d1b07f5f6fbe9c0407cfa59a1".to_owned(),
+            )],
             since: Some(Unixtime(1668572286)),
             until: None,
             limit: None,
