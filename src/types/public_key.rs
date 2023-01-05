@@ -23,7 +23,12 @@ impl PublicKey {
     /// Create from a hexadecimal string
     pub fn try_from_hex_string(v: &str) -> Result<PublicKey, Error> {
         let vec: Vec<u8> = hex::decode(v)?;
-        Ok(PublicKey(VerifyingKey::from_bytes(&vec)?))
+        // if it's not 32 bytes, dont even try because k256 code has panics in it
+        if vec.len() != 32 {
+            Err(Error::InvalidPublicKey)
+        } else {
+            Ok(PublicKey(VerifyingKey::from_bytes(&vec)?))
+        }
     }
 
     /// Export as a bech32 encoded string
@@ -42,7 +47,11 @@ impl PublicKey {
             Err(Error::WrongBech32("npub".to_string(), data.0))
         } else {
             let decoded = Vec::<u8>::from_base32(&data.1)?;
-            Ok(PublicKey(VerifyingKey::from_bytes(&decoded)?))
+            if decoded.len() != 32 {
+                Err(Error::InvalidPublicKey)
+            } else {
+                Ok(PublicKey(VerifyingKey::from_bytes(&decoded)?))
+            }
         }
     }
 

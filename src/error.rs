@@ -43,6 +43,10 @@ pub enum Error {
     #[error("Invalid Encrypted Private Key")]
     InvalidEncryptedPrivateKey,
 
+    /// Invalid public key
+    #[error("Invalid Public Key")]
+    InvalidPublicKey,
+
     /// Invalid URL
     #[error("Invalid URL: \"{0}\"")]
     InvalidUrl(#[from] http::uri::InvalidUri),
