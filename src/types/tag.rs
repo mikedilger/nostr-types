@@ -1,4 +1,4 @@
-use crate::{Id, PublicKey, Unixtime, Url};
+use crate::{Id, PublicKey, Signature, Unixtime, Url};
 use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
 use std::fmt;
@@ -8,6 +8,18 @@ use std::fmt;
 pub enum Tag {
     /// Content Warning to alert client to hide content until user approves
     ContentWarning(String),
+
+    /// Delegation (Delegated Event Signing)
+    Delegation {
+        /// Public key of the delegator
+        pubkey: PublicKey,
+
+        /// Conditions query string
+        conditions: String,
+
+        /// 64-byte schnorr signature of the sha256 hash of the delegation token
+        sig: Signature,
+    },
 
     /// This is a reference to an event, where the first string is the event Id.
     /// The second string is defined in NIP-01 as an optional URL, but subsequent
@@ -79,6 +91,7 @@ impl Tag {
     pub fn tagname(&self) -> String {
         match self {
             Tag::ContentWarning(_) => "content-warning".to_string(),
+            Tag::Delegation { .. } => "delegation".to_string(),
             Tag::Event { .. } => "e".to_string(),
             Tag::Expiration(_) => "expiration".to_string(),
             Tag::Pubkey { .. } => "p".to_string(),
@@ -113,6 +126,18 @@ impl Serialize for Tag {
                 let mut seq = serializer.serialize_seq(None)?;
                 seq.serialize_element("content-warning")?;
                 seq.serialize_element(msg)?;
+                seq.end()
+            }
+            Tag::Delegation {
+                pubkey,
+                conditions,
+                sig,
+            } => {
+                let mut seq = serializer.serialize_seq(None)?;
+                seq.serialize_element("delegation")?;
+                seq.serialize_element(pubkey)?;
+                seq.serialize_element(conditions)?;
+                seq.serialize_element(sig)?;
                 seq.end()
             }
             Tag::Event {
@@ -243,6 +268,39 @@ impl<'de> Visitor<'de> for TagVisitor {
                 }
             };
             Ok(Tag::ContentWarning(msg))
+        } else if tagname == "delegation" {
+            let pubkey: PublicKey = match seq.next_element()? {
+                Some(pk) => pk,
+                None => {
+                    return Ok(Tag::Other {
+                        tag: tagname.to_string(),
+                        data: vec![],
+                    });
+                }
+            };
+            let conditions: String = match seq.next_element()? {
+                Some(c) => c,
+                None => {
+                    return Ok(Tag::Other {
+                        tag: tagname.to_string(),
+                        data: vec![pubkey.as_hex_string()],
+                    });
+                }
+            };
+            let sig: Signature = match seq.next_element()? {
+                Some(s) => s,
+                None => {
+                    return Ok(Tag::Other {
+                        tag: tagname.to_string(),
+                        data: vec![pubkey.as_hex_string(), conditions],
+                    });
+                }
+            };
+            Ok(Tag::Delegation {
+                pubkey,
+                conditions,
+                sig,
+            })
         } else if tagname == "e" {
             let id: Id = match seq.next_element()? {
                 Some(id) => id,
