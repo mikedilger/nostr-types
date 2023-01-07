@@ -6,6 +6,9 @@ use std::fmt;
 /// A tag on an Event
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Tag {
+    /// Content Warning to alert client to hide content until user approves
+    ContentWarning(String),
+
     /// This is a reference to an event, where the first string is the event Id.
     /// The second string is defined in NIP-01 as an optional URL, but subsequent
     /// 'e' NIPs define more data and interpretations.
@@ -75,6 +78,7 @@ impl Tag {
     /// Get the tag name for the tag (the first string in the array)a
     pub fn tagname(&self) -> String {
         match self {
+            Tag::ContentWarning(_) => "content-warning".to_string(),
             Tag::Event { .. } => "e".to_string(),
             Tag::Expiration(_) => "expiration".to_string(),
             Tag::Pubkey { .. } => "p".to_string(),
@@ -105,6 +109,12 @@ impl Serialize for Tag {
         S: Serializer,
     {
         match self {
+            Tag::ContentWarning(msg) => {
+                let mut seq = serializer.serialize_seq(None)?;
+                seq.serialize_element("content-warning")?;
+                seq.serialize_element(msg)?;
+                seq.end()
+            }
             Tag::Event {
                 id,
                 recommended_relay_url,
@@ -222,7 +232,18 @@ impl<'de> Visitor<'de> for TagVisitor {
             Some(e) => e,
             None => return Ok(Tag::Empty),
         };
-        if tagname == "e" {
+        if tagname == "content-warning" {
+            let msg = match seq.next_element()? {
+                Some(s) => s,
+                None => {
+                    return Ok(Tag::Other {
+                        tag: tagname.to_string(),
+                        data: vec![],
+                    });
+                }
+            };
+            Ok(Tag::ContentWarning(msg))
+        } else if tagname == "e" {
             let id: Id = match seq.next_element()? {
                 Some(id) => id,
                 None => {
