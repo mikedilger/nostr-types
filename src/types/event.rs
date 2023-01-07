@@ -256,10 +256,12 @@ impl Event {
     pub fn new_set_metadata(
         mut input: PreEvent,
         privkey: &PrivateKey,
-        metadata: HashMap<String, String>,
+        mut metadata: HashMap<String, String>,
     ) -> Result<Event, Error> {
         input.kind = EventKind::Metadata;
-        let metadata = Metadata(metadata);
+        let m: HashMap<String, Option<String>> =
+            metadata.drain().map(|(k, v)| (k, Some(v))).collect();
+        let metadata = Metadata(m);
         input.content = serde_json::to_string(&metadata)?;
         Event::new(input, privkey)
     }
