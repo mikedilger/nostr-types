@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 
 /// Metadata about a user
@@ -8,7 +9,7 @@ use std::collections::HashMap;
 /// events to fail. We treat these in our get() function the same as if the key
 /// did not exist.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct Metadata(pub HashMap<String, Option<String>>);
+pub struct Metadata(pub HashMap<String, Value>);
 
 impl Default for Metadata {
     fn default() -> Self {
@@ -22,18 +23,27 @@ impl Metadata {
         Metadata(HashMap::new())
     }
 
-    /// Get a key's value
+    /// Get a key's value.
+    ///
+    /// If it isn't a string, you'll get back None as
+    /// we don't support non-String values in Metadata.
+    /// But you can dig into self.0 yourself for that.
     pub fn get(&self, key: &str) -> Option<String> {
         match self.0.get(key).cloned() {
-            Some(Some(s)) => Some(s),
-            Some(None) => None,
+            Some(Value::Null) => None,
+            Some(Value::Bool(_)) => None,
+            Some(Value::Number(_)) => None,
+            Some(Value::String(s)) => Some(s),
+            Some(Value::Array(_)) => None,
+            Some(Value::Object(_)) => None,
             None => None,
         }
     }
 
-    /// Set a key's value
+    /// Set a key's value. We only support string values. Other JSON types are not
+    /// necessarily widely supported throughout nostr anyway.
     pub fn set(&mut self, key: String, value: String) {
-        let _ = self.0.insert(key, Some(value));
+        let _ = self.0.insert(key, Value::String(value));
     }
 
     // Mock data for testing

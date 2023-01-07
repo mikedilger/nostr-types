@@ -259,9 +259,10 @@ impl Event {
         mut metadata: HashMap<String, String>,
     ) -> Result<Event, Error> {
         input.kind = EventKind::Metadata;
-        let m: HashMap<String, Option<String>> =
-            metadata.drain().map(|(k, v)| (k, Some(v))).collect();
-        let metadata = Metadata(m);
+        let mut real_metadata = Metadata::new();
+        for (k, v) in metadata.drain() {
+            real_metadata.set(k, v)
+        }
         input.content = serde_json::to_string(&metadata)?;
         Event::new(input, privkey)
     }
