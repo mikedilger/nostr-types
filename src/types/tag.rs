@@ -1,4 +1,4 @@
-use crate::{Id, PublicKey, Url};
+use crate::{Id, PublicKey, Unixtime, Url};
 use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
 use std::fmt;
@@ -19,6 +19,9 @@ pub enum Tag {
         /// A marker (commonly things like 'reply')
         marker: Option<String>,
     },
+
+    /// A time when the event should be considered expired
+    Expiration(Unixtime),
 
     /// 'p' This is a reference to a user by public key, where the first string is
     /// the PublicKey. The second string is defined in NIP-01 as an optional URL,
@@ -73,6 +76,7 @@ impl Tag {
     pub fn tagname(&self) -> String {
         match self {
             Tag::Event { .. } => "e".to_string(),
+            Tag::Expiration(_) => "expiration".to_string(),
             Tag::Pubkey { .. } => "p".to_string(),
             Tag::Hashtag(_) => "t".to_string(),
             Tag::Reference(_) => "r".to_string(),
@@ -117,6 +121,12 @@ impl Serialize for Tag {
                 if let Some(m) = marker {
                     seq.serialize_element(m)?;
                 }
+                seq.end()
+            }
+            Tag::Expiration(time) => {
+                let mut seq = serializer.serialize_seq(None)?;
+                seq.serialize_element("expiration")?;
+                seq.serialize_element(time)?;
                 seq.end()
             }
             Tag::Pubkey {
@@ -229,6 +239,17 @@ impl<'de> Visitor<'de> for TagVisitor {
                 recommended_relay_url,
                 marker,
             })
+        } else if tagname == "expiration" {
+            let time = match seq.next_element()? {
+                Some(t) => t,
+                None => {
+                    return Ok(Tag::Other {
+                        tag: tagname.to_string(),
+                        data: vec![],
+                    });
+                }
+            };
+            Ok(Tag::Expiration(time))
         } else if tagname == "p" {
             let pubkey: PublicKey = match seq.next_element()? {
                 Some(p) => p,
