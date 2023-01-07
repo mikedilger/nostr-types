@@ -21,6 +21,8 @@ pub enum EventKind {
     EncryptedDirectMessage,
     /// Event is an authors request to delete previous events
     EventDeletion,
+    /// Repost
+    Repost,
     /// Event is a reaction to a `TextNote` event
     Reaction,
     /// Event creates a public channel
@@ -71,6 +73,7 @@ impl From<u64> for EventKind {
             3 => ContactList,
             4 => EncryptedDirectMessage,
             5 => EventDeletion,
+            6 => Repost,
             7 => Reaction,
             40 => ChannelCreation,
             41 => ChannelMetadata,
@@ -100,6 +103,7 @@ impl From<EventKind> for u64 {
             ContactList => 3,
             EncryptedDirectMessage => 4,
             EventDeletion => 5,
+            Repost => 6,
             Reaction => 7,
             ChannelCreation => 40,
             ChannelMetadata => 41,
