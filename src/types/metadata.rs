@@ -1,44 +1,18 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Metadata about a user
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct Metadata {
-    /// User name
-    pub name: Option<String>,
-
-    /// About the user
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
-    pub about: Option<String>,
-
-    /// A url or other string representation of a picture of the user
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
-    pub picture: Option<String>,
-
-    /// NIP-05
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
-    pub nip05: Option<String>,
-
-    /// Lightning Network Address (lnurl)
-    /// This is not standardized but in common use
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
-    pub lud16: Option<String>,
-}
+pub struct Metadata(pub HashMap<String, String>);
 
 impl Metadata {
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> Metadata {
-        Metadata {
-            name: Some("Mike".to_owned()),
-            about: Some("Just some guy".to_owned()),
-            picture: None,
-            nip05: None,
-            lud16: None,
-        }
+        let mut ext = HashMap::new();
+        let _ = ext.insert("website".to_owned(), "https://example.com".to_owned());
+        let _ = ext.insert("name".to_owned(), "Mike".to_owned());
+        Metadata(ext)
     }
 }
 
@@ -47,4 +21,11 @@ mod test {
     use super::*;
 
     test_serde! {Metadata, test_metadata_serde}
+
+    #[test]
+    fn print_metadata_json() {
+        // I want to see if JSON serialized metadata is network appropriate
+        let m = Metadata::mock();
+        println!("{}", serde_json::to_string(&m).unwrap());
+    }
 }

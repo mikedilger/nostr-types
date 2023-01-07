@@ -2,6 +2,7 @@ use super::{EventKind, Id, Metadata, PrivateKey, PublicKey, Signature, Tag, Unix
 use crate::Error;
 use k256::sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -255,20 +256,10 @@ impl Event {
     pub fn new_set_metadata(
         mut input: PreEvent,
         privkey: &PrivateKey,
-        name: Option<String>,
-        about: Option<String>,
-        picture: Option<String>,
-        nip05: Option<String>,
-        lud16: Option<String>,
+        metadata: HashMap<String, String>,
     ) -> Result<Event, Error> {
         input.kind = EventKind::Metadata;
-        let metadata = Metadata {
-            name,
-            about,
-            picture,
-            nip05,
-            lud16,
-        };
+        let metadata = Metadata(metadata);
         input.content = serde_json::to_string(&metadata)?;
         Event::new(input, privkey)
     }
