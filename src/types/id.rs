@@ -1,4 +1,5 @@
 use crate::Error;
+use bech32::{FromBase32, ToBase32};
 use derive_more::{AsMut, AsRef, Deref, Display, From, FromStr, Into};
 use serde::de::{Deserializer, Visitor};
 use serde::ser::Serializer;
@@ -25,6 +26,33 @@ impl Id {
         Ok(Id(vec
             .try_into()
             .map_err(|_| Error::WrongLengthHexString)?))
+    }
+
+    /// Export as a bech32 encoded string ("note")
+    pub fn try_as_bech32_string(&self) -> Result<String, Error> {
+        Ok(bech32::encode(
+            "note",
+            self.0.to_vec().to_base32(),
+            bech32::Variant::Bech32,
+        )?)
+    }
+
+    /// Import from a bech32 encoded string ("note")
+    pub fn try_from_bech32_string(s: &str) -> Result<Id, Error> {
+        let data = bech32::decode(s)?;
+        if data.0 != "note" {
+            Err(Error::WrongBech32("note".to_string(), data.0))
+        } else {
+            let decoded = Vec::<u8>::from_base32(&data.1)?;
+            if decoded.len() != 32 {
+                Err(Error::InvalidId)
+            } else {
+                match <[u8; 32]>::try_from(decoded) {
+                    Ok(array) => Ok(Id(array)),
+                    _ => Err(Error::InvalidId)
+                }
+            }
+        }
     }
 
     // Mock data for testing
@@ -126,4 +154,11 @@ mod test {
     use super::*;
 
     test_serde! {Id, test_id_serde}
+
+    #[test]
+    fn test_id_bech32() {
+        let bech32 = Id::mock().try_as_bech32_string().unwrap();
+        println!("{}", bech32);
+        assert_eq!(Id::mock(), Id::try_from_bech32_string(&bech32).unwrap());
+    }
 }
