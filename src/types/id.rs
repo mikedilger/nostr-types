@@ -49,7 +49,7 @@ impl Id {
             } else {
                 match <[u8; 32]>::try_from(decoded) {
                     Ok(array) => Ok(Id(array)),
-                    _ => Err(Error::InvalidId)
+                    _ => Err(Error::InvalidId),
                 }
             }
         }

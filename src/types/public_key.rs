@@ -55,6 +55,20 @@ impl PublicKey {
         }
     }
 
+    /// Import from raw bytes
+    pub fn from_bytes(bytes: &[u8]) -> Result<PublicKey, Error> {
+        if bytes.len() != 32 {
+            Err(Error::InvalidPublicKey)
+        } else {
+            Ok(PublicKey(VerifyingKey::from_bytes(bytes)?))
+        }
+    }
+
+    /// Export as raw bytes
+    pub fn as_bytes(&self) -> Vec<u8> {
+        self.0.to_bytes().to_vec()
+    }
+
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> PublicKey {

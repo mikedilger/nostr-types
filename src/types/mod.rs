@@ -35,6 +35,9 @@ pub use nip05::Nip05;
 mod private_key;
 pub use private_key::{EncryptedPrivateKey, KeySecurity, PrivateKey};
 
+mod profile;
+pub use profile::Profile;
+
 mod public_key;
 pub use public_key::{PublicKey, PublicKeyHex};
 

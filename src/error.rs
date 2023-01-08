@@ -47,6 +47,10 @@ pub enum Error {
     #[error("Invalid event Id")]
     InvalidId,
 
+    /// Invalid Profile
+    #[error("Invalid Profile")]
+    InvalidProfile,
+
     /// Invalid public key
     #[error("Invalid Public Key")]
     InvalidPublicKey,
@@ -94,6 +98,10 @@ pub enum Error {
     /// Unpad error
     #[error("Decryption error: {0}")]
     Unpad(#[from] aes::cipher::block_padding::UnpadError),
+
+    /// UTF-8 error
+    #[error("UTF-8 Error: {0}")]
+    Utf8Error(#[from] std::str::Utf8Error),
 
     /// Wrong length hex string
     #[error("Wrong length hex string")]
