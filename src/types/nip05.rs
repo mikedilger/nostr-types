@@ -1,4 +1,4 @@
-use super::{PublicKey, Url};
+use super::{PublicKeyHex, Url};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -7,27 +7,26 @@ use std::collections::HashMap;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Nip05 {
     /// DNS names mapped to public keys
-    pub names: HashMap<String, PublicKey>,
+    pub names: HashMap<String, PublicKeyHex>,
 
     /// Public keys mapped to arrays of relays where they post
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     #[serde(default)]
-    pub relays: HashMap<PublicKey, Vec<Url>>,
+    pub relays: HashMap<PublicKeyHex, Vec<Url>>,
 }
 
 impl Nip05 {
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> Nip05 {
-        let pubkey = PublicKey::try_from_hex_string(
-            "b0635d6a9851d3aed0cd6c495b282167acf761729078d975fc341b22650b07b9",
-        )
-        .unwrap();
+        let pubkey = PublicKeyHex(
+            "b0635d6a9851d3aed0cd6c495b282167acf761729078d975fc341b22650b07b9".to_owned()
+        );
 
-        let mut names: HashMap<String, PublicKey> = HashMap::new();
-        let _ = names.insert("bob".to_string(), pubkey);
+        let mut names: HashMap<String, PublicKeyHex> = HashMap::new();
+        let _ = names.insert("bob".to_string(), pubkey.clone());
 
-        let mut relays: HashMap<PublicKey, Vec<Url>> = HashMap::new();
+        let mut relays: HashMap<PublicKeyHex, Vec<Url>> = HashMap::new();
         let _ = relays.insert(
             pubkey,
             vec![
@@ -59,9 +58,9 @@ mod test {
 
         let nip05: Nip05 = serde_json::from_str(&body).unwrap();
 
-        let bobs_pk: PublicKey = *nip05.names.get("bob").unwrap();
+        let bobs_pk: PublicKeyHex = nip05.names.get("bob").unwrap().clone();
         assert_eq!(
-            &*bobs_pk.as_hex_string(),
+            &bobs_pk.0,
             "b0635d6a9851d3aed0cd6c495b282167acf761729078d975fc341b22650b07b9"
         );
 
