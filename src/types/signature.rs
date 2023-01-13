@@ -1,10 +1,11 @@
 use crate::{Error, Event};
-use derive_more::{AsMut, AsRef, Deref, From, Into};
+use derive_more::{AsMut, AsRef, Deref, Display, From, FromStr, Into};
 use k256::ecdsa::signature::Signature as KSignatureTrait;
 use k256::schnorr::Signature as KSignature;
-use serde::de::Error as DeError;
-use serde::de::{Deserialize, Deserializer, Visitor};
-use serde::ser::{Serialize, Serializer};
+use serde::de::Error as DeserializeError;
+use serde::de::{Deserialize as De, Deserializer, Visitor};
+use serde::ser::{Serialize as Se, Serializer};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// A Schnorr signature that signs an Event, taken on the Event Id field
@@ -31,7 +32,7 @@ impl Signature {
     }
 }
 
-impl Serialize for Signature {
+impl Se for Signature {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -40,7 +41,7 @@ impl Serialize for Signature {
     }
 }
 
-impl<'de> Deserialize<'de> for Signature {
+impl<'de> De<'de> for Signature {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -72,9 +73,50 @@ impl Visitor<'_> for SignatureVisitor {
         }
 
         let ksig: KSignature =
-            KSignature::from_bytes(&vec).map_err(|e| DeError::custom(format!("{}", e)))?;
+            KSignature::from_bytes(&vec).map_err(|e| DeserializeError::custom(format!("{}", e)))?;
 
         Ok(Signature(ksig))
+    }
+}
+
+/// A Schnorr signature that signs an Event, taken on the Event Id field, as a hex string
+#[derive(
+    AsMut,
+    AsRef,
+    Clone,
+    Debug,
+    Deref,
+    Deserialize,
+    Display,
+    Eq,
+    From,
+    FromStr,
+    Hash,
+    Into,
+    PartialEq,
+    Serialize,
+)]
+pub struct SignatureHex(pub String);
+
+impl SignatureHex {
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> SignatureHex {
+        From::from(Signature::mock())
+    }
+}
+
+impl From<Signature> for SignatureHex {
+    fn from(s: Signature) -> SignatureHex {
+        SignatureHex(s.as_hex_string())
+    }
+}
+
+impl TryFrom<SignatureHex> for Signature {
+    type Error = Error;
+
+    fn try_from(sh: SignatureHex) -> Result<Signature, Error> {
+        Signature::try_from_hex_string(&sh.0)
     }
 }
 

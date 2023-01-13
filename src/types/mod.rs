@@ -48,7 +48,7 @@ mod relay_information_document;
 pub use relay_information_document::RelayInformationDocument;
 
 mod signature;
-pub use signature::Signature;
+pub use signature::{Signature, SignatureHex};
 
 mod subscription_id;
 pub use subscription_id::SubscriptionId;
