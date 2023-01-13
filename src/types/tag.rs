@@ -1,4 +1,4 @@
-use crate::{Id, PublicKey, Signature, Unixtime, Url};
+use crate::{Id, PublicKeyHex, SignatureHex, Unixtime, Url};
 use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
 use std::fmt;
@@ -12,13 +12,13 @@ pub enum Tag {
     /// Delegation (Delegated Event Signing)
     Delegation {
         /// Public key of the delegator
-        pubkey: PublicKey,
+        pubkey: PublicKeyHex,
 
         /// Conditions query string
         conditions: String,
 
         /// 64-byte schnorr signature of the sha256 hash of the delegation token
-        sig: Signature,
+        sig: SignatureHex,
     },
 
     /// This is a reference to an event, where the first string is the event Id.
@@ -43,7 +43,7 @@ pub enum Tag {
     /// but subsqeuent NIPs define more data and interpretations.
     Pubkey {
         /// The public key of the identity that this event refers to
-        pubkey: PublicKey,
+        pubkey: PublicKeyHex,
 
         /// A recommended relay URL to find information on that public key
         recommended_relay_url: Option<Url>,
@@ -269,7 +269,7 @@ impl<'de> Visitor<'de> for TagVisitor {
             };
             Ok(Tag::ContentWarning(msg))
         } else if tagname == "delegation" {
-            let pubkey: PublicKey = match seq.next_element()? {
+            let pubkey: PublicKeyHex = match seq.next_element()? {
                 Some(pk) => pk,
                 None => {
                     return Ok(Tag::Other {
@@ -283,16 +283,16 @@ impl<'de> Visitor<'de> for TagVisitor {
                 None => {
                     return Ok(Tag::Other {
                         tag: tagname.to_string(),
-                        data: vec![pubkey.as_hex_string()],
+                        data: vec![pubkey.0.to_string()],
                     });
                 }
             };
-            let sig: Signature = match seq.next_element()? {
+            let sig: SignatureHex = match seq.next_element()? {
                 Some(s) => s,
                 None => {
                     return Ok(Tag::Other {
                         tag: tagname.to_string(),
-                        data: vec![pubkey.as_hex_string(), conditions],
+                        data: vec![pubkey.0.to_string(), conditions],
                     });
                 }
             };
@@ -330,7 +330,7 @@ impl<'de> Visitor<'de> for TagVisitor {
             };
             Ok(Tag::Expiration(time))
         } else if tagname == "p" {
-            let pubkey: PublicKey = match seq.next_element()? {
+            let pubkey: PublicKeyHex = match seq.next_element()? {
                 Some(p) => p,
                 None => {
                     return Ok(Tag::Other {

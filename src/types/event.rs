@@ -1,4 +1,4 @@
-use super::{EventKind, Id, Metadata, PrivateKey, PublicKey, Signature, Tag, Unixtime, Url};
+use super::{EventKind, Id, Metadata, PrivateKey, PublicKey, PublicKeyHex, Signature, Tag, Unixtime, Url};
 use crate::Error;
 use k256::sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
@@ -269,8 +269,8 @@ impl Event {
 
     /// If the event refers to people, get all the PublicKeys it refers to
     /// along with recommended relay URL and petname for each
-    pub fn people(&self) -> Vec<(PublicKey, Option<Url>, Option<String>)> {
-        let mut output: Vec<(PublicKey, Option<Url>, Option<String>)> = Vec::new();
+    pub fn people(&self) -> Vec<(PublicKeyHex, Option<Url>, Option<String>)> {
+        let mut output: Vec<(PublicKeyHex, Option<Url>, Option<String>)> = Vec::new();
 
         // All 'p' tags
         for tag in self.tags.iter() {
