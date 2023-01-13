@@ -20,7 +20,7 @@ impl Nip05 {
     #[allow(dead_code)]
     pub(crate) fn mock() -> Nip05 {
         let pubkey = PublicKeyHex(
-            "b0635d6a9851d3aed0cd6c495b282167acf761729078d975fc341b22650b07b9".to_owned()
+            "b0635d6a9851d3aed0cd6c495b282167acf761729078d975fc341b22650b07b9".to_owned(),
         );
 
         let mut names: HashMap<String, PublicKeyHex> = HashMap::new();
