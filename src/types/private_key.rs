@@ -218,8 +218,12 @@ impl PrivateKey {
             ));
         }
 
-        // Base64 encode
-        Ok(EncryptedPrivateKey(base64::encode(concatenation)))
+        // bech32 encode
+        Ok(EncryptedPrivateKey(bech32::encode(
+            "ncryptsec",
+            concatenation.to_base32(),
+            bech32::Variant::Bech32,
+        )?))
     }
 
     /// Import an encrypted private key which was exported with `export_encrypted()`.
@@ -232,14 +236,39 @@ impl PrivateKey {
         encrypted: &EncryptedPrivateKey,
         password: &str,
     ) -> Result<PrivateKey, Error> {
-        // Base64 decode
-        let concatenation = base64::decode(&encrypted.0)?; // 80 bytes
+        if encrypted.0.starts_with("ncryptsec1") {
+            Self::import_encrypted_bech32(encrypted, password)
+        } else {
+            Self::import_encrypted_base64(encrypted, password)
+        }
+    }
+
+    fn import_encrypted_bech32(
+        encrypted: &EncryptedPrivateKey,
+        password: &str,
+    ) -> Result<PrivateKey, Error> {
+        // bech32 decode
+        let data = bech32::decode(&encrypted.0)?;
+        if data.0 != "ncryptsec" {
+            return Err(Error::WrongBech32("ncryptsec".to_string(), data.0));
+        }
+        Self::import_encrypted_inner(Vec::<u8>::from_base32(&data.1)?, password)
+    }
+
+    fn import_encrypted_base64(
+        encrypted: &EncryptedPrivateKey,
+        password: &str,
+    ) -> Result<PrivateKey, Error> {
+        let concatenation = base64::decode(&encrypted.0)?; // 64 or 80 bytes
+        Self::import_encrypted_inner(concatenation, password)
+    }
+
+    fn import_encrypted_inner(concatenation: Vec<u8>, password: &str) -> Result<PrivateKey, Error> {
         if concatenation.len() == 64 {
-            return Self::import_encrypted_presalt(encrypted, password);
+            return Self::import_encrypted_inner_version1(concatenation, password);
         }
         if concatenation.len() != 80 {
             return Err(Error::InvalidEncryptedPrivateKey);
-            //return Err(Error::AssertionFailed("Import encrypted concatenation len != 80".to_owned()));
         }
 
         // Break into parts
@@ -278,14 +307,12 @@ impl PrivateKey {
         Ok(output)
     }
 
-    fn import_encrypted_presalt(
-        encrypted: &EncryptedPrivateKey,
+    // version1 had a fixed salt "nostr" and was 4096 rounds (was also base64 encoded)
+    fn import_encrypted_inner_version1(
+        iv_plus_ciphertext: Vec<u8>,
         password: &str,
     ) -> Result<PrivateKey, Error> {
-        let key = Self::password_to_key_presalt(password)?;
-
-        // Base64 decode
-        let iv_plus_ciphertext = base64::decode(&encrypted.0)?; // 80 bytes
+        let key = Self::password_to_key(password, b"nostr", 4096)?;
 
         if iv_plus_ciphertext.len() < 48 {
             // Should be 64 from padding, but we pushed in 48
@@ -325,13 +352,6 @@ impl PrivateKey {
         Ok(key)
     }
 
-    fn password_to_key_presalt(password: &str) -> Result<[u8; 32], Error> {
-        let salt = b"nostr";
-        let mut key: [u8; 32] = [0; 32];
-        pbkdf2::<Hmac<Sha256>>(password.as_bytes(), salt, 4096, &mut key);
-        Ok(key)
-    }
-
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> PrivateKey {
@@ -358,10 +378,22 @@ mod test {
     }
 
     #[test]
-    fn test_bad_password() {
-        let pk = PrivateKey::generate();
-        let exported = pk.export_encrypted("rightsecret").unwrap();
-        assert!(PrivateKey::import_encrypted(&exported, "wrongsecret").is_err());
+    fn test_import_old_formats() {
+        let decrypted = "a28129ab0b70c8d5e75aaf510ec00bff47fde7ca4ab9e3d9315c77edc86f037f";
+
+        // pre-salt base64
+        let encrypted = EncryptedPrivateKey("F+VYIvTCtIZn4c6owPMZyu4Zn5DH9T5XcgZWmFG/3ma4C3PazTTQxQcIF+G+daeFlkqsZiNIh9bcmZ5pfdRPyg==".to_owned());
+        assert_eq!(
+            encrypted.decrypt("nostr").unwrap().as_hex_string(),
+            decrypted
+        );
+
+        // post-salt base64
+        let encrypted = EncryptedPrivateKey("AZQYNwAGULWyKweTtw6WCljV+1cil8IMRxfZ7Rs3nCfwbVQBV56U6eV9ps3S1wU7ieCx6EraY9Uqdsw71TY5Yv/Ep6yGcy9m1h4YozuxWQE=".to_owned());
+        assert_eq!(
+            encrypted.decrypt("nostr").unwrap().as_hex_string(),
+            decrypted
+        );
     }
 
     #[test]
