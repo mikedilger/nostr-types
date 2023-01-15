@@ -50,14 +50,14 @@ impl Metadata {
         let mut map = Map::new();
         let _ = map.insert(
             "display_name".to_string(),
-            Value::String("William Caserin".to_string())
+            Value::String("William Caserin".to_string()),
         );
         Metadata {
             name: Some("jb55".to_owned()),
             about: None,
             picture: None,
             nip05: Some("jb55.com".to_owned()),
-            other: map
+            other: map,
         }
     }
 }
@@ -127,7 +127,6 @@ impl<'de> Visitor<'de> for MetadataVisitor {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -147,6 +146,9 @@ mod test {
         let m: Metadata = serde_json::from_str(&json).unwrap();
         assert_eq!(m.name, Some("monlovesmango".to_owned()));
         assert_eq!(m.other.get("lud06"), Some(&Value::Null));
-        assert_eq!(m.other.get("testing"), Some(&Value::String("123".to_owned())));
+        assert_eq!(
+            m.other.get("testing"),
+            Some(&Value::String("123".to_owned()))
+        );
     }
 }

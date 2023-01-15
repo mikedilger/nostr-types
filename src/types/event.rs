@@ -1,4 +1,6 @@
-use super::{EventKind, Id, Metadata, PrivateKey, PublicKey, PublicKeyHex, Signature, Tag, Unixtime, Url};
+use super::{
+    EventKind, Id, Metadata, PrivateKey, PublicKey, PublicKeyHex, Signature, Tag, Unixtime, Url,
+};
 use crate::Error;
 use k256::sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
