@@ -1,4 +1,4 @@
-use nostr_types::{ClientMessage, Filter, RelayMessage, SubscriptionId};
+use nostr_types::{ClientMessage, Filter, IdHex, RelayMessage, SubscriptionId};
 use tungstenite::protocol::Message;
 use std::env;
 
@@ -7,11 +7,17 @@ fn main() {
     let _ = args.next(); // program name
     let relay_url = match args.next() {
         Some(u) => u,
-        None => panic!("Usage: dump_relay <RelayURL>")
+        None => panic!("Usage: pull_event <RelayURL> <EventID>")
+    };
+    let id = match args.next() {
+        Some(id) => id,
+        None => panic!("Usage: pull_event <RelayURL> <EventID>")
     };
 
-    let filter = Filter::new();
-    let message = ClientMessage::Req(SubscriptionId("dump".to_owned()), vec![filter]);
+
+    let mut filter = Filter::new();
+    filter.add_id(&IdHex(id), None);
+    let message = ClientMessage::Req(SubscriptionId("fetch".to_owned()), vec![filter]);
     let wire = serde_json::to_string(&message).expect("Could not serialize message");
 
     let uri: http::Uri = relay_url.parse::<http::Uri>().expect("Could not parse url");
