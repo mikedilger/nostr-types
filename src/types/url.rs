@@ -26,7 +26,16 @@ impl fmt::Display for Url {
 impl Url {
     /// Create a new Url from a string
     pub fn new(s: &str) -> Url {
-        Url(s.to_owned(), s.parse::<http::Uri>().is_ok())
+        // Technically, URLs with a trailing slash are different than ones without.
+        // But nobody treats them that way, and to do so causes more problems than
+        // it is worth. So we remove the trailing slashes.
+        let s2 = if s.ends_with('/') {
+            &s[0..s.len() - 1]
+        } else {
+            s
+        };
+
+        Url(s2.to_owned(), s2.parse::<http::Uri>().is_ok())
     }
 
     /// Get reference to inner string
