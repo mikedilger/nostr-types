@@ -9,7 +9,7 @@ fn main() {
     let _ = args.next(); // program name
     let url = match args.next() {
         Some(u) => u,
-        None => panic!("Usage: fetch_nip11 <RelayURL>")
+        None => panic!("Usage: fetch_nip11 <RelayURL>"),
     };
 
     let uri: http::Uri = url.parse::<http::Uri>().unwrap();
@@ -27,11 +27,14 @@ fn main() {
         .connect_timeout(Some(Duration::from_secs(60)))
         .timeout(Some(Duration::from_secs(60)))
         .connection_verbose(true)
-        .build().unwrap();
-    let response = client.get(format!("https://{}", host))
+        .build()
+        .unwrap();
+    let response = client
+        .get(format!("https://{}", host))
         .header("Host", host)
         .header("Accept", "application/nostr+json")
-        .send().unwrap();
+        .send()
+        .unwrap();
     let rid = response.json::<RelayInformationDocument>().unwrap();
     println!("{}", rid);
 }

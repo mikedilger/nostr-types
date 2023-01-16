@@ -1,13 +1,13 @@
 use nostr_types::{ClientMessage, Filter, RelayMessage, SubscriptionId};
-use tungstenite::protocol::Message;
 use std::env;
+use tungstenite::protocol::Message;
 
 fn main() {
     let mut args = env::args();
     let _ = args.next(); // program name
     let relay_url = match args.next() {
         Some(u) => u,
-        None => panic!("Usage: dump_relay <RelayURL>")
+        None => panic!("Usage: dump_relay <RelayURL>"),
     };
 
     let filter = Filter::new();

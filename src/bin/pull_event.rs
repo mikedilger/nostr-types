@@ -1,19 +1,18 @@
 use nostr_types::{ClientMessage, Filter, IdHex, RelayMessage, SubscriptionId};
-use tungstenite::protocol::Message;
 use std::env;
+use tungstenite::protocol::Message;
 
 fn main() {
     let mut args = env::args();
     let _ = args.next(); // program name
     let relay_url = match args.next() {
         Some(u) => u,
-        None => panic!("Usage: pull_event <RelayURL> <EventID>")
+        None => panic!("Usage: pull_event <RelayURL> <EventID>"),
     };
     let id = match args.next() {
         Some(id) => id,
-        None => panic!("Usage: pull_event <RelayURL> <EventID>")
+        None => panic!("Usage: pull_event <RelayURL> <EventID>"),
     };
-
 
     let mut filter = Filter::new();
     filter.add_id(&IdHex(id), None);
