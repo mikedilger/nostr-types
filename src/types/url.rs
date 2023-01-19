@@ -29,6 +29,13 @@ impl Url {
         Url(s.to_owned(), s.parse::<http::Uri>().is_ok())
     }
 
+    /// Trim trailing slash if present
+    pub fn trim(&mut self) {
+        if self.0.ends_with('/') {
+            self.0 = self.0.trim_end_matches('/').to_string();
+        }
+    }
+
     /// Get reference to inner string
     pub fn inner(&self) -> &str {
         &self.0
