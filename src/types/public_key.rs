@@ -157,6 +157,16 @@ impl PublicKeyHex {
     pub(crate) fn mock() -> PublicKeyHex {
         From::from(PublicKey::mock())
     }
+
+    /// Export as a bech32 encoded string
+    pub fn try_as_bech32_string(&self) -> Result<String, Error> {
+        let vec: Vec<u8> = hex::decode(&self.0)?;
+        Ok(bech32::encode(
+            "npub",
+            vec.to_base32(),
+            bech32::Variant::Bech32,
+        )?)
+    }
 }
 
 impl From<PublicKey> for PublicKeyHex {
