@@ -15,6 +15,10 @@ pub enum Error {
     #[error("Bech32 Error: {0}")]
     Bech32(#[from] bech32::Error),
 
+    /// Encryption/Decryption Error
+    #[error("Encryption/Decryption Error")]
+    Encryption,
+
     /// Bech32 error
     #[error("Wrong Bech32 Kind: Expected {0} found {0}")]
     WrongBech32(String, String),
@@ -74,6 +78,10 @@ pub enum Error {
     /// Missing URL Scheme
     #[error("Missing URL Scheme")]
     InvalidUrlMissingScheme,
+
+    /// Scrypt error
+    #[error("Scrypt invalid output length")]
+    Scrypt,
 
     /// Serialization error
     #[error("JSON (de)serialization error: {0}")]
