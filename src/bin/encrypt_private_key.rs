@@ -9,8 +9,8 @@ fn main() {
         Ok(pk) => pk,
         Err(_) => match PrivateKey::try_from_bech32_string(&private_key_str) {
             Ok(pk) => pk,
-            Err(_) => panic!("Did not recognize private key")
-        }
+            Err(_) => panic!("Did not recognize private key"),
+        },
     };
 
     println!("Enter the logN rounds (a power of 2, e.g. 20): ");

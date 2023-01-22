@@ -1,10 +1,10 @@
 use crate::{Error, Id, PublicKey, Signature};
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, KeyIvInit};
+use bech32::{FromBase32, ToBase32};
 use chacha20poly1305::{
     aead::{Aead, AeadCore, KeyInit, Payload},
-    XChaCha20Poly1305
+    XChaCha20Poly1305,
 };
-use bech32::{FromBase32, ToBase32};
 use derive_more::Display;
 use hmac::Hmac;
 use k256::schnorr::SigningKey;
@@ -76,12 +76,10 @@ impl EncryptedPrivateKey {
             }
             let data = Vec::<u8>::from_base32(&data.1)?;
             Ok(data[0] as i8)
+        } else if self.0.len() == 64 {
+            Ok(-1)
         } else {
-            if self.0.len() == 64 {
-                Ok(-1)
-            } else {
-                Ok(0) // base64 variant of v1
-            }
+            Ok(0) // base64 variant of v1
         }
     }
 }
@@ -216,7 +214,11 @@ impl PrivateKey {
     ///
     /// We recommend you zeroize() the password you pass in after you are
     /// done with it.
-    pub fn export_encrypted(&self, password: &str, log2_rounds: u8) -> Result<EncryptedPrivateKey, Error> {
+    pub fn export_encrypted(
+        &self,
+        password: &str,
+        log2_rounds: u8,
+    ) -> Result<EncryptedPrivateKey, Error> {
         // Generate a random 16-byte salt
         let salt = {
             let mut salt: [u8; 16] = [0; 16];
@@ -229,7 +231,7 @@ impl PrivateKey {
         let associated_data: Vec<u8> = {
             let key_security: u8 = match self.1 {
                 KeySecurity::Weak => 0,
-                KeySecurity::Medium => 1
+                KeySecurity::Medium => 1,
             };
             vec![key_security]
         };
@@ -245,7 +247,7 @@ impl PrivateKey {
 
             let payload = Payload {
                 msg: &inner_secret,
-                aad: &associated_data
+                aad: &associated_data,
             };
 
             let ciphertext = match cipher.encrypt(&nonce, payload) {
@@ -266,7 +268,7 @@ impl PrivateKey {
         concatenation.extend(nonce); // 24 bytes of nonce
         concatenation.extend(associated_data); // 1 byte of key security
         concatenation.extend(ciphertext); // 48 bytes of ciphertext expected
-        // Total length is 91 = 1 + 1 + 16 + 24 + 1 + 48
+                                          // Total length is 91 = 1 + 1 + 16 + 24 + 1 + 48
 
         // bech32 encode
         Ok(EncryptedPrivateKey(bech32::encode(
@@ -286,7 +288,6 @@ impl PrivateKey {
         encrypted: &EncryptedPrivateKey,
         password: &str,
     ) -> Result<PrivateKey, Error> {
-
         if encrypted.0.starts_with("ncryptsec1") {
             // Versioned
             Self::import_encrypted_bech32(encrypted, password)
@@ -316,7 +317,6 @@ impl PrivateKey {
 
     // current
     fn import_encrypted_v2(concatenation: Vec<u8>, password: &str) -> Result<PrivateKey, Error> {
-
         if concatenation.len() < 91 {
             return Err(Error::InvalidEncryptedPrivateKey);
         }
@@ -325,10 +325,10 @@ impl PrivateKey {
         let version: u8 = concatenation[0];
         assert_eq!(version, 2);
         let log2_rounds: u8 = concatenation[1];
-        let salt: [u8; 16] = concatenation[2..2+16].try_into()?;
-        let nonce = &concatenation[2+16..2+16+24];
-        let associated_data = &concatenation[2+16+24..2+16+24+1];
-        let ciphertext = &concatenation[2+16+24+1..];
+        let salt: [u8; 16] = concatenation[2..2 + 16].try_into()?;
+        let nonce = &concatenation[2 + 16..2 + 16 + 24];
+        let associated_data = &concatenation[2 + 16 + 24..2 + 16 + 24 + 1];
+        let ciphertext = &concatenation[2 + 16 + 24 + 1..];
 
         let cipher = {
             let symmetric_key = Self::password_to_key_v2(password, &salt, log2_rounds)?;
@@ -337,7 +337,7 @@ impl PrivateKey {
 
         let payload = Payload {
             msg: ciphertext,
-            aad: associated_data
+            aad: associated_data,
         };
 
         let mut inner_secret = match cipher.decrypt(nonce.into(), payload) {
@@ -367,19 +367,16 @@ impl PrivateKey {
     ) -> Result<PrivateKey, Error> {
         let concatenation = base64::decode(&encrypted.0)?; // 64 or 80 bytes
         if concatenation.len() == 64 {
-            return Self::import_encrypted_pre_v1(concatenation, password);
-        }
-        else if concatenation.len() == 80 {
-            return Self::import_encrypted_v1(concatenation, password);
-        }
-        else {
-            return Err(Error::InvalidEncryptedPrivateKey);
+            Self::import_encrypted_pre_v1(concatenation, password)
+        } else if concatenation.len() == 80 {
+            Self::import_encrypted_v1(concatenation, password)
+        } else {
+            Err(Error::InvalidEncryptedPrivateKey)
         }
     }
 
     // deprecated
     fn import_encrypted_v1(concatenation: Vec<u8>, password: &str) -> Result<PrivateKey, Error> {
-
         // Break into parts
         let salt: [u8; 16] = concatenation[..16].try_into()?;
         let iv: [u8; 16] = concatenation[16..32].try_into()?;
@@ -463,9 +460,10 @@ impl PrivateKey {
 
     // Hash/Stretch password with scrypt into a 32-byte (256-bit) key
     fn password_to_key_v2(password: &str, salt: &[u8; 16], log_n: u8) -> Result<[u8; 32], Error> {
-        let params = match scrypt::Params::new(log_n, 8, 1) { // r=8, p=1
+        let params = match scrypt::Params::new(log_n, 8, 1) {
+            // r=8, p=1
             Ok(p) => p,
-            Err(_) => return Err(Error::Scrypt)
+            Err(_) => return Err(Error::Scrypt),
         };
         let mut key: [u8; 32] = [0; 32];
         if scrypt::scrypt(password.as_bytes(), salt, &params, &mut key).is_err() {

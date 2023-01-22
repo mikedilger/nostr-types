@@ -15,6 +15,9 @@ pub enum ClientMessage {
 
     /// A request to close a subscription
     Close(SubscriptionId),
+
+    /// Used to send authentication events
+    Auth(Box<Event>),
 }
 
 impl ClientMessage {
@@ -50,6 +53,12 @@ impl Serialize for ClientMessage {
                 let mut seq = serializer.serialize_seq(Some(2))?;
                 seq.serialize_element("CLOSE")?;
                 seq.serialize_element(&id)?;
+                seq.end()
+            }
+            ClientMessage::Auth(event) => {
+                let mut seq = serializer.serialize_seq(Some(2))?;
+                seq.serialize_element("AUTH")?;
+                seq.serialize_element(&event)?;
                 seq.end()
             }
         }
@@ -104,6 +113,11 @@ impl<'de> Visitor<'de> for ClientMessageVisitor {
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing id field"))?;
             Ok(ClientMessage::Close(id))
+        } else if word == "AUTH" {
+            let event: Event = seq
+                .next_element()?
+                .ok_or_else(|| DeError::custom("Message missing event field"))?;
+            Ok(ClientMessage::Auth(Box::new(event)))
         } else {
             Err(DeError::custom(format!("Unknown Message: {}", word)))
         }

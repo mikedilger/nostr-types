@@ -47,6 +47,8 @@ pub enum EventKind {
     PublicChatReserved49,
     /// Relays List (NIP-23)
     RelaysList,
+    /// Authentication
+    Auth,
     /// Relay-specific replaceable event
     Replaceable(u64),
     /// Ephemeral event, sent to all clients with matching filters and should not be stored
@@ -86,6 +88,7 @@ impl From<u64> for EventKind {
             48 => PublicChatReserved48,
             49 => PublicChatReserved49,
             10001 => RelaysList,
+            22242 => Auth,
             x if (10_000..20_000).contains(&x) => Replaceable(x),
             x if (20_000..30_000).contains(&x) => Ephemeral(x),
             x => Other(x),
@@ -116,6 +119,7 @@ impl From<EventKind> for u64 {
             PublicChatReserved48 => 48,
             PublicChatReserved49 => 49,
             RelaysList => 10001,
+            Auth => 22242,
             Replaceable(u) => u,
             Ephemeral(u) => u,
             Other(u) => u,
