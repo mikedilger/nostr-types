@@ -12,7 +12,7 @@ license = "MIT"
 
 [dependencies]
 aes = "0.8"
-base64 = "0.13"
+base64 = "0.21"
 bech32 = "0.9"
 cbc = { version = "0.1", features = [ "std" ] }
 chacha20poly1305 = "0.10"
@@ -20,7 +20,7 @@ derive_more = "0.99"
 hex = "0.4"
 hmac = "0.12"
 http = "0.2"
-k256 = { version = "0.11", features = [ "schnorr" ] }
+k256 = { version = "0.12", features = [ "schnorr" ] }
 num_cpus = "1"
 pbkdf2 = { version = "0.11", default-features = false, features = [ "hmac", "sha2", "std" ] }
 rand = "0.8"
@@ -32,7 +32,7 @@ serde = { version = "1.0", features = [ "derive" ] }
 serde_json = "1.0"
 sha2 = "0.10"
 thiserror = "1.0"
-tungstenite = { version = "0.17", features = [ "rustls-tls-native-roots" ] }
+tungstenite = { version = "0.18", features = [ "rustls-tls-native-roots" ] }
 zeroize = "1.5"
 
 # Force scrypt to build with release-like speed even in dev mode

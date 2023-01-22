@@ -1,3 +1,4 @@
+use base64::Engine;
 use nostr_types::{ClientMessage, Filter, IdHex, RelayMessage, SubscriptionId};
 use std::env;
 use tungstenite::protocol::Message;
@@ -36,7 +37,10 @@ fn main() {
         .header("Connection", "Upgrade")
         .header("Upgrade", "websocket")
         .header("Sec-WebSocket-Version", "13")
-        .header("Sec-WebSocket-Key", base64::encode(key))
+        .header(
+            "Sec-WebSocket-Key",
+            base64::engine::general_purpose::STANDARD.encode(key),
+        )
         .uri(uri)
         .body(())
         .expect("Could not build request");

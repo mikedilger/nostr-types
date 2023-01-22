@@ -1,5 +1,6 @@
 use crate::{Error, Id, PublicKey, Signature};
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, KeyIvInit};
+use base64::Engine;
 use bech32::{FromBase32, ToBase32};
 use chacha20poly1305::{
     aead::{Aead, AeadCore, KeyInit, Payload},
@@ -7,6 +8,7 @@ use chacha20poly1305::{
 };
 use derive_more::Display;
 use hmac::Hmac;
+use k256::schnorr::signature::hazmat::PrehashSigner;
 use k256::schnorr::SigningKey;
 use pbkdf2::pbkdf2;
 use rand_core::{OsRng, RngCore};
@@ -198,9 +200,7 @@ impl PrivateKey {
 
     /// Sign a 32-bit hash
     pub fn sign_id(&self, id: Id) -> Result<Signature, Error> {
-        let mut rand: [u8; 32] = [0; 32];
-        OsRng.fill_bytes(&mut rand);
-        let signature = self.0.try_sign_prehashed(&id.0, &rand)?;
+        let signature = self.0.sign_prehash(&id.0)?;
         Ok(Signature(signature))
     }
 
@@ -365,7 +365,7 @@ impl PrivateKey {
         encrypted: &EncryptedPrivateKey,
         password: &str,
     ) -> Result<PrivateKey, Error> {
-        let concatenation = base64::decode(&encrypted.0)?; // 64 or 80 bytes
+        let concatenation = base64::engine::general_purpose::STANDARD.decode(&encrypted.0)?; // 64 or 80 bytes
         if concatenation.len() == 64 {
             Self::import_encrypted_pre_v1(concatenation, password)
         } else if concatenation.len() == 80 {

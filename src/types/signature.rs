@@ -1,6 +1,5 @@
 use crate::{Error, Event};
 use derive_more::{AsMut, AsRef, Deref, Display, From, FromStr, Into};
-use k256::ecdsa::signature::Signature as KSignatureTrait;
 use k256::schnorr::Signature as KSignature;
 use serde::de::Error as DeserializeError;
 use serde::de::{Deserialize as De, Deserializer, Visitor};
@@ -15,13 +14,13 @@ pub struct Signature(pub KSignature);
 impl Signature {
     /// Render into a hexadecimal string
     pub fn as_hex_string(&self) -> String {
-        hex::encode(self.0.as_bytes())
+        hex::encode(self.0.to_bytes())
     }
 
     /// Create from a hexadecimal string
     pub fn try_from_hex_string(v: &str) -> Result<Signature, Error> {
         let vec: Vec<u8> = hex::decode(v)?;
-        Ok(Signature(KSignature::from_bytes(&vec)?))
+        Ok(Signature(KSignature::try_from(&*vec)?))
     }
 
     // Mock data for testing
@@ -37,7 +36,7 @@ impl Se for Signature {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&hex::encode(self.0))
+        serializer.serialize_str(&hex::encode(self.to_bytes()))
     }
 }
 
@@ -73,7 +72,7 @@ impl Visitor<'_> for SignatureVisitor {
         }
 
         let ksig: KSignature =
-            KSignature::from_bytes(&vec).map_err(|e| DeserializeError::custom(format!("{}", e)))?;
+            KSignature::try_from(&*vec).map_err(|e| DeserializeError::custom(format!("{}", e)))?;
 
         Ok(Signature(ksig))
     }
