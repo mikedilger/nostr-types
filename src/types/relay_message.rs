@@ -18,6 +18,9 @@ pub enum RelayMessage {
 
     /// Used to notify clients if an event was successuful
     Ok(Id, bool, String),
+
+    /// Used to send authentication challenges
+    Auth(String),
 }
 
 impl RelayMessage {
@@ -59,6 +62,12 @@ impl Serialize for RelayMessage {
                 seq.serialize_element(&id)?;
                 seq.serialize_element(&ok)?;
                 seq.serialize_element(&message)?;
+                seq.end()
+            }
+            RelayMessage::Auth(challenge) => {
+                let mut seq = serializer.serialize_seq(Some(2))?;
+                seq.serialize_element("AUTH")?;
+                seq.serialize_element(&challenge)?;
                 seq.end()
             }
         }
@@ -119,6 +128,11 @@ impl<'de> Visitor<'de> for RelayMessageVisitor {
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing string field"))?;
             Ok(RelayMessage::Ok(id, ok, message))
+        } else if word == "AUTH" {
+            let challenge: String = seq
+                .next_element()?
+                .ok_or_else(|| DeError::custom("Message missing challenge field"))?;
+            Ok(RelayMessage::Auth(challenge))
         } else {
             Err(DeError::custom(format!("Unknown Message: {}", word)))
         }

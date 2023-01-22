@@ -72,6 +72,10 @@ fn main() {
                     RelayMessage::Ok(_id, ok, reason) => {
                         println!("OK: ok={} reason={}", ok, reason)
                     }
+                    RelayMessage::Auth(challenge) => {
+                        // FIXME
+                        println!("AUTH: {}", challenge)
+                    }
                 }
             }
             Message::Binary(_) => println!("IGNORING BINARY MESSAGE"),
