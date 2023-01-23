@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 /// The content of a webserver's /.well-known/nostr.json file used in NIP-05 and NIP-35
 /// This allows lookup and verification of a nostr user via a `user@domain` style identifier.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Nip05 {
     /// DNS names mapped to public keys
     pub names: HashMap<String, PublicKeyHex>,

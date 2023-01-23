@@ -4,7 +4,7 @@ use bech32::{FromBase32, ToBase32};
 use serde::{Deserialize, Serialize};
 
 /// A person's profile on nostr which consists of the data needed in order to follow someone.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Profile {
     /// Their public key
     pub pubkey: PublicKey,
