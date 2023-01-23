@@ -288,6 +288,31 @@ impl Event {
         output
     }
 
+    /// If the event refers to people, get all the PublicKeys it refers to
+    /// along with recommended relay URL and petname for each, but only if they
+    /// are referenced within the note.
+    pub fn referenced_people(&self) -> Vec<(PublicKeyHex, Option<Url>, Option<String>)> {
+        let mut output: Vec<(PublicKeyHex, Option<Url>, Option<String>)> = Vec::new();
+        for (n, tag) in self.tags.iter().enumerate() {
+            if let Tag::Pubkey {
+                pubkey,
+                recommended_relay_url,
+                petname,
+            } = tag
+            {
+                if self.content.contains(&format!("#[{}]", n)) {
+                    output.push((
+                        pubkey.to_owned(),
+                        recommended_relay_url.to_owned(),
+                        petname.to_owned(),
+                    ));
+                }
+            }
+        }
+
+        output
+    }
+
     /// Is the event a reply?
     #[deprecated(since = "0.2.0", note = "please use `replies_to` instead")]
     pub fn is_reply(&self) -> bool {
