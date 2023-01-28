@@ -50,6 +50,9 @@ pub use relay_information_document::RelayInformationDocument;
 mod signature;
 pub use signature::{Signature, SignatureHex};
 
+mod relay_list;
+pub use relay_list::{SimpleRelayList, SimpleRelayUsage};
+
 mod subscription_id;
 pub use subscription_id::SubscriptionId;
 
