@@ -1,5 +1,6 @@
 use super::{
-    EventKind, Id, Metadata, PrivateKey, PublicKey, PublicKeyHex, Signature, Tag, Unixtime, Url,
+    EventKind, Id, Metadata, PrivateKey, PublicKey, PublicKeyHex, Signature, Tag, UncheckedUrl,
+    Unixtime,
 };
 use crate::Error;
 use k256::sha2::{Digest, Sha256};
@@ -266,8 +267,8 @@ impl Event {
 
     /// If the event refers to people, get all the PublicKeys it refers to
     /// along with recommended relay URL and petname for each
-    pub fn people(&self) -> Vec<(PublicKeyHex, Option<Url>, Option<String>)> {
-        let mut output: Vec<(PublicKeyHex, Option<Url>, Option<String>)> = Vec::new();
+    pub fn people(&self) -> Vec<(PublicKeyHex, Option<UncheckedUrl>, Option<String>)> {
+        let mut output: Vec<(PublicKeyHex, Option<UncheckedUrl>, Option<String>)> = Vec::new();
 
         // All 'p' tags
         for tag in self.tags.iter() {
@@ -291,8 +292,8 @@ impl Event {
     /// If the event refers to people, get all the PublicKeys it refers to
     /// along with recommended relay URL and petname for each, but only if they
     /// are referenced within the note.
-    pub fn referenced_people(&self) -> Vec<(PublicKeyHex, Option<Url>, Option<String>)> {
-        let mut output: Vec<(PublicKeyHex, Option<Url>, Option<String>)> = Vec::new();
+    pub fn referenced_people(&self) -> Vec<(PublicKeyHex, Option<UncheckedUrl>, Option<String>)> {
+        let mut output: Vec<(PublicKeyHex, Option<UncheckedUrl>, Option<String>)> = Vec::new();
         for (n, tag) in self.tags.iter().enumerate() {
             if let Tag::Pubkey {
                 pubkey,
@@ -331,7 +332,7 @@ impl Event {
 
     /// If this event replies to another, get that other event's Id along with
     /// an optional recommended_relay_url
-    pub fn replies_to(&self) -> Option<(Id, Option<Url>)> {
+    pub fn replies_to(&self) -> Option<(Id, Option<UncheckedUrl>)> {
         // must be a text note
         if self.kind != EventKind::TextNote {
             return None;
@@ -399,7 +400,7 @@ impl Event {
 
     /// If this event replies to a thread, get that threads root event Id if
     /// available, along with an optional recommended_relay_url
-    pub fn replies_to_root(&self) -> Option<(Id, Option<Url>)> {
+    pub fn replies_to_root(&self) -> Option<(Id, Option<UncheckedUrl>)> {
         if self.kind != EventKind::TextNote {
             return None;
         }
@@ -444,13 +445,13 @@ impl Event {
 
     /// If this event replies to a thread, get all ancestors in that thread.
     /// This also gets all mentioned events.
-    pub fn replies_to_ancestors(&self) -> Vec<(Id, Option<Url>)> {
+    pub fn replies_to_ancestors(&self) -> Vec<(Id, Option<UncheckedUrl>)> {
         // must be a text note
         if self.kind != EventKind::TextNote {
             return vec![];
         }
 
-        let mut output: Vec<(Id, Option<Url>)> = Vec::new();
+        let mut output: Vec<(Id, Option<UncheckedUrl>)> = Vec::new();
 
         for tag in self.tags.iter() {
             if let Tag::Event {
@@ -468,13 +469,13 @@ impl Event {
 
     /// If this event mentions others, get those other event Ids
     /// and optional recommended relay Urls
-    pub fn mentions(&self) -> Vec<(Id, Option<Url>)> {
+    pub fn mentions(&self) -> Vec<(Id, Option<UncheckedUrl>)> {
         // must be a text note
         if self.kind != EventKind::TextNote {
             return vec![];
         }
 
-        let mut output: Vec<(Id, Option<Url>)> = Vec::new();
+        let mut output: Vec<(Id, Option<UncheckedUrl>)> = Vec::new();
 
         // Collect every 'e' tag marked as 'mention'
         for tag in self.tags.iter() {
@@ -517,7 +518,7 @@ impl Event {
 
     /// If this event reacts to another, get that other event's Id,
     /// the reaction content, and an optional Recommended relay Url
-    pub fn reacts_to(&self) -> Option<(Id, String, Option<Url>)> {
+    pub fn reacts_to(&self) -> Option<(Id, String, Option<UncheckedUrl>)> {
         if self.kind != EventKind::Reaction {
             return None;
         }
@@ -609,12 +610,12 @@ impl Event {
     }
 
     /// Return all the URLs this event refers to
-    pub fn urls(&self) -> Vec<Url> {
+    pub fn urls(&self) -> Vec<UncheckedUrl> {
         if self.kind != EventKind::TextNote {
             return vec![];
         }
 
-        let mut output: Vec<Url> = Vec::new();
+        let mut output: Vec<UncheckedUrl> = Vec::new();
 
         for tag in self.tags.iter() {
             if let Tag::Reference(reference) = tag {
@@ -675,7 +676,7 @@ mod test {
             kind: EventKind::TextNote,
             tags: vec![Tag::Event {
                 id: Id::mock(),
-                recommended_relay_url: Some(Url::mock()),
+                recommended_relay_url: Some(UncheckedUrl::mock()),
                 marker: None,
             }],
             content: "Hello World!".to_string(),

@@ -1,4 +1,4 @@
-use super::Url;
+use super::UncheckedUrl;
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
@@ -26,21 +26,21 @@ impl Default for SimpleRelayUsage {
 
 /// A list of relays with SimpleRelayUsage
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct SimpleRelayList(pub HashMap<Url, SimpleRelayUsage>);
+pub struct SimpleRelayList(pub HashMap<UncheckedUrl, SimpleRelayUsage>);
 
 impl SimpleRelayList {
     #[allow(dead_code)]
     pub(crate) fn mock() -> SimpleRelayList {
-        let mut map: HashMap<Url, SimpleRelayUsage> = HashMap::new();
+        let mut map: HashMap<UncheckedUrl, SimpleRelayUsage> = HashMap::new();
         let _ = map.insert(
-            Url::new("wss://nostr.oxtr.dev"),
+            UncheckedUrl::from_str("wss://nostr.oxtr.dev"),
             SimpleRelayUsage {
                 write: true,
                 read: true,
             },
         );
         let _ = map.insert(
-            Url::new("wss://nostr-relay.wlvs.space"),
+            UncheckedUrl::from_str("wss://nostr-relay.wlvs.space"),
             SimpleRelayUsage {
                 write: false,
                 read: true,
@@ -85,8 +85,8 @@ impl<'de> Visitor<'de> for SimpleRelayListVisitor {
     where
         M: MapAccess<'de>,
     {
-        let mut map: HashMap<Url, SimpleRelayUsage> = HashMap::new();
-        while let Some((key, value)) = access.next_entry::<Url, SimpleRelayUsage>()? {
+        let mut map: HashMap<UncheckedUrl, SimpleRelayUsage> = HashMap::new();
+        while let Some((key, value)) = access.next_entry::<UncheckedUrl, SimpleRelayUsage>()? {
             let _ = map.insert(key, value);
         }
         Ok(SimpleRelayList(map))

@@ -1,4 +1,4 @@
-use crate::{Id, PublicKeyHex, SignatureHex, Unixtime, Url};
+use crate::{Id, PublicKeyHex, SignatureHex, UncheckedUrl, Unixtime};
 use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
 use std::fmt;
@@ -29,7 +29,7 @@ pub enum Tag {
         id: Id,
 
         /// A recommended relay URL to find that other event
-        recommended_relay_url: Option<Url>,
+        recommended_relay_url: Option<UncheckedUrl>,
 
         /// A marker (commonly things like 'reply')
         marker: Option<String>,
@@ -46,7 +46,7 @@ pub enum Tag {
         pubkey: PublicKeyHex,
 
         /// A recommended relay URL to find information on that public key
-        recommended_relay_url: Option<Url>,
+        recommended_relay_url: Option<UncheckedUrl>,
 
         /// A petname given to this identity by the event author
         petname: Option<String>,
@@ -56,7 +56,7 @@ pub enum Tag {
     Hashtag(String),
 
     /// 'r' A reference to a URL
-    Reference(Url),
+    Reference(UncheckedUrl),
 
     /// 'g' A geohash
     Geohash(String),
@@ -110,7 +110,7 @@ impl Tag {
     pub(crate) fn mock() -> Tag {
         Tag::Event {
             id: Id::mock(),
-            recommended_relay_url: Some(Url::mock()),
+            recommended_relay_url: Some(UncheckedUrl::mock()),
             marker: None,
         }
     }
@@ -311,7 +311,7 @@ impl<'de> Visitor<'de> for TagVisitor {
                     });
                 }
             };
-            let recommended_relay_url: Option<Url> = seq.next_element()?;
+            let recommended_relay_url: Option<UncheckedUrl> = seq.next_element()?;
             let marker: Option<String> = seq.next_element()?;
             Ok(Tag::Event {
                 id,
@@ -339,7 +339,7 @@ impl<'de> Visitor<'de> for TagVisitor {
                     });
                 }
             };
-            let recommended_relay_url: Option<Url> = seq.next_element()?;
+            let recommended_relay_url: Option<UncheckedUrl> = seq.next_element()?;
             let petname: Option<String> = seq.next_element()?;
             Ok(Tag::Pubkey {
                 pubkey,

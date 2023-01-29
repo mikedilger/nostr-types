@@ -33,5 +33,5 @@ pub use types::{
     ClientMessage, EncryptedPrivateKey, Event, EventKind, Filter, Id, IdHex, KeySecurity, Metadata,
     Nip05, PreEvent, PrivateKey, Profile, PublicKey, PublicKeyHex, RelayInformationDocument,
     RelayMessage, RelayUrl, Signature, SignatureHex, SimpleRelayList, SimpleRelayUsage,
-    SubscriptionId, Tag, Unixtime, Url,
+    SubscriptionId, Tag, UncheckedUrl, Unixtime, Url,
 };

@@ -1,4 +1,4 @@
-use super::{PublicKey, RelayUrl, Url};
+use super::{PublicKey, UncheckedUrl};
 use crate::Error;
 use bech32::{FromBase32, ToBase32};
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,7 @@ pub struct Profile {
     pub pubkey: PublicKey,
 
     /// Some of the relays they post to (when the profile was created)
-    pub relays: Vec<Url>,
+    pub relays: Vec<UncheckedUrl>,
 }
 
 impl Profile {
@@ -26,11 +26,9 @@ impl Profile {
 
         // Push relays
         for relay in &self.relays {
-            let r: RelayUrl = relay.to_owned().try_into()?;
-
             tlv.push(1); // type 'relay'
-            tlv.push(r.0.len() as u8); // the length of the string
-            tlv.extend(r.0.as_bytes());
+            tlv.push(relay.0.len() as u8); // the length of the string
+            tlv.extend(relay.0.as_bytes());
         }
 
         Ok(bech32::encode(
@@ -51,7 +49,7 @@ impl Profile {
                 return Err(Error::InvalidProfile);
             }
             let pubkey = PublicKey::from_bytes(&tlv[2..2 + 32])?;
-            let mut relays: Vec<Url> = Vec::new();
+            let mut relays: Vec<UncheckedUrl> = Vec::new();
             let mut pos = 2 + 32;
             while tlv.len() >= pos + 2 {
                 let typ = tlv[pos];
@@ -65,10 +63,7 @@ impl Profile {
                 }
                 let relay_bytes = &tlv[pos..pos + (len as usize)];
                 let relay_str = std::str::from_utf8(relay_bytes)?;
-                let relay = Url::new(relay_str);
-                if !relay.is_valid_relay_url() {
-                    return Err(Error::InvalidProfile);
-                }
+                let relay = UncheckedUrl::from_str(relay_str);
                 relays.push(relay);
                 pos += len as usize;
             }
@@ -87,8 +82,8 @@ impl Profile {
         Profile {
             pubkey,
             relays: vec![
-                Url::new("wss://relay.example.com"),
-                Url::new("wss://relay2.example.com"),
+                UncheckedUrl::from_str("wss://relay.example.com"),
+                UncheckedUrl::from_str("wss://relay2.example.com"),
             ],
         }
     }
@@ -117,7 +112,10 @@ mod test {
                 "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d",
             )
             .unwrap(),
-            relays: vec![Url::new("wss://r.x.com"), Url::new("wss://djbas.sadkb.com")],
+            relays: vec![
+                UncheckedUrl::from_str("wss://r.x.com"),
+                UncheckedUrl::from_str("wss://djbas.sadkb.com"),
+            ],
         };
 
         let bech32 = "nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p";

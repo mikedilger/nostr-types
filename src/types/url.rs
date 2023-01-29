@@ -1,14 +1,47 @@
 use crate::error::Error;
-use serde::de::{Deserializer, Visitor};
-use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-/// A String representing a Url with a notion of whether it is a valid nostr URL or not
-///
-/// This Serializes/Deserializes from a string
+/// A string that is supposed to represent a URL but which might be invalid
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, PartialOrd, Serialize, Ord)]
+pub struct UncheckedUrl(pub String);
+
+impl fmt::Display for UncheckedUrl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl UncheckedUrl {
+    /// Create an UncheckedUrl from a &str
+    // note - this from_str cannot error, so we don't impl std::str::FromStr which by
+    //        all rights should be called TryFromStr anyway
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_str(s: &str) -> UncheckedUrl {
+        UncheckedUrl(s.to_owned())
+    }
+
+    /// Create an UncheckedUrl from a String
+    pub fn from_string(s: String) -> UncheckedUrl {
+        UncheckedUrl(s)
+    }
+
+    /// As &str
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> UncheckedUrl {
+        UncheckedUrl("/home/user/file.txt".to_string())
+    }
+}
+
+/// A String representing a valid URL with a scheme and authority present.
+/// We don't serialize/deserialize these directly, see `UncheckedUrl` for that
 #[derive(Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
-pub struct Url(String, bool);
+pub struct Url(pub String);
 
 impl fmt::Display for Url {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -17,130 +50,47 @@ impl fmt::Display for Url {
 }
 
 impl Url {
+    /// Create a new Url from an UncheckedUrl
+    pub fn try_from_unchecked_url(u: &UncheckedUrl) -> Result<Url, Error> {
+        Url::try_from_str(&u.0)
+    }
+
     /// Create a new Url from a string
-    pub fn new(s: &str) -> Url {
-        Url(s.to_owned(), s.parse::<http::Uri>().is_ok())
-    }
-
-    // Get URL string in canonical form, or Err with the original
-    fn canonical_str(&self) -> Result<String, Error> {
-        // Must be a valid URL
-        if !self.1 {
-            return Err(Error::Url(self.0.clone()));
+    pub fn try_from_str(s: &str) -> Result<Url, Error> {
+        // We use http::Uri parse to validate
+        let uri = s.trim().parse::<http::Uri>()?;
+        if uri.scheme().is_none() {
+            return Err(Error::InvalidUrlMissingScheme);
+        }
+        if uri.authority().is_none() {
+            return Err(Error::InvalidUrlMissingAuthority);
         }
 
-        // Clean it up
-        let mut s = self.0.trim().to_lowercase();
-        if s.ends_with('/') {
-            s = s.trim_end_matches('/').to_string();
-        }
-
-        // Must be a valid Relay URL
-        match Self::is_valid_relay_url_str(&s) {
-            true => Ok(s),
-            false => Err(Error::Url(s)),
-        }
+        // We use http::Uri Display trait to canonicalize
+        Ok(Url(format!("{}", uri)))
     }
 
-    /// Check if the URL is a valid relay URL
-    pub fn is_valid_relay_url(&self) -> bool {
-        Self::is_valid_relay_url_str(&self.0)
+    /// Convert into a UncheckedUrl
+    pub fn to_unchecked_url(&self) -> UncheckedUrl {
+        UncheckedUrl(self.0.clone())
     }
 
-    fn is_valid_relay_url_str(s: &str) -> bool {
-        if let Ok(uri) = s.parse::<http::Uri>() {
-            if let Some(scheme) = uri.scheme() {
-                if scheme.as_str() == "wss" || scheme.as_str() == "ws" {
-                    if let Some(authority) = uri.authority() {
-                        let host = authority.host();
-                        if host == host.trim()
-                            && !host.starts_with("localhost")
-                            && !host.starts_with("127.")
-                            && !host.starts_with("[::1/")
-                            && !host.starts_with("[0:")
-                        {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        false
-    }
-
-    /// If the Url represents a valid URL
-    pub fn is_valid(&self) -> bool {
-        self.1
+    /// As &str
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> Url {
-        Url("wss://example.com".to_string(), true)
-    }
-}
-
-impl Serialize for Url {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        // just serialize the string part. the valid part can be recomputed.
-        serializer.serialize_str(&self.0)
-    }
-}
-
-impl<'de> Deserialize<'de> for Url {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_str(UrlVisitor)
-    }
-}
-
-struct UrlVisitor;
-
-impl Visitor<'_> for UrlVisitor {
-    type Value = Url;
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a string representing a nostr URL")
-    }
-
-    fn visit_str<E>(self, v: &str) -> Result<Url, E>
-    where
-        E: serde::de::Error,
-    {
-        Ok(Url::new(v))
+        Url("http://example.com/avatar.png".to_string())
     }
 }
 
 /// A Url validated as a nostr relay url in canonical form
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, PartialOrd, Serialize, Ord)]
+/// We don't serialize/deserialize these directly, see `UncheckedUrl` for that
+#[derive(Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
 pub struct RelayUrl(pub String);
-
-impl TryFrom<Url> for RelayUrl {
-    type Error = Error;
-
-    fn try_from(u: Url) -> Result<RelayUrl, Error> {
-        Ok(RelayUrl(u.canonical_str()?))
-    }
-}
-
-impl TryFrom<&Url> for RelayUrl {
-    type Error = Error;
-
-    fn try_from(u: &Url) -> Result<RelayUrl, Error> {
-        Ok(RelayUrl(u.canonical_str()?))
-    }
-}
-
-impl From<RelayUrl> for Url {
-    fn from(ru: RelayUrl) -> Url {
-        Url(ru.0, true)
-    }
-}
 
 impl fmt::Display for RelayUrl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -148,9 +98,103 @@ impl fmt::Display for RelayUrl {
     }
 }
 
+impl RelayUrl {
+    /// Create a new RelayUrl from a Url
+    pub fn try_from_url(u: &Url) -> Result<RelayUrl, Error> {
+        // Trim trailing slash if any
+        let mut s = u.0.clone();
+        while s.ends_with('/') {
+            let _ = s.pop();
+        }
+
+        let uri = s.parse::<http::Uri>()?;
+
+        if let Some(scheme) = uri.scheme() {
+            // Verify the scheme is websockets
+            if scheme.as_str() != "wss" && scheme.as_str() != "ws" {
+                return Err(Error::InvalidUrlScheme(scheme.as_str().to_owned()));
+            }
+        } else {
+            return Err(Error::InvalidUrlMissingScheme);
+        }
+
+        if let Some(authority) = uri.authority() {
+            // Verify a sane host
+            let host = authority.host();
+
+            if host != host.trim()
+                || host.starts_with("localhost")
+                || host.starts_with("127.")
+                || host.starts_with("[::1/")
+                || host.starts_with("[0:")
+            {
+                return Err(Error::InvalidUrlHost(host.to_owned()));
+            }
+        } else {
+            return Err(Error::InvalidUrlMissingAuthority);
+        }
+
+        Ok(RelayUrl(s))
+    }
+
+    /// Create a new RelayUrl from an UncheckedUrl
+    pub fn try_from_unchecked_url(u: &UncheckedUrl) -> Result<RelayUrl, Error> {
+        Self::try_from_str(&u.0)
+    }
+
+    /// Construct a new RelayUrl from a Url
+    pub fn try_from_str(s: &str) -> Result<RelayUrl, Error> {
+        let url = Url::try_from_str(s)?;
+        RelayUrl::try_from_url(&url)
+    }
+
+    /// Convert into a Url
+    pub fn to_url(&self) -> Url {
+        Url(self.0.clone())
+    }
+
+    /// Convert into a UncheckedUrl
+    pub fn to_unchecked_url(&self) -> UncheckedUrl {
+        UncheckedUrl(self.0.clone())
+    }
+
+    /// As &str
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> Url {
+        Url("wss://example.com".to_string())
+    }
+}
+
+impl TryFrom<Url> for RelayUrl {
+    type Error = Error;
+
+    fn try_from(u: Url) -> Result<RelayUrl, Error> {
+        RelayUrl::try_from_url(&u)
+    }
+}
+
+impl TryFrom<&Url> for RelayUrl {
+    type Error = Error;
+
+    fn try_from(u: &Url) -> Result<RelayUrl, Error> {
+        RelayUrl::try_from_url(u)
+    }
+}
+
+impl From<RelayUrl> for Url {
+    fn from(ru: RelayUrl) -> Url {
+        ru.to_url()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
-    test_serde! {Url, test_url_serde}
+    test_serde! {UncheckedUrl, test_unchecked_url_serde}
 }
