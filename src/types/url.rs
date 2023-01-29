@@ -62,8 +62,20 @@ impl Url {
         if uri.scheme().is_none() {
             return Err(Error::InvalidUrlMissingScheme);
         }
-        if uri.authority().is_none() {
-            return Err(Error::InvalidUrlMissingAuthority);
+        match uri.authority() {
+            None => return Err(Error::InvalidUrlMissingAuthority),
+            Some(auth) => {
+                // This is an INCOMPLETE list of bad hosts
+                let host = auth.host();
+                if host != host.trim()
+                    || host.starts_with("localhost")
+                    || host.starts_with("127.")
+                    || host.starts_with("[::1/")
+                    || host.starts_with("[0:")
+                {
+                    return Err(Error::InvalidUrlHost(host.to_owned()));
+                }
+            }
         }
 
         // We use http::Uri Display trait to canonicalize
@@ -116,22 +128,6 @@ impl RelayUrl {
             }
         } else {
             return Err(Error::InvalidUrlMissingScheme);
-        }
-
-        if let Some(authority) = uri.authority() {
-            // Verify a sane host
-            let host = authority.host();
-
-            if host != host.trim()
-                || host.starts_with("localhost")
-                || host.starts_with("127.")
-                || host.starts_with("[::1/")
-                || host.starts_with("[0:")
-            {
-                return Err(Error::InvalidUrlHost(host.to_owned()));
-            }
-        } else {
-            return Err(Error::InvalidUrlMissingAuthority);
         }
 
         Ok(RelayUrl(s))

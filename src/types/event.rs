@@ -1,5 +1,5 @@
 use super::{
-    EventKind, Id, Metadata, PrivateKey, PublicKey, PublicKeyHex, Signature, Tag, UncheckedUrl,
+    EventKind, Id, Metadata, PrivateKey, PublicKey, PublicKeyHex, RelayUrl, Signature, Tag,
     Unixtime,
 };
 use crate::Error;
@@ -267,8 +267,8 @@ impl Event {
 
     /// If the event refers to people, get all the PublicKeys it refers to
     /// along with recommended relay URL and petname for each
-    pub fn people(&self) -> Vec<(PublicKeyHex, Option<UncheckedUrl>, Option<String>)> {
-        let mut output: Vec<(PublicKeyHex, Option<UncheckedUrl>, Option<String>)> = Vec::new();
+    pub fn people(&self) -> Vec<(PublicKeyHex, Option<RelayUrl>, Option<String>)> {
+        let mut output: Vec<(PublicKeyHex, Option<RelayUrl>, Option<String>)> = Vec::new();
 
         // All 'p' tags
         for tag in self.tags.iter() {
@@ -280,7 +280,9 @@ impl Event {
             {
                 output.push((
                     pubkey.to_owned(),
-                    recommended_relay_url.to_owned(),
+                    recommended_relay_url
+                        .as_ref()
+                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
                     petname.to_owned(),
                 ));
             }
@@ -292,8 +294,8 @@ impl Event {
     /// If the event refers to people, get all the PublicKeys it refers to
     /// along with recommended relay URL and petname for each, but only if they
     /// are referenced within the note.
-    pub fn referenced_people(&self) -> Vec<(PublicKeyHex, Option<UncheckedUrl>, Option<String>)> {
-        let mut output: Vec<(PublicKeyHex, Option<UncheckedUrl>, Option<String>)> = Vec::new();
+    pub fn referenced_people(&self) -> Vec<(PublicKeyHex, Option<RelayUrl>, Option<String>)> {
+        let mut output: Vec<(PublicKeyHex, Option<RelayUrl>, Option<String>)> = Vec::new();
         for (n, tag) in self.tags.iter().enumerate() {
             if let Tag::Pubkey {
                 pubkey,
@@ -304,7 +306,9 @@ impl Event {
                 if self.content.contains(&format!("#[{}]", n)) {
                     output.push((
                         pubkey.to_owned(),
-                        recommended_relay_url.to_owned(),
+                        recommended_relay_url
+                            .as_ref()
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
                         petname.to_owned(),
                     ));
                 }
@@ -332,7 +336,7 @@ impl Event {
 
     /// If this event replies to another, get that other event's Id along with
     /// an optional recommended_relay_url
-    pub fn replies_to(&self) -> Option<(Id, Option<UncheckedUrl>)> {
+    pub fn replies_to(&self) -> Option<(Id, Option<RelayUrl>)> {
         // must be a text note
         if self.kind != EventKind::TextNote {
             return None;
@@ -357,7 +361,12 @@ impl Event {
             } = tag
             {
                 if marker.is_some() && marker.as_deref().unwrap() == "reply" {
-                    return Some((*id, recommended_relay_url.to_owned()));
+                    return Some((
+                        *id,
+                        recommended_relay_url
+                            .as_ref()
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                    ));
                 }
             }
         }
@@ -371,7 +380,12 @@ impl Event {
             } = tag
             {
                 if marker.is_some() && marker.as_deref().unwrap() == "root" {
-                    return Some((*id, recommended_relay_url.to_owned()));
+                    return Some((
+                        *id,
+                        recommended_relay_url
+                            .as_ref()
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                    ));
                 }
             }
         }
@@ -388,7 +402,12 @@ impl Event {
             .find(|t| matches!(t, Tag::Event { .. }))
         {
             if marker.is_none() {
-                return Some((*id, recommended_relay_url.to_owned()));
+                return Some((
+                    *id,
+                    recommended_relay_url
+                        .as_ref()
+                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                ));
             }
         }
 
@@ -400,7 +419,7 @@ impl Event {
 
     /// If this event replies to a thread, get that threads root event Id if
     /// available, along with an optional recommended_relay_url
-    pub fn replies_to_root(&self) -> Option<(Id, Option<UncheckedUrl>)> {
+    pub fn replies_to_root(&self) -> Option<(Id, Option<RelayUrl>)> {
         if self.kind != EventKind::TextNote {
             return None;
         }
@@ -414,7 +433,12 @@ impl Event {
             } = tag
             {
                 if marker.is_some() && marker.as_deref().unwrap() == "root" {
-                    return Some((*id, recommended_relay_url.to_owned()));
+                    return Some((
+                        *id,
+                        recommended_relay_url
+                            .as_ref()
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                    ));
                 }
             }
         }
@@ -436,7 +460,12 @@ impl Event {
         }) = self.tags.iter().find(|t| matches!(t, Tag::Event { .. }))
         {
             if marker.is_none() {
-                return Some((*id, recommended_relay_url.to_owned()));
+                return Some((
+                    *id,
+                    recommended_relay_url
+                        .as_ref()
+                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                ));
             }
         }
 
@@ -445,13 +474,13 @@ impl Event {
 
     /// If this event replies to a thread, get all ancestors in that thread.
     /// This also gets all mentioned events.
-    pub fn replies_to_ancestors(&self) -> Vec<(Id, Option<UncheckedUrl>)> {
+    pub fn replies_to_ancestors(&self) -> Vec<(Id, Option<RelayUrl>)> {
         // must be a text note
         if self.kind != EventKind::TextNote {
             return vec![];
         }
 
-        let mut output: Vec<(Id, Option<UncheckedUrl>)> = Vec::new();
+        let mut output: Vec<(Id, Option<RelayUrl>)> = Vec::new();
 
         for tag in self.tags.iter() {
             if let Tag::Event {
@@ -460,7 +489,12 @@ impl Event {
                 marker: _,
             } = tag
             {
-                output.push((*id, recommended_relay_url.to_owned()));
+                output.push((
+                    *id,
+                    recommended_relay_url
+                        .as_ref()
+                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                ));
             }
         }
 
@@ -469,13 +503,13 @@ impl Event {
 
     /// If this event mentions others, get those other event Ids
     /// and optional recommended relay Urls
-    pub fn mentions(&self) -> Vec<(Id, Option<UncheckedUrl>)> {
+    pub fn mentions(&self) -> Vec<(Id, Option<RelayUrl>)> {
         // must be a text note
         if self.kind != EventKind::TextNote {
             return vec![];
         }
 
-        let mut output: Vec<(Id, Option<UncheckedUrl>)> = Vec::new();
+        let mut output: Vec<(Id, Option<RelayUrl>)> = Vec::new();
 
         // Collect every 'e' tag marked as 'mention'
         for tag in self.tags.iter() {
@@ -486,7 +520,12 @@ impl Event {
             } = tag
             {
                 if marker.is_some() && marker.as_deref().unwrap() == "mention" {
-                    output.push((*id, recommended_relay_url.to_owned()));
+                    output.push((
+                        *id,
+                        recommended_relay_url
+                            .as_ref()
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                    ));
                 }
             }
         }
@@ -507,7 +546,12 @@ impl Event {
                 } = tag
                 {
                     if marker.is_none() {
-                        output.push((*id, recommended_relay_url.to_owned()));
+                        output.push((
+                            *id,
+                            recommended_relay_url
+                                .as_ref()
+                                .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                        ));
                     }
                 }
             }
@@ -518,7 +562,7 @@ impl Event {
 
     /// If this event reacts to another, get that other event's Id,
     /// the reaction content, and an optional Recommended relay Url
-    pub fn reacts_to(&self) -> Option<(Id, String, Option<UncheckedUrl>)> {
+    pub fn reacts_to(&self) -> Option<(Id, String, Option<RelayUrl>)> {
         if self.kind != EventKind::Reaction {
             return None;
         }
@@ -534,7 +578,13 @@ impl Event {
             .rev()
             .find(|t| matches!(t, Tag::Event { .. }))
         {
-            return Some((*id, self.content.clone(), recommended_relay_url.to_owned()));
+            return Some((
+                *id,
+                self.content.clone(),
+                recommended_relay_url
+                    .as_ref()
+                    .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+            ));
         }
 
         None
@@ -610,16 +660,18 @@ impl Event {
     }
 
     /// Return all the URLs this event refers to
-    pub fn urls(&self) -> Vec<UncheckedUrl> {
+    pub fn urls(&self) -> Vec<RelayUrl> {
         if self.kind != EventKind::TextNote {
             return vec![];
         }
 
-        let mut output: Vec<UncheckedUrl> = Vec::new();
+        let mut output: Vec<RelayUrl> = Vec::new();
 
         for tag in self.tags.iter() {
             if let Tag::Reference(reference) = tag {
-                output.push(reference.clone());
+                if let Ok(relay_url) = RelayUrl::try_from_unchecked_url(reference) {
+                    output.push(relay_url);
+                }
             }
         }
 
