@@ -1,4 +1,4 @@
-use super::{PublicKey, Url};
+use super::{PublicKey, RelayUrl, Url};
 use crate::Error;
 use bech32::{FromBase32, ToBase32};
 use serde::{Deserialize, Serialize};
@@ -26,9 +26,11 @@ impl Profile {
 
         // Push relays
         for relay in &self.relays {
+            let r: RelayUrl = relay.to_owned().try_into()?;
+
             tlv.push(1); // type 'relay'
-            tlv.push(relay.len() as u8); // the length of the string
-            tlv.extend(relay.as_bytes());
+            tlv.push(r.0.len() as u8); // the length of the string
+            tlv.extend(r.0.as_bytes());
         }
 
         Ok(bech32::encode(

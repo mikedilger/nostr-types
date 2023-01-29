@@ -1,3 +1,4 @@
+use crate::error::Error;
 use serde::de::{Deserializer, Visitor};
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
@@ -8,14 +9,6 @@ use std::fmt;
 /// This Serializes/Deserializes from a string
 #[derive(Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
 pub struct Url(String, bool);
-
-impl std::ops::Deref for Url {
-    type Target = str;
-    #[allow(clippy::explicit_auto_deref)]
-    fn deref(&self) -> &Self::Target {
-        &*self.0
-    }
-}
 
 impl fmt::Display for Url {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -29,11 +22,11 @@ impl Url {
         Url(s.to_owned(), s.parse::<http::Uri>().is_ok())
     }
 
-    /// Get URL string in canonical form, or Err with the original
-    pub fn canonical(&self) -> Result<String, String> {
+    // Get URL string in canonical form, or Err with the original
+    fn canonical_str(&self) -> Result<String, Error> {
         // Must be a valid URL
         if !self.1 {
-            return Err(self.0.clone());
+            return Err(Error::Url(self.0.clone()));
         }
 
         // Clean it up
@@ -45,7 +38,7 @@ impl Url {
         // Must be a valid Relay URL
         match Self::is_valid_relay_url_str(&s) {
             true => Ok(s),
-            false => Err(s),
+            false => Err(Error::Url(s)),
         }
     }
 
@@ -120,6 +113,38 @@ impl Visitor<'_> for UrlVisitor {
         E: serde::de::Error,
     {
         Ok(Url::new(v))
+    }
+}
+
+/// A Url validated as a nostr relay url in canonical form
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, PartialOrd, Serialize, Ord)]
+pub struct RelayUrl(pub String);
+
+impl TryFrom<Url> for RelayUrl {
+    type Error = Error;
+
+    fn try_from(u: Url) -> Result<RelayUrl, Error> {
+        Ok(RelayUrl(u.canonical_str()?))
+    }
+}
+
+impl TryFrom<&Url> for RelayUrl {
+    type Error = Error;
+
+    fn try_from(u: &Url) -> Result<RelayUrl, Error> {
+        Ok(RelayUrl(u.canonical_str()?))
+    }
+}
+
+impl From<RelayUrl> for Url {
+    fn from(ru: RelayUrl) -> Url {
+        Url(ru.0, true)
+    }
+}
+
+impl fmt::Display for RelayUrl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

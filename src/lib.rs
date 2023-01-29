@@ -32,6 +32,6 @@ mod types;
 pub use types::{
     ClientMessage, EncryptedPrivateKey, Event, EventKind, Filter, Id, IdHex, KeySecurity, Metadata,
     Nip05, PreEvent, PrivateKey, Profile, PublicKey, PublicKeyHex, RelayInformationDocument,
-    RelayMessage, Signature, SignatureHex, SimpleRelayList, SimpleRelayUsage, SubscriptionId, Tag,
-    Unixtime, Url,
+    RelayMessage, RelayUrl, Signature, SignatureHex, SimpleRelayList, SimpleRelayUsage,
+    SubscriptionId, Tag, Unixtime, Url,
 };

@@ -107,6 +107,10 @@ pub enum Error {
     #[error("Decryption error: {0}")]
     Unpad(#[from] aes::cipher::block_padding::UnpadError),
 
+    /// Url Error
+    #[error("Not a valid nostr relay url: {0}")]
+    Url(String),
+
     /// UTF-8 error
     #[error("UTF-8 Error: {0}")]
     Utf8Error(#[from] std::str::Utf8Error),

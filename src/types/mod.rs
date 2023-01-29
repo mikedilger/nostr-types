@@ -63,7 +63,7 @@ mod unixtime;
 pub use unixtime::Unixtime;
 
 mod url;
-pub use url::Url;
+pub use url::{RelayUrl, Url};
 
 #[cfg(test)]
 mod test {
