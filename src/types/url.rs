@@ -29,21 +29,33 @@ impl Url {
         Url(s.to_owned(), s.parse::<http::Uri>().is_ok())
     }
 
-    /// Trim trailing slash if present
-    pub fn trim(&mut self) {
-        if self.0.ends_with('/') {
-            self.0 = self.0.trim_end_matches('/').to_string();
+    /// Get URL string in canonical form, or Err with the original
+    pub fn canonical(&self) -> Result<String, String> {
+        // Must be a valid URL
+        if !self.1 {
+            return Err(self.0.clone());
         }
-    }
 
-    /// Get reference to inner string
-    pub fn inner(&self) -> &str {
-        &self.0
+        // Clean it up
+        let mut s = self.0.trim().to_lowercase();
+        if s.ends_with('/') {
+            s = s.trim_end_matches('/').to_string();
+        }
+
+        // Must be a valid Relay URL
+        match Self::is_valid_relay_url_str(&s) {
+            true => Ok(s),
+            false => Err(s),
+        }
     }
 
     /// Check if the URL is a valid relay URL
     pub fn is_valid_relay_url(&self) -> bool {
-        if let Ok(uri) = self.0.parse::<http::Uri>() {
+        Self::is_valid_relay_url_str(&self.0)
+    }
+
+    fn is_valid_relay_url_str(s: &str) -> bool {
+        if let Ok(uri) = s.parse::<http::Uri>() {
             if let Some(scheme) = uri.scheme() {
                 if scheme.as_str() == "wss" || scheme.as_str() == "ws" {
                     if let Some(authority) = uri.authority() {

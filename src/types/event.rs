@@ -491,12 +491,14 @@ impl Event {
         }
 
         // Collect every unmarked 'e' tag that is not the first or last
-        let e_tags: Vec<&Tag> = self.tags.iter()
+        let e_tags: Vec<&Tag> = self
+            .tags
+            .iter()
             .filter(|e| matches!(e, Tag::Event { .. }))
             .collect();
         if e_tags.len() > 2 {
             // mentions are everything other than first and last
-            for tag in &e_tags[1..e_tags.len()-1] {
+            for tag in &e_tags[1..e_tags.len() - 1] {
                 if let Tag::Event {
                     id,
                     recommended_relay_url,
