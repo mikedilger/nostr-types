@@ -57,29 +57,42 @@ impl Url {
 
     /// Create a new Url from a string
     pub fn try_from_str(s: &str) -> Result<Url, Error> {
+        use std::fmt::Write;
+
+        let mut inner: String = String::new();
+
         // We use http::Uri parse to validate
         let uri = s.trim().parse::<http::Uri>()?;
-        if uri.scheme().is_none() {
+
+        if let Some(scheme) = uri.scheme() {
+            write!(inner, "{}://", scheme.as_str().to_lowercase())?;
+        } else {
             return Err(Error::InvalidUrlMissingScheme);
         }
-        match uri.authority() {
-            None => return Err(Error::InvalidUrlMissingAuthority),
-            Some(auth) => {
-                // This is an INCOMPLETE list of bad hosts
-                let host = auth.host();
-                if host != host.trim()
-                    || host.starts_with("localhost")
-                    || host.starts_with("127.")
-                    || host.starts_with("[::1/")
-                    || host.starts_with("[0:")
-                {
-                    return Err(Error::InvalidUrlHost(host.to_owned()));
-                }
+
+        if let Some(auth) = uri.authority() {
+            // This is an INCOMPLETE list of bad hosts
+            let host = auth.host().to_lowercase();
+            if host != host.trim()
+                || host.starts_with("localhost")
+                || host.starts_with("127.")
+                || host.starts_with("[::1/")
+                || host.starts_with("[0:")
+            {
+                return Err(Error::InvalidUrlHost(host));
             }
+            write!(inner, "{}", auth.as_str().to_lowercase())?;
+        } else {
+            return Err(Error::InvalidUrlMissingAuthority);
         }
 
-        // We use http::Uri Display trait to canonicalize
-        Ok(Url(format!("{}", uri)))
+        write!(inner, "{}", uri.path())?;
+
+        if let Some(query) = uri.query() {
+            write!(inner, "?{}", query)?;
+        }
+
+        Ok(Url(inner))
     }
 
     /// Convert into a UncheckedUrl
@@ -193,4 +206,17 @@ mod test {
     use super::*;
 
     test_serde! {UncheckedUrl, test_unchecked_url_serde}
+
+    #[test]
+    fn test_url_case() {
+        let url = Url::try_from_str("Wss://MyRelay.example.COM/PATH?Query").unwrap();
+        assert_eq!(url.as_str(), "wss://myrelay.example.com/PATH?Query");
+    }
+
+    #[test]
+    fn test_relay_url_slash() {
+        let input = "Wss://MyRelay.example.COM/";
+        let url = RelayUrl::try_from_str(input).unwrap();
+        assert_eq!(url.as_str(), "wss://myrelay.example.com");
+    }
 }
