@@ -30,8 +30,8 @@ pub use error::Error;
 
 mod types;
 pub use types::{
-    ClientMessage, EncryptedPrivateKey, Event, EventKind, Filter, Id, IdHex, KeySecurity, Metadata,
-    Nip05, PreEvent, PrivateKey, Profile, PublicKey, PublicKeyHex, RelayInformationDocument,
-    RelayMessage, RelayUrl, Signature, SignatureHex, SimpleRelayList, SimpleRelayUsage,
-    SubscriptionId, Tag, UncheckedUrl, Unixtime, Url,
+    ClientMessage, EncryptedPrivateKey, Event, EventKind, Filter, Id, IdHex, IdHexPrefix,
+    KeySecurity, Metadata, Nip05, PreEvent, PrivateKey, Profile, PublicKey, PublicKeyHex,
+    PublicKeyHexPrefix, RelayInformationDocument, RelayMessage, RelayUrl, Signature, SignatureHex,
+    SimpleRelayList, SimpleRelayUsage, SubscriptionId, Tag, UncheckedUrl, Unixtime, Url,
 };

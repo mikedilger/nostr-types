@@ -125,13 +125,56 @@ impl Visitor<'_> for IdVisitor {
     PartialEq,
     Serialize,
 )]
-pub struct IdHex(pub String);
+pub struct IdHex(String);
 
 impl IdHex {
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> IdHex {
         From::from(Id::mock())
+    }
+
+    /// Try from &str
+    pub fn try_from_str(s: &str) -> Result<IdHex, Error> {
+        Self::try_from_string(s.to_owned())
+    }
+
+    /// Try from String
+    pub fn try_from_string(s: String) -> Result<IdHex, Error> {
+        if s.len() != 64 {
+            return Err(Error::InvalidId);
+        }
+        let vec: Vec<u8> = hex::decode(&s)?;
+        if vec.len() != 32 {
+            return Err(Error::InvalidId);
+        }
+        Ok(IdHex(s))
+    }
+
+    /// As &str
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Into String
+    pub fn into_string(self) -> String {
+        self.0
+    }
+
+    /// Prefix of
+    pub fn prefix(&self, mut chars: usize) -> IdHexPrefix {
+        if chars > 64 {
+            chars = 64;
+        }
+        IdHexPrefix(self.0[0..chars].to_owned())
+    }
+}
+
+impl TryFrom<&str> for IdHex {
+    type Error = Error;
+
+    fn try_from(s: &str) -> Result<IdHex, Error> {
+        IdHex::try_from_str(s)
     }
 }
 
@@ -149,11 +192,81 @@ impl TryFrom<IdHex> for Id {
     }
 }
 
+/// An event identifier prefix, constructed as a SHA256 hash of the event fields according to NIP-01, as a hex string
+#[derive(
+    AsMut,
+    AsRef,
+    Clone,
+    Debug,
+    Deref,
+    Deserialize,
+    Display,
+    Eq,
+    From,
+    FromStr,
+    Hash,
+    Into,
+    PartialEq,
+    Serialize,
+)]
+pub struct IdHexPrefix(String);
+
+impl IdHexPrefix {
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> IdHexPrefix {
+        IdHexPrefix("a872bee01".to_owned())
+    }
+
+    /// Try from &str
+    pub fn try_from_str(s: &str) -> Result<IdHexPrefix, Error> {
+        Self::try_from_string(s.to_owned())
+    }
+
+    /// Try from String
+    pub fn try_from_string(s: String) -> Result<IdHexPrefix, Error> {
+        if s.len() > 64 {
+            return Err(Error::InvalidIdPrefix);
+        }
+        let vec: Vec<u8> = hex::decode(&s)?;
+        if vec.len() > 32 {
+            return Err(Error::InvalidIdPrefix);
+        }
+        Ok(IdHexPrefix(s))
+    }
+
+    /// As &str
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Into String
+    pub fn into_string(self) -> String {
+        self.0
+    }
+}
+
+impl From<IdHex> for IdHexPrefix {
+    fn from(id: IdHex) -> IdHexPrefix {
+        IdHexPrefix(id.0)
+    }
+}
+
+impl TryFrom<&str> for IdHexPrefix {
+    type Error = Error;
+
+    fn try_from(s: &str) -> Result<IdHexPrefix, Error> {
+        IdHexPrefix::try_from_str(s)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     test_serde! {Id, test_id_serde}
+    test_serde! {IdHex, test_id_hex_serde}
+    test_serde! {IdHexPrefix, test_id_hex_prefix_serde}
 
     #[test]
     fn test_id_bech32() {

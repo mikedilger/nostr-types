@@ -1,4 +1,5 @@
 use super::PublicKeyHex;
+use serde::de::Error as DeError;
 use serde::de::{Deserialize, Deserializer, MapAccess, Visitor};
 use serde::ser::{Serialize, SerializeMap, Serializer};
 use serde_json::{json, Map, Value};
@@ -162,7 +163,10 @@ impl<'de> Visitor<'de> for RidVisitor {
             rid.description = Some(s);
         }
         if let Some(Value::String(s)) = map.remove("pubkey") {
-            rid.pubkey = Some(PublicKeyHex(s));
+            rid.pubkey = match PublicKeyHex::try_from_string(s) {
+                Ok(pkh) => Some(pkh),
+                Err(e) => return Err(DeError::custom(format!("{}", e))),
+            };
         }
         if let Some(Value::String(s)) = map.remove("contact") {
             rid.contact = Some(s);

@@ -16,7 +16,7 @@ fn main() {
     };
 
     let mut filter = Filter::new();
-    filter.add_id(&IdHex(id), None);
+    filter.add_id(IdHex::try_from_string(id).unwrap());
     let message = ClientMessage::Req(SubscriptionId("fetch".to_owned()), vec![filter]);
     let wire = serde_json::to_string(&message).expect("Could not serialize message");
 

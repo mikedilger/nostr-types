@@ -24,7 +24,7 @@ mod filter;
 pub use filter::Filter;
 
 mod id;
-pub use id::{Id, IdHex};
+pub use id::{Id, IdHex, IdHexPrefix};
 
 mod metadata;
 pub use metadata::Metadata;
@@ -39,7 +39,7 @@ mod profile;
 pub use profile::Profile;
 
 mod public_key;
-pub use public_key::{PublicKey, PublicKeyHex};
+pub use public_key::{PublicKey, PublicKeyHex, PublicKeyHexPrefix};
 
 mod relay_message;
 pub use relay_message::RelayMessage;

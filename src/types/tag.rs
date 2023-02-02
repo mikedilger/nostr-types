@@ -283,7 +283,7 @@ impl<'de> Visitor<'de> for TagVisitor {
                 None => {
                     return Ok(Tag::Other {
                         tag: tagname.to_string(),
-                        data: vec![pubkey.0],
+                        data: vec![pubkey.into_string()],
                     });
                 }
             };
@@ -292,7 +292,7 @@ impl<'de> Visitor<'de> for TagVisitor {
                 None => {
                     return Ok(Tag::Other {
                         tag: tagname.to_string(),
-                        data: vec![pubkey.0, conditions],
+                        data: vec![pubkey.into_string(), conditions],
                     });
                 }
             };

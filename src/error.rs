@@ -51,6 +51,10 @@ pub enum Error {
     #[error("Invalid event Id")]
     InvalidId,
 
+    /// Invalid event Id Prefix
+    #[error("Invalid event Id Prefix")]
+    InvalidIdPrefix,
+
     /// Invalid Profile
     #[error("Invalid Profile")]
     InvalidProfile,
@@ -58,6 +62,10 @@ pub enum Error {
     /// Invalid public key
     #[error("Invalid Public Key")]
     InvalidPublicKey,
+
+    /// Invalid public key prefix
+    #[error("Invalid Public Key Prefix")]
+    InvalidPublicKeyPrefix,
 
     /// Invalid URL
     #[error("Invalid URL: \"{0}\"")]

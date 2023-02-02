@@ -149,7 +149,7 @@ impl Hash for PublicKey {
     PartialEq,
     Serialize,
 )]
-pub struct PublicKeyHex(pub String);
+pub struct PublicKeyHex(String);
 
 impl PublicKeyHex {
     // Mock data for testing
@@ -167,6 +167,49 @@ impl PublicKeyHex {
             bech32::Variant::Bech32,
         )?)
     }
+
+    /// Try from &str
+    pub fn try_from_str(s: &str) -> Result<PublicKeyHex, Error> {
+        Self::try_from_string(s.to_owned())
+    }
+
+    /// Try from String
+    pub fn try_from_string(s: String) -> Result<PublicKeyHex, Error> {
+        if s.len() != 64 {
+            return Err(Error::InvalidPublicKey);
+        }
+        let vec: Vec<u8> = hex::decode(&s)?;
+        if vec.len() != 32 {
+            return Err(Error::InvalidPublicKey);
+        }
+        Ok(PublicKeyHex(s))
+    }
+
+    /// As &str
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Into String
+    pub fn into_string(self) -> String {
+        self.0
+    }
+
+    /// Prefix of
+    pub fn prefix(&self, mut chars: usize) -> PublicKeyHexPrefix {
+        if chars > 64 {
+            chars = 64;
+        }
+        PublicKeyHexPrefix(self.0[0..chars].to_owned())
+    }
+}
+
+impl TryFrom<&str> for PublicKeyHex {
+    type Error = Error;
+
+    fn try_from(s: &str) -> Result<PublicKeyHex, Error> {
+        PublicKeyHex::try_from_str(s)
+    }
 }
 
 impl From<PublicKey> for PublicKeyHex {
@@ -183,11 +226,82 @@ impl TryFrom<PublicKeyHex> for PublicKey {
     }
 }
 
+/// This is a public key prefix, which identifies an actor (usually a person) and is shared, as a hex string
+///
+#[derive(
+    AsMut,
+    AsRef,
+    Clone,
+    Debug,
+    Deref,
+    Deserialize,
+    Display,
+    Eq,
+    From,
+    FromStr,
+    Hash,
+    Into,
+    PartialEq,
+    Serialize,
+)]
+pub struct PublicKeyHexPrefix(String);
+
+impl PublicKeyHexPrefix {
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock() -> PublicKeyHexPrefix {
+        PublicKeyHexPrefix("a872bee01".to_owned())
+    }
+
+    /// Try from &str
+    pub fn try_from_str(s: &str) -> Result<PublicKeyHexPrefix, Error> {
+        Self::try_from_string(s.to_owned())
+    }
+
+    /// Try from String
+    pub fn try_from_string(s: String) -> Result<PublicKeyHexPrefix, Error> {
+        if s.len() > 64 {
+            return Err(Error::InvalidPublicKeyPrefix);
+        }
+        let vec: Vec<u8> = hex::decode(&s)?;
+        if vec.len() > 32 {
+            return Err(Error::InvalidPublicKeyPrefix);
+        }
+        Ok(PublicKeyHexPrefix(s))
+    }
+
+    /// As &str
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Into String
+    pub fn into_string(self) -> String {
+        self.0
+    }
+}
+
+impl From<PublicKeyHex> for PublicKeyHexPrefix {
+    fn from(pubkey: PublicKeyHex) -> PublicKeyHexPrefix {
+        PublicKeyHexPrefix(pubkey.0)
+    }
+}
+
+impl TryFrom<&str> for PublicKeyHexPrefix {
+    type Error = Error;
+
+    fn try_from(s: &str) -> Result<PublicKeyHexPrefix, Error> {
+        PublicKeyHexPrefix::try_from_str(s)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     test_serde! {PublicKey, test_public_key_serde}
+    test_serde! {PublicKeyHex, test_public_key_hex_serde}
+    test_serde! {PublicKeyHexPrefix, test_public_key_hex_prefix_serde}
 
     #[test]
     fn test_pubkey_bech32() {

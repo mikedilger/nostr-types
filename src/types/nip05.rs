@@ -19,9 +19,10 @@ impl Nip05 {
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> Nip05 {
-        let pubkey = PublicKeyHex(
-            "b0635d6a9851d3aed0cd6c495b282167acf761729078d975fc341b22650b07b9".to_owned(),
-        );
+        let pubkey = PublicKeyHex::try_from_str(
+            "b0635d6a9851d3aed0cd6c495b282167acf761729078d975fc341b22650b07b9",
+        )
+        .unwrap();
 
         let mut names: HashMap<String, PublicKeyHex> = HashMap::new();
         let _ = names.insert("bob".to_string(), pubkey.clone());
@@ -60,7 +61,7 @@ mod test {
 
         let bobs_pk: PublicKeyHex = nip05.names.get("bob").unwrap().clone();
         assert_eq!(
-            &bobs_pk.0,
+            bobs_pk.as_str(),
             "b0635d6a9851d3aed0cd6c495b282167acf761729078d975fc341b22650b07b9"
         );
 
