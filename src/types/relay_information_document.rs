@@ -1,4 +1,4 @@
-use super::PublicKeyHex;
+use super::PublicKeyHexPrefix;
 use serde::de::Error as DeError;
 use serde::de::{Deserialize, Deserializer, MapAccess, Visitor};
 use serde::ser::{Serialize, SerializeMap, Serializer};
@@ -15,7 +15,7 @@ pub struct RelayInformationDocument {
     pub description: Option<String>,
 
     /// Public key of an administrative contact of the relay
-    pub pubkey: Option<PublicKeyHex>,
+    pub pubkey: Option<PublicKeyHexPrefix>,
 
     /// An administrative contact for the relay. Should be a URI.
     pub contact: Option<String>,
@@ -68,7 +68,7 @@ impl RelayInformationDocument {
         RelayInformationDocument {
             name: Some("Crazy Horse".to_string()),
             description: Some("A really wild horse".to_string()),
-            pubkey: Some(PublicKeyHex::mock()),
+            pubkey: Some(PublicKeyHexPrefix::mock()),
             contact: None,
             supported_nips: vec![11, 12, 13, 14],
             software: None,
@@ -163,7 +163,7 @@ impl<'de> Visitor<'de> for RidVisitor {
             rid.description = Some(s);
         }
         if let Some(Value::String(s)) = map.remove("pubkey") {
-            rid.pubkey = match PublicKeyHex::try_from_string(s) {
+            rid.pubkey = match PublicKeyHexPrefix::try_from_string(s) {
                 Ok(pkh) => Some(pkh),
                 Err(e) => return Err(DeError::custom(format!("{}", e))),
             };

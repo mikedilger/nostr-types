@@ -250,7 +250,7 @@ impl PublicKeyHexPrefix {
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> PublicKeyHexPrefix {
-        PublicKeyHexPrefix("a872bee01".to_owned())
+        PublicKeyHexPrefix("a872bee01f".to_owned())
     }
 
     /// Try from &str
