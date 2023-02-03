@@ -184,11 +184,10 @@ impl From<Id> for IdHex {
     }
 }
 
-impl TryFrom<IdHex> for Id {
-    type Error = Error;
-
-    fn try_from(h: IdHex) -> Result<Id, Error> {
-        Id::try_from_hex_string(&h.0)
+impl From<IdHex> for Id {
+    fn from(h: IdHex) -> Id {
+        // could only fail if IdHex is invalid
+        Id::try_from_hex_string(&h.0).unwrap()
     }
 }
 
