@@ -56,7 +56,13 @@ pub enum Tag {
     Hashtag(String),
 
     /// 'r' A reference to a URL
-    Reference(UncheckedUrl),
+    Reference {
+        /// A relay url
+        url: UncheckedUrl,
+
+        /// An optional marker
+        marker: Option<String>,
+    },
 
     /// 'g' A geohash
     Geohash(String),
@@ -96,7 +102,7 @@ impl Tag {
             Tag::Expiration(_) => "expiration".to_string(),
             Tag::Pubkey { .. } => "p".to_string(),
             Tag::Hashtag(_) => "t".to_string(),
-            Tag::Reference(_) => "r".to_string(),
+            Tag::Reference { .. } => "r".to_string(),
             Tag::Geohash(_) => "g".to_string(),
             Tag::Subject(_) => "subject".to_string(),
             Tag::Nonce { .. } => "nonce".to_string(),
@@ -188,10 +194,13 @@ impl Serialize for Tag {
                 seq.serialize_element(hashtag)?;
                 seq.end()
             }
-            Tag::Reference(reference) => {
+            Tag::Reference { url, marker } => {
                 let mut seq = serializer.serialize_seq(None)?;
                 seq.serialize_element("r")?;
-                seq.serialize_element(reference)?;
+                seq.serialize_element(url)?;
+                if let Some(m) = marker {
+                    seq.serialize_element(m)?
+                }
                 seq.end()
             }
             Tag::Geohash(geohash) => {
@@ -358,7 +367,7 @@ impl<'de> Visitor<'de> for TagVisitor {
             };
             Ok(Tag::Hashtag(tag))
         } else if tagname == "r" {
-            let refr = match seq.next_element()? {
+            let refr: UncheckedUrl = match seq.next_element()? {
                 Some(r) => r,
                 None => {
                     return Ok(Tag::Other {
@@ -367,7 +376,8 @@ impl<'de> Visitor<'de> for TagVisitor {
                     });
                 }
             };
-            Ok(Tag::Reference(refr))
+            let marker: Option<String> = seq.next_element()?;
+            Ok(Tag::Reference { url: refr, marker })
         } else if tagname == "g" {
             let geo = match seq.next_element()? {
                 Some(g) => g,

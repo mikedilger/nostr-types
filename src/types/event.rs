@@ -668,8 +668,8 @@ impl Event {
         let mut output: Vec<RelayUrl> = Vec::new();
 
         for tag in self.tags.iter() {
-            if let Tag::Reference(reference) = tag {
-                if let Ok(relay_url) = RelayUrl::try_from_unchecked_url(reference) {
+            if let Tag::Reference { url, .. } = tag {
+                if let Ok(relay_url) = RelayUrl::try_from_unchecked_url(url) {
                     output.push(relay_url);
                 }
             }
