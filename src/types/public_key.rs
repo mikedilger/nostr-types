@@ -250,7 +250,7 @@ impl PublicKeyHexPrefix {
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> PublicKeyHexPrefix {
-        PublicKeyHexPrefix("a872bee01f".to_owned())
+        PublicKeyHexPrefix("a872bee01f6".to_owned())
     }
 
     /// Try from &str
@@ -263,10 +263,13 @@ impl PublicKeyHexPrefix {
         if s.len() > 64 {
             return Err(Error::InvalidPublicKeyPrefix);
         }
-        let vec: Vec<u8> = hex::decode(&s)?;
-        if vec.len() > 32 {
+        if s.chars().any(|c| !c.is_ascii_hexdigit()) {
             return Err(Error::InvalidPublicKeyPrefix);
         }
+        // let vec: Vec<u8> = hex::decode(&s)?;
+        // if vec.len() > 32 {
+        //    return Err(Error::InvalidPublicKeyPrefix);
+        // }
         Ok(PublicKeyHexPrefix(s))
     }
 

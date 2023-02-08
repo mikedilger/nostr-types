@@ -214,7 +214,7 @@ impl IdHexPrefix {
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> IdHexPrefix {
-        IdHexPrefix("a872bee01".to_owned())
+        IdHexPrefix("a872bee017".to_owned())
     }
 
     /// Try from &str
@@ -227,10 +227,13 @@ impl IdHexPrefix {
         if s.len() > 64 {
             return Err(Error::InvalidIdPrefix);
         }
-        let vec: Vec<u8> = hex::decode(&s)?;
-        if vec.len() > 32 {
-            return Err(Error::InvalidIdPrefix);
+        if s.chars().any(|c| !c.is_ascii_hexdigit()) {
+            return Err(Error::InvalidPublicKeyPrefix);
         }
+        // let vec: Vec<u8> = hex::decode(&s)?;
+        // if vec.len() > 32 {
+        //     return Err(Error::InvalidIdPrefix);
+        // }
         Ok(IdHexPrefix(s))
     }
 
