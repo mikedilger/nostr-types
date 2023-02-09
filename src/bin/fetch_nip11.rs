@@ -35,6 +35,11 @@ fn main() {
         .header("Accept", "application/nostr+json")
         .send()
         .unwrap();
-    let rid = response.json::<RelayInformationDocument>().unwrap();
-    println!("{}", rid);
+    let json = response.text().unwrap();
+    if let Ok(rid) = serde_json::from_str::<RelayInformationDocument>(&json) {
+        println!("{}", rid);
+    } else {
+        println!("INVALID DECODE");
+        println!("{}", json);
+    }
 }
