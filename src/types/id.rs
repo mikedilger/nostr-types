@@ -246,6 +246,11 @@ impl IdHexPrefix {
     pub fn into_string(self) -> String {
         self.0
     }
+
+    /// Matches a PublicKeyhex
+    pub fn matches(&self, id: &IdHex) -> bool {
+        id.0.starts_with(&self.0)
+    }
 }
 
 impl From<IdHex> for IdHexPrefix {

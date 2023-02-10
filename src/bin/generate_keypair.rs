@@ -1,6 +1,9 @@
-// Copyright 2015-2020 nostr-proto Developers
+// Copyright 2022-2023 nostr-type Developers
 // Licensed under the MIT license <LICENSE-MIT or http://opensource.org/licenses/MIT>
 // This file may not be copied, modified, or distributed except according to those terms.
+
+// TEMPORARILY
+#![allow(clippy::uninlined_format_args)]
 
 use k256::schnorr::SigningKey;
 use rand_core::OsRng;

@@ -1,3 +1,6 @@
+// TEMPORARILY
+#![allow(clippy::uninlined_format_args)]
+
 use base64::Engine;
 use nostr_types::{ClientMessage, Filter, RelayMessage, SubscriptionId};
 use std::env;

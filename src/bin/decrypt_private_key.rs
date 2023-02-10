@@ -1,3 +1,6 @@
+// TEMPORARILY
+#![allow(clippy::uninlined_format_args)]
+
 use nostr_types::{EncryptedPrivateKey, PrivateKey};
 
 fn main() {

@@ -282,6 +282,11 @@ impl PublicKeyHexPrefix {
     pub fn into_string(self) -> String {
         self.0
     }
+
+    /// Matches a PublicKeyhex
+    pub fn matches(&self, pubkey: &PublicKeyHex) -> bool {
+        pubkey.0.starts_with(&self.0)
+    }
 }
 
 impl From<PublicKeyHex> for PublicKeyHexPrefix {
