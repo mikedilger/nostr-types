@@ -1,9 +1,46 @@
-use super::PublicKeyHexPrefix;
+use super::{PublicKeyHexPrefix, Url};
 use serde::de::Error as DeError;
 use serde::de::{Deserialize, Deserializer, MapAccess, Visitor};
 use serde::ser::{Serialize, SerializeMap, Serializer};
 use serde_json::{json, Map, Value};
 use std::fmt;
+
+/// Relay limitations
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RelayLimitation {
+    /// max message length
+    pub max_message_length: usize,
+
+    /// max subscriptions
+    pub max_subscriptions: usize,
+
+    /// max filters
+    pub max_filters: usize,
+
+    /// max limit
+    pub max_limit: usize,
+
+    /// max subid length
+    pub max_subid_length: usize,
+
+    /// min prefix
+    pub min_prefix: usize,
+
+    /// max event tags
+    pub max_event_tags: usize,
+
+    /// max content length
+    pub max_content_length: usize,
+
+    /// min pow difficulty
+    pub min_pow_difficulty: usize,
+
+    /// auth required
+    pub auth_required: bool,
+
+    /// payment required
+    pub payment_required: bool,
+}
 
 /// Relay information document as described in NIP-11, supplied by a relay
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -29,6 +66,13 @@ pub struct RelayInformationDocument {
     /// The software version
     pub version: Option<String>,
 
+    /// limitation
+    pub limitation: Option<RelayLimitation>,
+
+    /// payments_url
+    pub payments_url: Option<Url>,
+
+    // fees...
     /// Additional fields not specified in NIP-11
     pub other: Map<String, Value>,
 }
@@ -43,6 +87,8 @@ impl Default for RelayInformationDocument {
             supported_nips: vec![],
             software: None,
             version: None,
+            limitation: None,
+            payments_url: None,
             other: Map::new(),
         }
     }
@@ -73,6 +119,8 @@ impl RelayInformationDocument {
             supported_nips: vec![11, 12, 13, 14],
             software: None,
             version: None,
+            limitation: None,
+            payments_url: None,
             other: m,
         }
     }

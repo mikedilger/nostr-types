@@ -45,7 +45,7 @@ mod relay_message;
 pub use relay_message::RelayMessage;
 
 mod relay_information_document;
-pub use relay_information_document::RelayInformationDocument;
+pub use relay_information_document::{RelayInformationDocument, RelayLimitation};
 
 mod signature;
 pub use signature::{Signature, SignatureHex};
