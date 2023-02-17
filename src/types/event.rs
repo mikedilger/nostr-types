@@ -642,6 +642,17 @@ impl Event {
         None
     }
 
+    /// If this event specifies a content warning, return that subject string
+    pub fn content_warning(&self) -> Option<String> {
+        for tag in self.tags.iter() {
+            if let Tag::ContentWarning(warn) = tag {
+                return Some(warn.clone());
+            }
+        }
+
+        None
+    }
+
     /// Return all the hashtags this event refers to
     pub fn hashtags(&self) -> Vec<String> {
         if self.kind != EventKind::TextNote {
