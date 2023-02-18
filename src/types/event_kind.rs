@@ -51,6 +51,8 @@ pub enum EventKind {
     RelayList,
     /// Authentication
     Auth,
+    /// Client Settings
+    ClientSettings,
     /// Relay-specific replaceable event
     Replaceable(u64),
     /// Ephemeral event, sent to all clients with matching filters and should not be stored
@@ -92,6 +94,7 @@ impl From<u64> for EventKind {
             10001 => RelaysListNip23,
             10002 => RelayList,
             22242 => Auth,
+            31111 => ClientSettings,
             x if (10_000..20_000).contains(&x) => Replaceable(x),
             x if (20_000..30_000).contains(&x) => Ephemeral(x),
             x => Other(x),
@@ -124,6 +127,7 @@ impl From<EventKind> for u64 {
             RelaysListNip23 => 10001,
             RelayList => 10002,
             Auth => 22242,
+            ClientSettings => 31111,
             Replaceable(u) => u,
             Ephemeral(u) => u,
             Other(u) => u,
