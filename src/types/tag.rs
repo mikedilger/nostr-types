@@ -79,6 +79,9 @@ pub enum Tag {
         target: Option<String>,
     },
 
+    /// Parameter of a parameterized replaceable event
+    Parameter(String),
+
     /// Any other tag
     Other {
         /// The tag name
@@ -106,6 +109,7 @@ impl Tag {
             Tag::Geohash(_) => "g".to_string(),
             Tag::Subject(_) => "subject".to_string(),
             Tag::Nonce { .. } => "nonce".to_string(),
+            Tag::Parameter(_) => "parameter".to_string(),
             Tag::Other { tag, .. } => tag.clone(),
             Tag::Empty => panic!("empty tags have no tagname"),
         }
@@ -222,6 +226,12 @@ impl Serialize for Tag {
                 if let Some(t) = target {
                     seq.serialize_element(t)?;
                 }
+                seq.end()
+            }
+            Tag::Parameter(parameter) => {
+                let mut seq = serializer.serialize_seq(None)?;
+                seq.serialize_element("parameter")?;
+                seq.serialize_element(parameter)?;
                 seq.end()
             }
             Tag::Other { tag, data } => {
@@ -412,6 +422,12 @@ impl<'de> Visitor<'de> for TagVisitor {
             };
             let target: Option<String> = seq.next_element()?;
             Ok(Tag::Nonce { nonce, target })
+        } else if tagname == "parameter" {
+            let param = match seq.next_element()? {
+                Some(s) => s,
+                None => "".to_owned(), // implicit parameter
+            };
+            Ok(Tag::Parameter(param))
         } else {
             let mut data = Vec::new();
             loop {
