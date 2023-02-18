@@ -21,17 +21,47 @@ pub struct Filter {
     #[serde(default)]
     pub kinds: Vec<EventKind>,
 
-    /// Events when referenced in an 'e' tag
+    /// Events which refer to this naddr in an 'a' tag
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(rename = "#a")]
+    #[serde(default)]
+    pub a: Vec<String>,
+
+    /// Events which refer to this parameter in a 'd' tag
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(rename = "#d")]
+    #[serde(default)]
+    pub d: Vec<String>,
+
+    /// Events which refer to these other events in an 'e' tag
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(rename = "#e")]
     #[serde(default)]
     pub e: Vec<IdHex>,
 
-    /// Events when referenced in a 'p' tag
+    /// Events which refer to this geohash in a 'g' tag
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(rename = "#g")]
+    #[serde(default)]
+    pub g: Vec<String>,
+
+    /// Events which refer to these public keys in a 'p' tag
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(rename = "#p")]
     #[serde(default)]
     pub p: Vec<PublicKeyHex>,
+
+    /// Events which refer to this URL reference in an 'r' tag
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(rename = "#r")]
+    #[serde(default)]
+    pub r: Vec<String>,
+
+    /// Events which refer to this hashtag in a 't' tag
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(rename = "#t")]
+    #[serde(default)]
+    pub t: Vec<String>,
 
     /// Events occuring after this date
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -199,8 +229,7 @@ impl Filter {
             )
             .unwrap()],
             since: Some(Unixtime(1668572286)),
-            until: None,
-            limit: None,
+            .. Default::default()
         }
     }
 }
