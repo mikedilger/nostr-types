@@ -1,5 +1,5 @@
 use crate::{Error, Id, PublicKey, Signature};
-use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, KeyIvInit};
+use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use base64::Engine;
 use bech32::{FromBase32, ToBase32};
 use chacha20poly1305::{
@@ -8,6 +8,7 @@ use chacha20poly1305::{
 };
 use derive_more::Display;
 use hmac::Hmac;
+use k256::ecdh::SharedSecret;
 use k256::schnorr::signature::hazmat::PrehashSigner;
 use k256::schnorr::SigningKey;
 use pbkdf2::pbkdf2;
@@ -202,6 +203,44 @@ impl PrivateKey {
     pub fn sign_id(&self, id: Id) -> Result<Signature, Error> {
         let signature = self.0.sign_prehash(&id.0)?;
         Ok(Signature(signature))
+    }
+
+    // Generate a shared secret with someone elses public key
+    fn shared_secret(&self, other: &PublicKey) -> SharedSecret {
+        k256::ecdh::diffie_hellman(self.0.as_nonzero_scalar(), other.0.as_affine())
+    }
+
+    /// Encrypt content via a shared secret according to NIP-04. Returns (IV, Ciphertext) pair.
+    pub fn nip04_encrypt(
+        &self,
+        other: &PublicKey,
+        plaintext: &[u8],
+    ) -> Result<([u8; 16], Vec<u8>), Error> {
+        let shared_secret = self.shared_secret(other);
+        let raw_shared_secret_bytes = shared_secret.raw_secret_bytes();
+        let iv = {
+            let mut iv: [u8; 16] = [0; 16];
+            OsRng.fill_bytes(&mut iv);
+            iv
+        };
+        let ciphertext = cbc::Encryptor::<aes::Aes256>::new(raw_shared_secret_bytes, &iv.into())
+            .encrypt_padded_vec_mut::<Pkcs7>(plaintext);
+        Ok((iv, ciphertext))
+    }
+
+    /// Decrypt content via a shared secret according to NIP-04
+    pub fn nip04_decrypt(
+        &self,
+        other: &PublicKey,
+        ciphertext: &[u8],
+        iv: [u8; 16],
+    ) -> Result<Vec<u8>, Error> {
+        let shared_secret = self.shared_secret(other);
+        let raw_shared_secret_bytes = shared_secret.raw_secret_bytes();
+        Ok(
+            cbc::Decryptor::<aes::Aes256>::new(raw_shared_secret_bytes, &iv.into())
+                .decrypt_padded_vec_mut::<Pkcs7>(ciphertext)?,
+        )
     }
 
     /// Export in a (non-portable) encrypted form. This does not downgrade
@@ -558,6 +597,22 @@ mod test {
 
         assert_eq!(pk.0.to_bytes(), decoded.0.to_bytes());
         assert_eq!(decoded.1, KeySecurity::Weak);
+    }
+
+    #[test]
+    fn test_privkey_nip04() {
+        let private_key = PrivateKey::mock();
+        let other_public_key = PublicKey::mock();
+
+        let message = "hello world, this should come out just dandy.".as_bytes();
+        let (iv, encrypted) = private_key
+            .nip04_encrypt(&other_public_key, &message)
+            .unwrap();
+        let decrypted = private_key
+            .nip04_decrypt(&other_public_key, &encrypted, iv)
+            .unwrap();
+
+        assert_eq!(message, decrypted);
     }
 }
 

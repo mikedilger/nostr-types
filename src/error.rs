@@ -7,6 +7,10 @@ pub enum Error {
     #[error("Assertion failed: {0}")]
     AssertionFailed(String),
 
+    /// Bad Encrypted Message
+    #[error("Bad Encrypted Message")]
+    BadEncryptedMessage,
+
     /// Base64 error
     #[error("Base64 Decoding Error: {0}")]
     Base64(#[from] base64::DecodeError),
@@ -87,6 +91,10 @@ pub enum Error {
     #[error("Missing URL Scheme")]
     InvalidUrlMissingScheme,
 
+    /// Pad error
+    #[error("Encryption/Decryption padding error")]
+    Pad(#[from] inout::PadError),
+
     /// Scrypt error
     #[error("Scrypt invalid output length")]
     Scrypt,
@@ -122,6 +130,9 @@ pub enum Error {
     /// UTF-8 error
     #[error("UTF-8 Error: {0}")]
     Utf8Error(#[from] std::str::Utf8Error),
+    /// Wrong event kind
+    #[error("Wrong event kind")]
+    WrongEventKind,
 
     /// Wrong length hex string
     #[error("Wrong length hex string")]
