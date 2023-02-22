@@ -3,6 +3,7 @@ use super::{
     Unixtime,
 };
 use crate::Error;
+use base64::Engine;
 use k256::sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -72,6 +73,39 @@ pub struct PreEvent {
     pub content: String,
     /// An optional verified time for the event (using OpenTimestamp)
     pub ots: Option<String>,
+}
+
+impl PreEvent {
+    /// Create a NIP-04 EncryptedDirectMessage PreEvent.
+    ///
+    /// Note that this creates the 'p' tag, but does not add a recommended_relay_url to it,
+    /// so the caller should handle that.
+    pub fn new_nip04(
+        private_key: &PrivateKey,
+        recipient_public_key: PublicKey,
+        message: &str,
+    ) -> Result<PreEvent, Error> {
+        let input: &[u8] = message.as_bytes();
+        let (iv, ciphertext) = private_key.nip04_encrypt(&recipient_public_key, input)?;
+        let content = format!(
+            "{}?iv={}",
+            base64::engine::general_purpose::STANDARD.encode(ciphertext),
+            base64::engine::general_purpose::STANDARD.encode(iv)
+        );
+
+        Ok(PreEvent {
+            pubkey: private_key.public_key(),
+            created_at: Unixtime::now().unwrap(),
+            kind: EventKind::EncryptedDirectMessage,
+            tags: vec![Tag::Pubkey {
+                pubkey: recipient_public_key.into(),
+                recommended_relay_url: None, // FIXME,
+                petname: None,
+            }],
+            content,
+            ots: None,
+        })
+    }
 }
 
 impl Event {
@@ -263,6 +297,25 @@ impl Event {
         input.kind = EventKind::Metadata;
         input.content = serde_json::to_string(&metadata)?;
         Event::new(input, privkey)
+    }
+
+    /// If an event is an EncryptedDirectMessage, decrypt it's contents
+    pub fn decrypted_contents(&self, private_key: &PrivateKey) -> Result<String, Error> {
+        if self.kind != EventKind::EncryptedDirectMessage {
+            return Err(Error::WrongEventKind);
+        }
+        let parts: Vec<&str> = self.content.split("?iv=").collect();
+        if parts.len() != 2 {
+            return Err(Error::BadEncryptedMessage);
+        }
+
+        let ciphertext: Vec<u8> = base64::engine::general_purpose::STANDARD.decode(parts[0])?;
+        let iv_vec: Vec<u8> = base64::engine::general_purpose::STANDARD.decode(parts[1])?;
+        let iv: [u8; 16] = iv_vec.try_into().unwrap();
+
+        let decrypted_bytes = private_key.nip04_decrypt(&self.pubkey, &ciphertext, iv)?;
+        let s: String = String::from_utf8_lossy(&decrypted_bytes).into();
+        Ok(s)
     }
 
     /// If the event refers to people, get all the PublicKeys it refers to
