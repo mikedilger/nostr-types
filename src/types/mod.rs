@@ -26,6 +26,9 @@ pub use filter::Filter;
 mod id;
 pub use id::{Id, IdHex, IdHexPrefix};
 
+mod event_pointer;
+pub use event_pointer::EventPointer;
+
 mod metadata;
 pub use metadata::Metadata;
 
