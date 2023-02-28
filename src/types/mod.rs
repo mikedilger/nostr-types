@@ -14,6 +14,9 @@ macro_rules! test_serde {
 mod client_message;
 pub use client_message::ClientMessage;
 
+mod delegation;
+pub use delegation::{DelegationTag, DelegationError};
+
 mod event;
 pub use event::{Event, PreEvent};
 

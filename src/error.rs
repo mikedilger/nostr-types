@@ -141,4 +141,8 @@ pub enum Error {
     /// Wrong Decryption Password
     #[error("Wrong decryption password")]
     WrongDecryptionPassword,
+
+    /// Delegation error
+    #[error(transparent)]
+    DelegationError(#[from] crate::DelegationError),
 }
