@@ -301,13 +301,14 @@ impl Event {
 
     /// Create a ZapRequest event
     /// These events are not published to nostr, they are sent to a lnurl.
-    pub fn new_zap_request(privkey: &PrivateKey,
-                           recipient_pubkey: PublicKeyHex,
-                           zapped_event: Option<Id>,
-                           millisatoshis: u64,
-                           relays: Vec<String>,
-                           content: String) -> Result<Event, Error>
-    {
+    pub fn new_zap_request(
+        privkey: &PrivateKey,
+        recipient_pubkey: PublicKeyHex,
+        zapped_event: Option<Id>,
+        millisatoshis: u64,
+        relays: Vec<String>,
+        content: String,
+    ) -> Result<Event, Error> {
         let mut pre_event = PreEvent {
             pubkey: privkey.public_key(),
             created_at: Unixtime::now().unwrap(),
@@ -316,31 +317,27 @@ impl Event {
                 Tag::Pubkey {
                     pubkey: recipient_pubkey,
                     recommended_relay_url: None,
-                    petname: None
+                    petname: None,
                 },
                 Tag::Other {
                     tag: "relays".to_owned(),
-                    data: relays
+                    data: relays,
                 },
                 Tag::Other {
                     tag: "amount".to_owned(),
-                    data: vec![
-                        format!("{}", millisatoshis)
-                    ]
+                    data: vec![format!("{}", millisatoshis)],
                 },
             ],
             content,
-            ots: None
+            ots: None,
         };
 
         if let Some(ze) = zapped_event {
-            pre_event.tags.push(
-                Tag::Event {
-                    id: ze,
-                    recommended_relay_url: None,
-                    marker: None
-                }
-            );
+            pre_event.tags.push(Tag::Event {
+                id: ze,
+                recommended_relay_url: None,
+                marker: None,
+            });
         }
 
         Event::new(pre_event, privkey)

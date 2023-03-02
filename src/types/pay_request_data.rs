@@ -45,22 +45,13 @@ impl PayRequestData {
     #[allow(dead_code)]
     pub(crate) fn mock() -> PayRequestData {
         let mut map = Map::new();
-        let _ = map.insert(
-            "tag".to_string(),
-            Value::String("payRequest".to_owned())
-        );
+        let _ = map.insert("tag".to_string(), Value::String("payRequest".to_owned()));
         let _ = map.insert(
             "maxSendable".to_string(),
-            Value::Number(100000000000_u64.into())
+            Value::Number(100000000000_u64.into()),
         );
-        let _ = map.insert(
-            "minSendable".to_string(),
-            Value::Number(1000.into())
-        );
-        let _ = map.insert(
-            "commentAllowed".to_string(),
-            Value::Number(32.into())
-        );
+        let _ = map.insert("minSendable".to_string(), Value::Number(1000.into()));
+        let _ = map.insert("commentAllowed".to_string(), Value::Number(32.into()));
         PayRequestData {
             callback: UncheckedUrl("https://livingroomofsatoshi.com/api/v1/lnurl/payreq/f16bacaa-8e5f-4038-bdea-4c9e796f913c".to_string()),
             metadata: vec![
@@ -166,7 +157,6 @@ impl<'de> Visitor<'de> for PayRequestDataVisitor {
         Ok(m)
     }
 }
-
 
 #[cfg(test)]
 mod test {
