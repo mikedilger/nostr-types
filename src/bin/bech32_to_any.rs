@@ -2,6 +2,7 @@
 #![allow(clippy::uninlined_format_args)]
 
 use nostr_types::{PrivateKey, PublicKey};
+use bech32::FromBase32;
 
 fn main() {
     println!("bech32: ");
@@ -16,6 +17,9 @@ fn main() {
     } else if let Ok(mut key) = PrivateKey::try_from_bech32_string(bech32) {
         println!("Private Key: {}", key.as_hex_string());
     } else {
-        println!("Invalid.");
+        let data = bech32::decode(bech32).unwrap();
+        println!("DATA.0 = {}", data.0);
+        let decoded = Vec::<u8>::from_base32(&data.1).unwrap();
+        println!("DATA = {}", String::from_utf8_lossy(&decoded));
     }
 }
