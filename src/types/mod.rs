@@ -35,6 +35,9 @@ pub use metadata::Metadata;
 mod nip05;
 pub use nip05::Nip05;
 
+mod pay_request_data;
+pub use pay_request_data::PayRequestData;
+
 mod private_key;
 pub use private_key::{EncryptedPrivateKey, KeySecurity, PrivateKey};
 
