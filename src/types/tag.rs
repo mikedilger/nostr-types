@@ -1,4 +1,4 @@
-use crate::{Id, PublicKeyHex, SignatureHex, UncheckedUrl, Unixtime};
+use crate::{DelegationConditions, Id, PublicKeyHex, SignatureHex, UncheckedUrl, Unixtime};
 use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
 use std::fmt;
@@ -15,7 +15,7 @@ pub enum Tag {
         pubkey: PublicKeyHex,
 
         /// Conditions query string
-        conditions: String,
+        conditions: DelegationConditions,
 
         /// 64-byte schnorr signature of the sha256 hash of the delegation token
         sig: SignatureHex,
@@ -297,7 +297,7 @@ impl<'de> Visitor<'de> for TagVisitor {
                     });
                 }
             };
-            let conditions: String = match seq.next_element()? {
+            let conditions: DelegationConditions = match seq.next_element()? {
                 Some(c) => c,
                 None => {
                     return Ok(Tag::Other {
@@ -311,7 +311,7 @@ impl<'de> Visitor<'de> for TagVisitor {
                 None => {
                     return Ok(Tag::Other {
                         tag: tagname.to_string(),
-                        data: vec![pubkey.into_string(), conditions],
+                        data: vec![pubkey.into_string(), conditions.as_string()],
                     });
                 }
             };

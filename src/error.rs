@@ -95,6 +95,10 @@ pub enum Error {
     #[error("Encryption/Decryption padding error")]
     Pad(#[from] inout::PadError),
 
+    /// Parse integer error
+    #[error("Parse integer error")]
+    ParseInt(#[from] std::num::ParseIntError),
+
     /// Scrypt error
     #[error("Scrypt invalid output length")]
     Scrypt,
