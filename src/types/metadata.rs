@@ -1,3 +1,4 @@
+use bech32::FromBase32;
 use serde::de::{Deserialize, Deserializer, MapAccess, Visitor};
 use serde::ser::{Serialize, SerializeMap, Serializer};
 use serde_json::{json, Map, Value};
@@ -59,6 +60,34 @@ impl Metadata {
             nip05: Some("jb55.com".to_owned()),
             other: map,
         }
+    }
+
+    /// Get the lnurl for the user, if available via lud06 or lud16
+   pub fn lnurl(&self) -> Option<String> {
+       if let Some(lud06) = self.other.get("lud06") {
+           if let serde_json::Value::String(s) = lud06 {
+               if let Ok(data) = bech32::decode(s) {
+                   if data.0 == "lnurl" {
+                       if let Ok(decoded) = Vec::<u8>::from_base32(&data.1) {
+                           return Some(String::from_utf8_lossy(&decoded).to_string());
+                       }
+                   }
+                }
+            }
+        }
+
+       if let Some(lud16) = self.other.get("lud16") {
+           if let serde_json::Value::String(s) = lud16 {
+               let vec: Vec<&str> = s.split('@').collect();
+               if vec.len() == 2 {
+                   let user = &vec[0];
+                   let domain = &vec[1];
+                   return Some(format!("https://{domain}/.well-known/lnurlp/{user}"));
+               }
+           }
+        }
+
+        None
     }
 }
 
@@ -150,5 +179,18 @@ mod test {
             m.other.get("testing"),
             Some(&Value::String("123".to_owned()))
         );
+    }
+
+    #[test]
+    fn test_metadata_lnurls() {
+        // test lud06
+        let json = r##"{"name":"mikedilger","about":"Author of Gossip client: https://github.com/mikedilger/gossip\nexpat American living in New Zealand","picture":"https://avatars.githubusercontent.com/u/1669069","nip05":"_@mikedilger.com","banner":"https://mikedilger.com/banner.jpg","display_name":"Michael Dilger","location":"New Zealand","lud06":"lnurl1dp68gurn8ghj7ampd3kx2ar0veekzar0wd5xjtnrdakj7tnhv4kxctttdehhwm30d3h82unvwqhkgetrv4h8gcn4dccnxv563ep","website":"https://mikedilger.com"}"##;
+        let m: Metadata = serde_json::from_str(&json).unwrap();
+        assert_eq!(m.lnurl().as_deref(), Some("https://walletofsatoshi.com/.well-known/lnurlp/decentbun13"));
+
+        // test lud16
+        let json = r##"{"name":"mikedilger","about":"Author of Gossip client: https://github.com/mikedilger/gossip\nexpat American living in New Zealand","picture":"https://avatars.githubusercontent.com/u/1669069","nip05":"_@mikedilger.com","banner":"https://mikedilger.com/banner.jpg","display_name":"Michael Dilger","location":"New Zealand","lud16":"decentbun13@walletofsatoshi.com","website":"https://mikedilger.com"}"##;
+        let m: Metadata = serde_json::from_str(&json).unwrap();
+        assert_eq!(m.lnurl().as_deref(), Some("https://walletofsatoshi.com/.well-known/lnurlp/decentbun13"));
     }
 }
