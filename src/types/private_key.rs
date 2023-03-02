@@ -9,6 +9,7 @@ use chacha20poly1305::{
 use derive_more::Display;
 use hmac::Hmac;
 use k256::ecdh::SharedSecret;
+use k256::ecdsa::signature::Signer;
 use k256::schnorr::signature::hazmat::PrehashSigner;
 use k256::schnorr::SigningKey;
 use pbkdf2::pbkdf2;
@@ -202,6 +203,12 @@ impl PrivateKey {
     /// Sign a 32-bit hash
     pub fn sign_id(&self, id: Id) -> Result<Signature, Error> {
         let signature = self.0.sign_prehash(&id.0)?;
+        Ok(Signature(signature))
+    }
+
+    /// Sign a message (this hashes with SHA-256 first internally)
+    pub fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
+        let signature = self.0.try_sign(message)?;
         Ok(Signature(signature))
     }
 

@@ -1,6 +1,7 @@
-use crate::{Error, PrivateKey};
+use crate::{Error, PrivateKey, Signature};
 use bech32::{FromBase32, ToBase32};
 use derive_more::{AsMut, AsRef, Deref, Display, From, FromStr, Into};
+use k256::ecdsa::signature::Verifier;
 use k256::schnorr::VerifyingKey;
 use serde::de::{Deserializer, Visitor};
 use serde::ser::Serializer;
@@ -67,6 +68,11 @@ impl PublicKey {
     /// Export as raw bytes
     pub fn as_bytes(&self) -> Vec<u8> {
         self.0.to_bytes().to_vec()
+    }
+
+    /// Verify a signed message
+    pub fn verify(&self, message: &[u8], signature: Signature) -> Result<(), Error> {
+        Ok(self.0.verify(message, &signature.0)?)
     }
 
     // Mock data for testing
