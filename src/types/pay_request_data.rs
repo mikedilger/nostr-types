@@ -9,16 +9,16 @@ use std::fmt;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PayRequestData {
     /// The URL to make the pay request to with a kind 9374 event
-    callback: UncheckedUrl,
+    pub callback: UncheckedUrl,
 
     /// Metadata
-    metadata: Vec<(String, String)>,
+    pub metadata: Vec<(String, String)>,
 
     /// Whether the lnurl supports nostr zaps
-    allows_nostr: Option<bool>,
+    pub allows_nostr: Option<bool>,
 
     /// The nostr public key of the zapper
-    nostr_pubkey: PublicKeyHex,
+    pub nostr_pubkey: PublicKeyHex,
 
     /// Other fields such as:
     ///
