@@ -45,6 +45,10 @@ pub enum EventKind {
     PublicChatReserved48,
     /// Reserved for future public channel usage
     PublicChatReserved49,
+    /// Zap Request
+    ZapRequest,
+    /// Zap
+    Zap,
     /// Relays List (NIP-23)
     RelaysListNip23,
     /// Relays List (NIP-65)
@@ -91,6 +95,8 @@ impl From<u64> for EventKind {
             47 => PublicChatReserved47,
             48 => PublicChatReserved48,
             49 => PublicChatReserved49,
+            9734 => ZapRequest,
+            9735 => Zap,
             10001 => RelaysListNip23,
             10002 => RelayList,
             22242 => Auth,
@@ -124,6 +130,8 @@ impl From<EventKind> for u64 {
             PublicChatReserved47 => 47,
             PublicChatReserved48 => 48,
             PublicChatReserved49 => 49,
+            ZapRequest => 9734,
+            Zap => 9735,
             RelaysListNip23 => 10001,
             RelayList => 10002,
             Auth => 22242,
