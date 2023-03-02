@@ -299,6 +299,53 @@ impl Event {
         Event::new(input, privkey)
     }
 
+    /// Create a ZapRequest event
+    /// These events are not published to nostr, they are sent to a lnurl.
+    pub fn new_zap_request(privkey: &PrivateKey,
+                           recipient_pubkey: PublicKeyHex,
+                           zapped_event: Option<Id>,
+                           millisatoshis: u64,
+                           relays: Vec<String>,
+                           content: String) -> Result<Event, Error>
+    {
+        let mut pre_event = PreEvent {
+            pubkey: privkey.public_key(),
+            created_at: Unixtime::now().unwrap(),
+            kind: EventKind::ZapRequest,
+            tags: vec![
+                Tag::Pubkey {
+                    pubkey: recipient_pubkey,
+                    recommended_relay_url: None,
+                    petname: None
+                },
+                Tag::Other {
+                    tag: "relays".to_owned(),
+                    data: relays
+                },
+                Tag::Other {
+                    tag: "amount".to_owned(),
+                    data: vec![
+                        format!("{}", millisatoshis)
+                    ]
+                },
+            ],
+            content,
+            ots: None
+        };
+
+        if let Some(ze) = zapped_event {
+            pre_event.tags.push(
+                Tag::Event {
+                    id: ze,
+                    recommended_relay_url: None,
+                    marker: None
+                }
+            );
+        }
+
+        Event::new(pre_event, privkey)
+    }
+
     /// If an event is an EncryptedDirectMessage, decrypt it's contents
     pub fn decrypted_contents(&self, private_key: &PrivateKey) -> Result<String, Error> {
         if self.kind != EventKind::EncryptedDirectMessage {
