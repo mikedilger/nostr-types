@@ -5,6 +5,19 @@ use serde::de::{Deserialize, Deserializer, Visitor};
 use serde::ser::{Serialize, Serializer};
 use std::fmt;
 
+/// Delegation information for an Event
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum EventDelegation {
+    /// The event was not delegated
+    NotDelegated,
+
+    /// The delegation was invalid (with reason)
+    InvalidDelegation(String),
+
+    /// The event was delegated and is valid (with pubkey of delegator)
+    DelegatedBy(PublicKey),
+}
+
 /// Conditions of delegation
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct DelegationConditions {
@@ -80,11 +93,15 @@ impl DelegationConditions {
     /// Verify the signature part of a Delegation tag
     pub fn verify_signature(
         &self,
-        pubkey_delegatee: PublicKeyHex,
-        pubkey_delegater: PublicKey,
+        pubkey_delegater: &PublicKey,
+        pubkey_delegatee: &PublicKey,
         signature: Signature,
     ) -> Result<(), Error> {
-        let input = format!("nostr:delegation:{}:{}", pubkey_delegatee, self.as_string());
+        let input = format!(
+            "nostr:delegation:{}:{}",
+            pubkey_delegatee.as_hex_string(),
+            self.as_string()
+        );
         pubkey_delegater.verify(input.as_bytes(), signature)
     }
 }
