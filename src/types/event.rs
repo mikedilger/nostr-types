@@ -970,7 +970,7 @@ mod test {
             // expected type, check returned delegator key
             assert_eq!(pk, delegator_pubkey);
         } else {
-            panic!("Exepected DelegatedBy result, got {:?}", event.delegation());
+            panic!("Expected DelegatedBy result, got {:?}", event.delegation());
         }
     }
 
@@ -985,7 +985,7 @@ mod test {
             // expected type, check returned delegator key
             assert_eq!(reason, "Event created after delegation ended");
         } else {
-            panic!("Exepected InvalidDelegation result, got {:?}", event.delegation());
+            panic!("Expected InvalidDelegation result, got {:?}", event.delegation());
         }
     }
 
@@ -1000,7 +1000,7 @@ mod test {
             // expected type, check returned delegator key
             assert_eq!(reason, "Event created before delegation started");
         } else {
-            panic!("Exepected InvalidDelegation result, got {:?}", event.delegation());
+            panic!("Expected InvalidDelegation result, got {:?}", event.delegation());
         }
     }
 }
