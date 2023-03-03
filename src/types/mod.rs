@@ -15,7 +15,7 @@ mod client_message;
 pub use client_message::ClientMessage;
 
 mod delegation;
-pub use delegation::DelegationConditions;
+pub use delegation::{DelegationConditions, EventDelegation};
 
 mod event;
 pub use event::{Event, PreEvent};

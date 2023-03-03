@@ -1,6 +1,6 @@
 use super::{
-    EventKind, Id, Metadata, PrivateKey, PublicKey, PublicKeyHex, RelayUrl, Signature, Tag,
-    Unixtime,
+    EventDelegation, EventKind, Id, Metadata, PrivateKey, PublicKey, PublicKeyHex, RelayUrl,
+    Signature, Tag, Unixtime,
 };
 use crate::Error;
 use base64::Engine;
@@ -803,6 +803,63 @@ impl Event {
         }
 
         zeroes.min(target_zeroes)
+    }
+
+    /// Was this event delegated, was that valid, and if so what is the pubkey of
+    /// the delegator?
+    pub fn delegation(&self) -> EventDelegation {
+        for tag in self.tags.iter() {
+            if let Tag::Delegation {
+                pubkey,
+                conditions,
+                sig,
+            } = tag
+            {
+                // Convert hex strings into functional types
+                let signature = match Signature::try_from_hex_string(sig) {
+                    Ok(sig) => sig,
+                    Err(e) => return EventDelegation::InvalidDelegation(format!("{}", e)),
+                };
+                let delegator_pubkey = match PublicKey::try_from_hex_string(pubkey) {
+                    Ok(pk) => pk,
+                    Err(e) => return EventDelegation::InvalidDelegation(format!("{}", e)),
+                };
+
+                // Verify the delegation tag
+                match conditions.verify_signature(&delegator_pubkey, &self.pubkey, signature) {
+                    Ok(_) => {
+                        // Check conditions
+                        if let Some(kind) = conditions.kind {
+                            if self.kind != kind {
+                                return EventDelegation::InvalidDelegation(
+                                    "Event Kind not delegated".to_owned(),
+                                );
+                            }
+                        }
+                        if let Some(created_after) = conditions.created_after {
+                            if self.created_at < created_after {
+                                return EventDelegation::InvalidDelegation(
+                                    "Event created before delegation started".to_owned(),
+                                );
+                            }
+                        }
+                        if let Some(created_before) = conditions.created_before {
+                            if self.created_at < created_before {
+                                return EventDelegation::InvalidDelegation(
+                                    "Event created after delegation ended".to_owned(),
+                                );
+                            }
+                        }
+                        return EventDelegation::DelegatedBy(delegator_pubkey);
+                    }
+                    Err(e) => {
+                        return EventDelegation::InvalidDelegation(format!("{}", e));
+                    }
+                }
+            }
+        }
+
+        EventDelegation::NotDelegated
     }
 }
 
