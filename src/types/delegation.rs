@@ -159,18 +159,18 @@ mod test {
         )
         .unwrap();
         let delegator_public_key = delegator_private_key.public_key();
-        let delegatee_public_key = PublicKeyHex::try_from_str(
+        let delegatee_public_key = PublicKey::try_from_hex_string(
             "477318cfb5427b9cfc66a9fa376150c1ddbc62115ae27cef72417eb959691396",
         )
         .unwrap();
 
         let signature = dc
-            .generate_signature(delegatee_public_key.clone(), delegator_private_key)
+            .generate_signature(PublicKeyHex::from(delegatee_public_key), delegator_private_key)
             .unwrap();
 
         // signature is changing, validate by verify method
         let sig = Signature::try_from(signature).unwrap();
-        let verify_result = dc.verify_signature(delegatee_public_key, delegator_public_key, sig);
+        let verify_result = dc.verify_signature(&delegator_public_key, &delegatee_public_key, sig);
         assert!(verify_result.is_ok());
     }
 
@@ -189,14 +189,14 @@ mod test {
                 "kind=1&created_at>1676067553&created_at<1678659553"
             );
 
-            let delegatee_public_key = PublicKeyHex::try_from_str(
+            let delegatee_public_key = PublicKey::try_from_hex_string(
                 "bea8aeb6c1657e33db5ac75a83910f77e8ec6145157e476b5b88c6e85b1fab34",
             )
             .unwrap();
 
             let verify_result = conditions.verify_signature(
-                delegatee_public_key,
-                PublicKey::try_from_hex_string(&pubkey.as_str()).unwrap(),
+                &PublicKey::try_from_hex_string(&pubkey.as_str()).unwrap(),
+                &delegatee_public_key,
                 Signature::try_from(sig).unwrap(),
             );
             assert!(verify_result.is_ok());
