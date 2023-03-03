@@ -844,7 +844,7 @@ impl Event {
                             }
                         }
                         if let Some(created_before) = conditions.created_before {
-                            if self.created_at < created_before {
+                            if self.created_at > created_before {
                                 return EventDelegation::InvalidDelegation(
                                     "Event created after delegation ended".to_owned(),
                                 );
@@ -919,5 +919,88 @@ mod test {
         ]);
         let result = event.verify(None);
         assert!(result.is_err());
+    }
+
+    // helper
+    fn create_event_with_delegation(delegator_privkey: PrivateKey, created_at: Unixtime) -> Event {
+        let privkey = PrivateKey::mock();
+        let pubkey = privkey.public_key();
+        let delegator_pubkey = delegator_privkey.public_key();
+        let conditions =
+            DelegationConditions::try_from_str("kind=1&created_at>1680000000&created_at<1680050000")
+                .unwrap();
+        let sig = conditions
+            .generate_signature(
+                PublicKeyHex::try_from_str(&pubkey.as_hex_string()).unwrap(),
+                delegator_privkey,
+            )
+            .unwrap();
+        let preevent = PreEvent {
+            pubkey: pubkey.clone(),
+            created_at,
+            kind: EventKind::TextNote,
+            tags: vec![
+                Tag::Event {
+                    id: Id::mock(),
+                    recommended_relay_url: Some(UncheckedUrl::mock()),
+                    marker: None,
+                },
+                Tag::Delegation {
+                    pubkey: PublicKeyHex::try_from_string(delegator_pubkey.as_hex_string())
+                        .unwrap(),
+                    conditions,
+                    sig,
+                },
+            ],
+            content: "Hello World!".to_string(),
+            ots: None,
+        };
+        Event::new(preevent, &privkey).unwrap()
+    }
+
+    #[test]
+    fn test_event_with_delegation_ok() {
+        let delegator_privkey = PrivateKey::mock();
+        let delegator_pubkey = delegator_privkey.public_key();
+        let event = create_event_with_delegation(delegator_privkey, Unixtime(1680000012));
+        assert!(event.verify(None).is_ok());
+
+        // check delegation
+        if let EventDelegation::DelegatedBy(pk) = event.delegation() {
+            // expected type, check returned delegator key
+            assert_eq!(pk, delegator_pubkey);
+        } else {
+            panic!("Expected DelegatedBy result, got {:?}", event.delegation());
+        }
+    }
+
+    #[test]
+    fn test_event_with_delegation_invalid_created_after() {
+        let delegator_privkey = PrivateKey::mock();
+        let event = create_event_with_delegation(delegator_privkey, Unixtime(1690000000));
+        assert!(event.verify(None).is_ok());
+
+        // check delegation
+        if let EventDelegation::InvalidDelegation(reason) = event.delegation() {
+            // expected type, check returned delegator key
+            assert_eq!(reason, "Event created after delegation ended");
+        } else {
+            panic!("Expected InvalidDelegation result, got {:?}", event.delegation());
+        }
+    }
+
+    #[test]
+    fn test_event_with_delegation_invalid_created_before() {
+        let delegator_privkey = PrivateKey::mock();
+        let event = create_event_with_delegation(delegator_privkey, Unixtime(1610000000));
+        assert!(event.verify(None).is_ok());
+
+        // check delegation
+        if let EventDelegation::InvalidDelegation(reason) = event.delegation() {
+            // expected type, check returned delegator key
+            assert_eq!(reason, "Event created before delegation started");
+        } else {
+            panic!("Expected InvalidDelegation result, got {:?}", event.delegation());
+        }
     }
 }
