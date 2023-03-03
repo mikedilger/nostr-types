@@ -844,7 +844,7 @@ impl Event {
                             }
                         }
                         if let Some(created_before) = conditions.created_before {
-                            if self.created_at < created_before {
+                            if self.created_at > created_before {
                                 return EventDelegation::InvalidDelegation(
                                     "Event created after delegation ended".to_owned(),
                                 );
