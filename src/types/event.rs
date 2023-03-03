@@ -920,4 +920,62 @@ mod test {
         let result = event.verify(None);
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_event_with_delegation() {
+        let privkey = PrivateKey::mock();
+        let pubkey = privkey.public_key();
+        let delegator_privkey = PrivateKey::mock();
+        let conditions =
+            DelegationConditions::try_from_str("kind=1&created_at>168000000&created_at<1680050000")
+                .unwrap();
+        let sig = conditions
+            .generate_signature(
+                PublicKeyHex::try_from_str(&pubkey.as_hex_string()).unwrap(),
+                delegator_privkey,
+            )
+            .unwrap();
+        let preevent = PreEvent {
+            pubkey: pubkey.clone(),
+            created_at: Unixtime::mock(),
+            kind: EventKind::TextNote,
+            tags: vec![
+                Tag::Event {
+                    id: Id::mock(),
+                    recommended_relay_url: Some(UncheckedUrl::mock()),
+                    marker: None,
+                },
+                Tag::Delegation {
+                    pubkey: PublicKeyHex::try_from_string(
+                        &delegator_privkey.public_key().as_hex_string(),
+                    )
+                    .unwrap(),
+                    conditions,
+                    sig,
+                },
+            ],
+            content: "Hello World!".to_string(),
+            ots: None,
+        };
+        let mut event = Event::new(preevent, &privkey).unwrap();
+        assert!(event.verify(None).is_ok());
+
+        // Now make sure it fails when the message has been modified
+        event.content = "I'm changing this message".to_string();
+        let result = event.verify(None);
+        assert!(result.is_err());
+
+        // Change it back
+        event.content = "Hello World!".to_string();
+        let result = event.verify(None);
+        assert!(result.is_ok());
+
+        // Tweak the id only
+        event.id = Id([
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31,
+        ]);
+        let result = event.verify(None);
+        assert!(result.is_err());
+    }
 }
