@@ -72,7 +72,7 @@ mod unixtime;
 pub use unixtime::Unixtime;
 
 mod url;
-pub use url::{RelayUrl, UncheckedUrl, Url};
+pub use self::url::{RelayUrl, UncheckedUrl, Url};
 
 #[cfg(test)]
 mod test {

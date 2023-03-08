@@ -73,7 +73,7 @@ pub enum Error {
 
     /// Invalid URL
     #[error("Invalid URL: \"{0}\"")]
-    InvalidUrl(#[from] http::uri::InvalidUri),
+    InvalidUrl(#[from] url::ParseError),
 
     /// Invalid URL Host
     #[error("Invalid URL Host: \"{0}\"")]
@@ -86,10 +86,6 @@ pub enum Error {
     /// Missing URL Authority
     #[error("Missing URL Authority")]
     InvalidUrlMissingAuthority,
-
-    /// Missing URL Scheme
-    #[error("Missing URL Scheme")]
-    InvalidUrlMissingScheme,
 
     /// Pad error
     #[error("Encryption/Decryption padding error")]

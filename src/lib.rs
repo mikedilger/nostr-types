@@ -21,7 +21,7 @@
     deprecated_in_future,
     unstable_features,
     single_use_lifetimes,
-    unsafe_code,
+    //unsafe_code,
     unreachable_pub,
     missing_docs,
     missing_copy_implementations

@@ -38,7 +38,9 @@ impl UncheckedUrl {
     }
 }
 
-/// A String representing a valid URL with a scheme and authority present.
+/// A String representing a valid URL with an authority present including an
+/// Internet based host.
+///
 /// We don't serialize/deserialize these directly, see `UncheckedUrl` for that
 #[derive(Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
 pub struct Url(pub String);
@@ -57,42 +59,40 @@ impl Url {
 
     /// Create a new Url from a string
     pub fn try_from_str(s: &str) -> Result<Url, Error> {
-        use std::fmt::Write;
+        // We use the url crate to parse and normalize
+        let url = url::Url::parse(s.trim())?;
 
-        let mut inner: String = String::new();
-
-        // We use http::Uri parse to validate
-        let uri = s.trim().parse::<http::Uri>()?;
-
-        if let Some(scheme) = uri.scheme() {
-            write!(inner, "{}://", scheme.as_str().to_lowercase())?;
-        } else {
-            return Err(Error::InvalidUrlMissingScheme);
-        }
-
-        if let Some(auth) = uri.authority() {
-            // This is an INCOMPLETE list of bad hosts
-            let host = auth.host().to_lowercase();
-            if host != host.trim()
-                || host.starts_with("localhost")
-                || host.starts_with("127.")
-                || host.starts_with("[::1/")
-                || host.starts_with("[0:")
-            {
-                return Err(Error::InvalidUrlHost(host));
-            }
-            write!(inner, "{}", auth.as_str().to_lowercase())?;
-        } else {
+        if !url.has_authority() {
             return Err(Error::InvalidUrlMissingAuthority);
         }
 
-        write!(inner, "{}", uri.path())?;
-
-        if let Some(query) = uri.query() {
-            write!(inner, "?{}", query)?;
+        if let Some(host) = url.host() {
+            match host {
+                url::Host::Domain(_) => {
+                    // Strange that we can't access as a string
+                    let s = format!("{}", host);
+                    if s != s.trim() || s.starts_with("localhost") {
+                        return Err(Error::InvalidUrlHost(s));
+                    }
+                },
+                url::Host::Ipv4(addr) => {
+                    let addrx: core_net::Ipv4Addr = unsafe { std::mem::transmute(addr) };
+                    if ! addrx.is_global() {
+                        return Err(Error::InvalidUrlHost(format!("{}", host)));
+                    }
+                },
+                url::Host::Ipv6(addr) => {
+                    let addrx: core_net::Ipv6Addr = unsafe { std::mem::transmute(addr) };
+                    if ! addrx.is_global() {
+                        return Err(Error::InvalidUrlHost(format!("{}", host)));
+                    }
+                }
+            }
+        } else {
+            return Err(Error::InvalidUrlHost("".to_string()));
         }
 
-        Ok(Url(inner))
+        Ok(Url(url.as_str().to_owned()))
     }
 
     /// Convert into a UncheckedUrl
@@ -126,24 +126,15 @@ impl fmt::Display for RelayUrl {
 impl RelayUrl {
     /// Create a new RelayUrl from a Url
     pub fn try_from_url(u: &Url) -> Result<RelayUrl, Error> {
-        // Trim trailing slash if any
-        let mut s = u.0.clone();
-        while s.ends_with('/') {
-            let _ = s.pop();
+
+        let url = url::Url::parse(&u.0)?;
+
+        // Verify the scheme is websockets
+        if url.scheme() != "wss" && url.scheme() != "ws" {
+            return Err(Error::InvalidUrlScheme(url.scheme().to_owned()));
         }
 
-        let uri = s.parse::<http::Uri>()?;
-
-        if let Some(scheme) = uri.scheme() {
-            // Verify the scheme is websockets
-            if scheme.as_str() != "wss" && scheme.as_str() != "ws" {
-                return Err(Error::InvalidUrlScheme(scheme.as_str().to_owned()));
-            }
-        } else {
-            return Err(Error::InvalidUrlMissingScheme);
-        }
-
-        Ok(RelayUrl(s))
+        Ok(RelayUrl(url.as_str().to_owned()))
     }
 
     /// Create a new RelayUrl from an UncheckedUrl
@@ -215,8 +206,8 @@ mod test {
 
     #[test]
     fn test_relay_url_slash() {
-        let input = "Wss://MyRelay.example.COM/";
+        let input = "Wss://MyRelay.example.COM";
         let url = RelayUrl::try_from_str(input).unwrap();
-        assert_eq!(url.as_str(), "wss://myrelay.example.com");
+        assert_eq!(url.as_str(), "wss://myrelay.example.com/");
     }
 }

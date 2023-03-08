@@ -16,6 +16,7 @@ base64 = "0.21"
 bech32 = "0.9"
 cbc = { version = "0.1", features = [ "std" ] }
 chacha20poly1305 = "0.10"
+core-net = { git = "https://github.com/mikedilger/core-net" }
 derive_more = "0.99"
 hex = "0.4"
 hmac = "0.12"
@@ -34,6 +35,7 @@ serde_json = "1.0"
 sha2 = "0.10"
 thiserror = "1.0"
 tungstenite = { version = "0.18", features = [ "rustls-tls-webpki-roots" ] }
+url = "2.3"
 zeroize = "1.5"
 
 # Force scrypt to build with release-like speed even in dev mode
