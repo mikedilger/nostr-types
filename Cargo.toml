@@ -16,7 +16,7 @@ base64 = "0.21"
 bech32 = "0.9"
 cbc = { version = "0.1", features = [ "std" ] }
 chacha20poly1305 = "0.10"
-core-net = { git = "https://github.com/mikedilger/core-net" }
+core-net = "0.1"
 derive_more = "0.99"
 hex = "0.4"
 hmac = "0.12"
