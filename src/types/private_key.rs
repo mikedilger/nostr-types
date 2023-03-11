@@ -506,7 +506,7 @@ impl PrivateKey {
 
     // Hash/Stretch password with scrypt into a 32-byte (256-bit) key
     fn password_to_key_v2(password: &str, salt: &[u8; 16], log_n: u8) -> Result<[u8; 32], Error> {
-        let params = match scrypt::Params::new(log_n, 8, 1) {
+        let params = match scrypt::Params::new(log_n, 8, 1, 32) {
             // r=8, p=1
             Ok(p) => p,
             Err(_) => return Err(Error::Scrypt),
