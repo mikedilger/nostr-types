@@ -500,7 +500,7 @@ impl PrivateKey {
     // Hash/Stretch password with pbkdf2 into a 32-byte (256-bit) key
     fn password_to_key_v1(password: &str, salt: &[u8], rounds: u32) -> Result<[u8; 32], Error> {
         let mut key: [u8; 32] = [0; 32];
-        pbkdf2::<Hmac<Sha256>>(password.as_bytes(), salt, rounds, &mut key);
+        pbkdf2::<Hmac<Sha256>>(password.as_bytes(), salt, rounds, &mut key)?;
         Ok(key)
     }
 

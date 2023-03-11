@@ -59,6 +59,10 @@ pub enum Error {
     #[error("Invalid event Id Prefix")]
     InvalidIdPrefix,
 
+    /// Invalid digest length
+    #[error("Invalid digest length")]
+    InvalidLength(#[from] hmac::digest::InvalidLength),
+
     /// Invalid Profile
     #[error("Invalid Profile")]
     InvalidProfile,

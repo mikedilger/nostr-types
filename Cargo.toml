@@ -24,7 +24,7 @@ http = "0.2"
 k256 = { version = "0.13", features = [ "schnorr", "ecdh" ] }
 inout = "0.1.3"
 num_cpus = "1"
-pbkdf2 = { version = "0.11", default-features = false, features = [ "hmac", "sha2", "std" ] }
+pbkdf2 = { version = "0.12", default-features = false, features = [ "hmac", "sha2", "std" ] }
 rand = "0.8"
 rand_core = "0.6"
 reqwest = { version = "0.11", default-features = false, features = [ "blocking", "json", "rustls-tls-webpki-roots"  ] }
