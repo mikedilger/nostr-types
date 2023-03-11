@@ -926,9 +926,10 @@ mod test {
         let privkey = PrivateKey::mock();
         let pubkey = privkey.public_key();
         let delegator_pubkey = delegator_privkey.public_key();
-        let conditions =
-            DelegationConditions::try_from_str("kind=1&created_at>1680000000&created_at<1680050000")
-                .unwrap();
+        let conditions = DelegationConditions::try_from_str(
+            "kind=1&created_at>1680000000&created_at<1680050000",
+        )
+        .unwrap();
         let sig = conditions
             .generate_signature(
                 PublicKeyHex::try_from_str(&pubkey.as_hex_string()).unwrap(),
@@ -985,7 +986,10 @@ mod test {
             // expected type, check returned delegator key
             assert_eq!(reason, "Event created after delegation ended");
         } else {
-            panic!("Expected InvalidDelegation result, got {:?}", event.delegation());
+            panic!(
+                "Expected InvalidDelegation result, got {:?}",
+                event.delegation()
+            );
         }
     }
 
@@ -1000,7 +1004,10 @@ mod test {
             // expected type, check returned delegator key
             assert_eq!(reason, "Event created before delegation started");
         } else {
-            panic!("Expected InvalidDelegation result, got {:?}", event.delegation());
+            panic!(
+                "Expected InvalidDelegation result, got {:?}",
+                event.delegation()
+            );
         }
     }
 }

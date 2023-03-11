@@ -165,7 +165,10 @@ mod test {
         .unwrap();
 
         let signature = dc
-            .generate_signature(PublicKeyHex::from(delegatee_public_key), delegator_private_key)
+            .generate_signature(
+                PublicKeyHex::from(delegatee_public_key),
+                delegator_private_key,
+            )
             .unwrap();
 
         // signature is changing, validate by verify method

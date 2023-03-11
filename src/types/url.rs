@@ -74,16 +74,16 @@ impl Url {
                     if s != s.trim() || s.starts_with("localhost") {
                         return Err(Error::InvalidUrlHost(s));
                     }
-                },
+                }
                 url::Host::Ipv4(addr) => {
                     let addrx: core_net::Ipv4Addr = unsafe { std::mem::transmute(addr) };
-                    if ! addrx.is_global() {
+                    if !addrx.is_global() {
                         return Err(Error::InvalidUrlHost(format!("{}", host)));
                     }
-                },
+                }
                 url::Host::Ipv6(addr) => {
                     let addrx: core_net::Ipv6Addr = unsafe { std::mem::transmute(addr) };
-                    if ! addrx.is_global() {
+                    if !addrx.is_global() {
                         return Err(Error::InvalidUrlHost(format!("{}", host)));
                     }
                 }
@@ -126,7 +126,6 @@ impl fmt::Display for RelayUrl {
 impl RelayUrl {
     /// Create a new RelayUrl from a Url
     pub fn try_from_url(u: &Url) -> Result<RelayUrl, Error> {
-
         let url = url::Url::parse(&u.0)?;
 
         // Verify the scheme is websockets
