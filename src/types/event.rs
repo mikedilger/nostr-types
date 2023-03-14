@@ -601,56 +601,28 @@ impl Event {
     /// If this event mentions others, get those other event Ids
     /// and optional recommended relay Urls
     pub fn mentions(&self) -> Vec<(Id, Option<RelayUrl>)> {
-        // must be a text note
-        if self.kind != EventKind::TextNote {
+        // must be a text note OR kind: 6 as there are
+        // kind: 6 with no content JSON but with 'e' tag mentions
+        if self.kind != EventKind::TextNote && self.kind != EventKind::Repost {
             return vec![];
         }
 
         let mut output: Vec<(Id, Option<RelayUrl>)> = Vec::new();
 
-        // Collect every 'e' tag marked as 'mention'
+        // Collect every 'e' tag
         for tag in self.tags.iter() {
             if let Tag::Event {
                 id,
                 recommended_relay_url,
-                marker,
+                marker: _,
             } = tag
             {
-                if marker.is_some() && marker.as_deref().unwrap() == "mention" {
-                    output.push((
-                        *id,
-                        recommended_relay_url
-                            .as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                    ));
-                }
-            }
-        }
-
-        // Collect every unmarked 'e' tag that is not the first or last
-        let e_tags: Vec<&Tag> = self
-            .tags
-            .iter()
-            .filter(|e| matches!(e, Tag::Event { .. }))
-            .collect();
-        if e_tags.len() > 2 {
-            // mentions are everything other than first and last
-            for tag in &e_tags[1..e_tags.len() - 1] {
-                if let Tag::Event {
-                    id,
-                    recommended_relay_url,
-                    marker,
-                } = tag
-                {
-                    if marker.is_none() {
-                        output.push((
-                            *id,
-                            recommended_relay_url
-                                .as_ref()
-                                .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                        ));
-                    }
-                }
+                output.push((
+                    *id,
+                    recommended_relay_url
+                        .as_ref()
+                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                ));
             }
         }
 
