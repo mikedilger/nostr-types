@@ -569,35 +569,6 @@ impl Event {
         None
     }
 
-    /// If this event replies to a thread, get all ancestors in that thread.
-    /// This also gets all mentioned events.
-    pub fn replies_to_ancestors(&self) -> Vec<(Id, Option<RelayUrl>)> {
-        // must be a text note
-        if self.kind != EventKind::TextNote {
-            return vec![];
-        }
-
-        let mut output: Vec<(Id, Option<RelayUrl>)> = Vec::new();
-
-        for tag in self.tags.iter() {
-            if let Tag::Event {
-                id,
-                recommended_relay_url,
-                marker: _,
-            } = tag
-            {
-                output.push((
-                    *id,
-                    recommended_relay_url
-                        .as_ref()
-                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                ));
-            }
-        }
-
-        output
-    }
-
     /// All events IDs that this event refers to, whether root, reply, mention, or otherwise
     /// along with optional recommended relay URLs
     pub fn referred_events(&self) -> Vec<(Id, Option<RelayUrl>)> {
