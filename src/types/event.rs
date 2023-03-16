@@ -598,11 +598,36 @@ impl Event {
         output
     }
 
+    /// All events IDs that this event refers to, whether root, reply, mention, or otherwise
+    /// along with optional recommended relay URLs
+    pub fn referred_events(&self) -> Vec<(Id, Option<RelayUrl>)> {
+        let mut output: Vec<(Id, Option<RelayUrl>)> = Vec::new();
+
+        // Collect every 'e' tag
+        for tag in self.tags.iter() {
+            if let Tag::Event {
+                id,
+                recommended_relay_url,
+                marker: _,
+            } = tag
+            {
+                output.push((
+                    *id,
+                    recommended_relay_url
+                        .as_ref()
+                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                ));
+            }
+        }
+
+        output
+    }
+
     /// If this event mentions others, get those other event Ids
     /// and optional recommended relay Urls
     pub fn mentions(&self) -> Vec<(Id, Option<RelayUrl>)> {
-        // must be a text note
-        if self.kind != EventKind::TextNote {
+        // must be a text note or repost
+        if self.kind != EventKind::TextNote && self.kind != EventKind::Repost {
             return vec![];
         }
 
