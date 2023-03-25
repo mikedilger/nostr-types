@@ -55,6 +55,8 @@ pub enum EventKind {
     RelayList,
     /// Authentication
     Auth,
+    /// Long-form Content
+    LongFormContent,
     /// Client Settings
     ClientSettings,
     /// Relay-specific replaceable event
@@ -100,6 +102,7 @@ impl From<u64> for EventKind {
             10001 => RelaysListNip23,
             10002 => RelayList,
             22242 => Auth,
+            30023 => LongFormContent,
             31111 => ClientSettings,
             x if (10_000..20_000).contains(&x) => Replaceable(x),
             x if (20_000..30_000).contains(&x) => Ephemeral(x),
@@ -135,6 +138,7 @@ impl From<EventKind> for u64 {
             RelaysListNip23 => 10001,
             RelayList => 10002,
             Auth => 22242,
+            LongFormContent => 30023,
             ClientSettings => 31111,
             Replaceable(u) => u,
             Ephemeral(u) => u,
