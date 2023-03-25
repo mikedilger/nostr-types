@@ -67,6 +67,9 @@ pub enum Tag {
     /// 'g' A geohash
     Geohash(String),
 
+    /// 'd' Identifier tag
+    Identifier(String),
+
     /// A subject. The first string is the subject. Should only be in TextNote events.
     Subject(String),
 
@@ -107,6 +110,7 @@ impl Tag {
             Tag::Hashtag(_) => "t".to_string(),
             Tag::Reference { .. } => "r".to_string(),
             Tag::Geohash(_) => "g".to_string(),
+            Tag::Identifier(_) => "d".to_string(),
             Tag::Subject(_) => "subject".to_string(),
             Tag::Nonce { .. } => "nonce".to_string(),
             Tag::Parameter(_) => "parameter".to_string(),
@@ -211,6 +215,12 @@ impl Serialize for Tag {
                 let mut seq = serializer.serialize_seq(None)?;
                 seq.serialize_element("g")?;
                 seq.serialize_element(geohash)?;
+                seq.end()
+            }
+            Tag::Identifier(id) => {
+                let mut seq = serializer.serialize_seq(None)?;
+                seq.serialize_element("d")?;
+                seq.serialize_element(id)?;
                 seq.end()
             }
             Tag::Subject(subject) => {
@@ -399,6 +409,15 @@ impl<'de> Visitor<'de> for TagVisitor {
                 }
             };
             Ok(Tag::Geohash(geo))
+        } else if tagname == "d" {
+            let id = match seq.next_element()? {
+                Some(id) => id,
+                None => {
+                    // Implicit empty value
+                    return Ok(Tag::Identifier("".to_string()));
+                }
+            };
+            Ok(Tag::Identifier(id))
         } else if tagname == "subject" {
             let sub = match seq.next_element()? {
                 Some(s) => s,
