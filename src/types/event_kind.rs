@@ -73,6 +73,31 @@ impl EventKind {
     pub(crate) fn mock() -> EventKind {
         EventKind::TextNote
     }
+
+    /// If this event kind is a replaceable event
+    /// NOTE: this does NOT count parameterized replaceable events
+    pub fn is_replaceable(&self) -> bool {
+        match *self {
+            EventKind::Metadata => true,
+            EventKind::ContactList => true,
+            _ => {
+                let u: u64 = From::from(*self);
+                (10000..=19999).contains(&u)
+            }
+        }
+    }
+
+    /// If this event kind is ephemeral
+    pub fn is_ephemeral(&self) -> bool {
+        let u: u64 = From::from(*self);
+        (20000..=29999).contains(&u)
+    }
+
+    /// If this event kind is parameterized replaceable
+    pub fn is_parameterized_replaceable(&self) -> bool {
+        let u: u64 = From::from(*self);
+        (30000..=39999).contains(&u)
+    }
 }
 
 impl From<u64> for EventKind {
@@ -188,4 +213,21 @@ mod test {
     use super::*;
 
     test_serde! {EventKind, test_event_kind_serde}
+
+    #[test]
+    fn test_replaceable_ephemeral() {
+        assert_eq!(EventKind::Metadata.is_replaceable(), true);
+        assert_eq!(EventKind::TextNote.is_replaceable(), false);
+        assert_eq!(EventKind::Zap.is_replaceable(), false);
+        assert_eq!(EventKind::LongFormContent.is_replaceable(), false);
+
+        assert_eq!(EventKind::TextNote.is_ephemeral(), false);
+        assert_eq!(EventKind::Auth.is_ephemeral(), true);
+
+        assert_eq!(EventKind::TextNote.is_parameterized_replaceable(), false);
+        assert_eq!(
+            EventKind::LongFormContent.is_parameterized_replaceable(),
+            true
+        );
+    }
 }
