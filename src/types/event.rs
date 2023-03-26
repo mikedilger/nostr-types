@@ -746,6 +746,20 @@ impl Event {
         None
     }
 
+    /// If this is a parameterized event, get the parameter
+    pub fn parameter(&self) -> Option<String> {
+        if self.kind.is_parameterized_replaceable() {
+            for tag in self.tags.iter() {
+                if let Tag::Parameter(param) = tag {
+                    return Some(param.to_owned());
+                }
+            }
+            Some("".to_owned()) // implicit
+        } else {
+            None
+        }
+    }
+
     /// Return all the hashtags this event refers to
     pub fn hashtags(&self) -> Vec<String> {
         if self.kind != EventKind::TextNote {
