@@ -67,19 +67,21 @@ pub enum EventKind {
     Other(u64),
 }
 
+use EventKind::*;
+
 impl EventKind {
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> EventKind {
-        EventKind::TextNote
+        TextNote
     }
 
     /// If this event kind is a replaceable event
     /// NOTE: this does NOT count parameterized replaceable events
     pub fn is_replaceable(&self) -> bool {
         match *self {
-            EventKind::Metadata => true,
-            EventKind::ContactList => true,
+            Metadata => true,
+            ContactList => true,
             _ => {
                 let u: u64 = From::from(*self);
                 (10000..=19999).contains(&u)
@@ -102,21 +104,83 @@ impl EventKind {
     /// If this event kind is feed related.
     pub fn is_feed_related(&self) -> bool {
         match *self {
-            EventKind::TextNote => true,
-            EventKind::EncryptedDirectMessage => true, // can be
-            EventKind::EventDeletion => true,          // affects other events in the feed
-            EventKind::Repost => true,
-            EventKind::Reaction => true,
-            EventKind::Zap => true, // like reaction, affects zap counts
-            EventKind::LongFormContent => true,
+            TextNote => true,
+            EncryptedDirectMessage => true, // can be
+            EventDeletion => true,          // affects other events in the feed
+            Repost => true,
+            Reaction => true,
+            Zap => true, // like reaction, affects zap counts
+            LongFormContent => true,
             _ => false,
         }
+    }
+
+    /// This iterates through every well-known EventKind
+    pub fn iter() -> EventKindIterator {
+        EventKindIterator::new()
+    }
+}
+
+/// Iterator over well known `EventKind`s
+#[derive(Clone, Copy, Debug)]
+pub struct EventKindIterator {
+    pos: usize,
+}
+
+static WELL_KNOWN_KINDS: &[EventKind] = &[
+    Metadata,
+    TextNote,
+    RecommendRelay,
+    ContactList,
+    EncryptedDirectMessage,
+    EventDeletion,
+    Repost,
+    Reaction,
+    ChannelCreation,
+    ChannelMetadata,
+    ChannelMessage,
+    ChannelHideMessage,
+    ChannelMuteUser,
+    PublicChatReserved45,
+    PublicChatReserved46,
+    PublicChatReserved47,
+    PublicChatReserved48,
+    PublicChatReserved49,
+    ZapRequest,
+    Zap,
+    RelaysListNip23,
+    RelayList,
+    Auth,
+    LongFormContent,
+    ClientSettings,
+];
+
+impl EventKindIterator {
+    fn new() -> EventKindIterator {
+        EventKindIterator { pos: 0 }
+    }
+}
+
+impl Iterator for EventKindIterator {
+    type Item = EventKind;
+
+    fn next(&mut self) -> Option<EventKind> {
+        if self.pos == WELL_KNOWN_KINDS.len() {
+            None
+        } else {
+            let rval = WELL_KNOWN_KINDS[self.pos];
+            self.pos += 1;
+            Some(rval)
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.pos, Some(WELL_KNOWN_KINDS.len()))
     }
 }
 
 impl From<u64> for EventKind {
     fn from(u: u64) -> Self {
-        use EventKind::*;
         match u {
             0 => Metadata,
             1 => TextNote,
@@ -152,7 +216,6 @@ impl From<u64> for EventKind {
 
 impl From<EventKind> for u64 {
     fn from(e: EventKind) -> u64 {
-        use EventKind::*;
         match e {
             Metadata => 0,
             TextNote => 1,
@@ -230,18 +293,15 @@ mod test {
 
     #[test]
     fn test_replaceable_ephemeral() {
-        assert_eq!(EventKind::Metadata.is_replaceable(), true);
-        assert_eq!(EventKind::TextNote.is_replaceable(), false);
-        assert_eq!(EventKind::Zap.is_replaceable(), false);
-        assert_eq!(EventKind::LongFormContent.is_replaceable(), false);
+        assert_eq!(Metadata.is_replaceable(), true);
+        assert_eq!(TextNote.is_replaceable(), false);
+        assert_eq!(Zap.is_replaceable(), false);
+        assert_eq!(LongFormContent.is_replaceable(), false);
 
-        assert_eq!(EventKind::TextNote.is_ephemeral(), false);
-        assert_eq!(EventKind::Auth.is_ephemeral(), true);
+        assert_eq!(TextNote.is_ephemeral(), false);
+        assert_eq!(Auth.is_ephemeral(), true);
 
-        assert_eq!(EventKind::TextNote.is_parameterized_replaceable(), false);
-        assert_eq!(
-            EventKind::LongFormContent.is_parameterized_replaceable(),
-            true
-        );
+        assert_eq!(TextNote.is_parameterized_replaceable(), false);
+        assert_eq!(LongFormContent.is_parameterized_replaceable(), true);
     }
 }

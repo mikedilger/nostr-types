@@ -21,7 +21,7 @@ mod event;
 pub use event::{Event, PreEvent};
 
 mod event_kind;
-pub use event_kind::EventKind;
+pub use event_kind::{EventKind, EventKindIterator};
 
 mod filter;
 pub use filter::Filter;
