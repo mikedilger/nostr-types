@@ -98,6 +98,20 @@ impl EventKind {
         let u: u64 = From::from(*self);
         (30000..=39999).contains(&u)
     }
+
+    /// If this event kind is feed related.
+    pub fn is_feed_related(&self) -> bool {
+        match *self {
+            EventKind::TextNote => true,
+            EventKind::EncryptedDirectMessage => true, // can be
+            EventKind::EventDeletion => true,          // affects other events in the feed
+            EventKind::Repost => true,
+            EventKind::Reaction => true,
+            EventKind::Zap => true, // like reaction, affects zap counts
+            EventKind::LongFormContent => true,
+            _ => false,
+        }
+    }
 }
 
 impl From<u64> for EventKind {
