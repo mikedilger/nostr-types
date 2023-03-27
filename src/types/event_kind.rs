@@ -115,6 +115,11 @@ impl EventKind {
         }
     }
 
+    /// If this event kind augments a feed related event
+    pub fn augments_feed_related(&self) -> bool {
+        matches!(*self, EventDeletion | Reaction | Zap)
+    }
+
     /// This iterates through every well-known EventKind
     pub fn iter() -> EventKindIterator {
         EventKindIterator::new()
