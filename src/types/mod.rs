@@ -39,7 +39,7 @@ mod nip05;
 pub use nip05::Nip05;
 
 mod nostr_url;
-pub use nostr_url::{NostrBech32, NostrUrl};
+pub use nostr_url::{find_nostr_bech32_pos, find_nostr_url_pos, NostrBech32, NostrUrl};
 
 mod pay_request_data;
 pub use pay_request_data::PayRequestData;
