@@ -38,6 +38,9 @@ pub use metadata::Metadata;
 mod nip05;
 pub use nip05::Nip05;
 
+mod nostr_url;
+pub use nostr_url::{NostrBech32, NostrUrl};
+
 mod pay_request_data;
 pub use pay_request_data::PayRequestData;
 
