@@ -174,13 +174,14 @@ impl PrivateKey {
     ///
     /// WARNING: This weakens the security of your key. Your key will be marked
     /// with `KeySecurity::Weak` if you execute this.
-    pub fn try_as_bech32_string(&mut self) -> Result<String, Error> {
+    pub fn as_bech32_string(&mut self) -> String {
         self.1 = KeySecurity::Weak;
-        Ok(bech32::encode(
+        bech32::encode(
             "nsec",
             self.0.to_bytes().to_vec().to_base32(),
             bech32::Variant::Bech32,
-        )?)
+        )
+        .unwrap()
     }
 
     /// Import from a bech32 encoded string
@@ -597,7 +598,7 @@ mod test {
     fn test_privkey_bech32() {
         let mut pk = PrivateKey::mock();
 
-        let encoded = pk.try_as_bech32_string().unwrap();
+        let encoded = pk.as_bech32_string();
         println!("bech32: {}", encoded);
 
         let decoded = PrivateKey::try_from_bech32_string(&encoded).unwrap();

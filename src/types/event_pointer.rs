@@ -15,7 +15,7 @@ pub struct EventPointer {
 
 impl EventPointer {
     /// Export as a bech32 encoded string ("nevent")
-    pub fn try_as_bech32_string(&self) -> Result<String, Error> {
+    pub fn as_bech32_string(&self) -> String {
         // Compose
         let mut tlv: Vec<u8> = Vec::new();
 
@@ -31,11 +31,7 @@ impl EventPointer {
             tlv.extend(relay.0.as_bytes());
         }
 
-        Ok(bech32::encode(
-            "nevent",
-            tlv.to_base32(),
-            bech32::Variant::Bech32,
-        )?)
+        bech32::encode("nevent", tlv.to_base32(), bech32::Variant::Bech32).unwrap()
     }
 
     /// Import from a bech32 encoded string ("nevent")
@@ -99,7 +95,7 @@ mod test {
 
     #[test]
     fn test_profile_bech32() {
-        let bech32 = EventPointer::mock().try_as_bech32_string().unwrap();
+        let bech32 = EventPointer::mock().as_bech32_string();
         println!("{}", bech32);
         assert_eq!(
             EventPointer::mock(),
@@ -123,7 +119,7 @@ mod test {
         let bech32 = "nevent1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaks343fay";
 
         // Try converting profile to bech32
-        assert_eq!(event_pointer.try_as_bech32_string().unwrap(), bech32);
+        assert_eq!(event_pointer.as_bech32_string(), bech32);
 
         // Try converting bech32 to profile
         assert_eq!(

@@ -29,12 +29,8 @@ impl Id {
     }
 
     /// Export as a bech32 encoded string ("note")
-    pub fn try_as_bech32_string(&self) -> Result<String, Error> {
-        Ok(bech32::encode(
-            "note",
-            self.0.to_vec().to_base32(),
-            bech32::Variant::Bech32,
-        )?)
+    pub fn as_bech32_string(&self) -> String {
+        bech32::encode("note", self.0.to_vec().to_base32(), bech32::Variant::Bech32).unwrap()
     }
 
     /// Import from a bech32 encoded string ("note")
@@ -277,7 +273,7 @@ mod test {
 
     #[test]
     fn test_id_bech32() {
-        let bech32 = Id::mock().try_as_bech32_string().unwrap();
+        let bech32 = Id::mock().as_bech32_string();
         println!("{}", bech32);
         assert_eq!(Id::mock(), Id::try_from_bech32_string(&bech32).unwrap());
     }

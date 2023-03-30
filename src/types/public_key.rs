@@ -33,12 +33,13 @@ impl PublicKey {
     }
 
     /// Export as a bech32 encoded string
-    pub fn try_as_bech32_string(&self) -> Result<String, Error> {
-        Ok(bech32::encode(
+    pub fn as_bech32_string(&self) -> String {
+        bech32::encode(
             "npub",
             self.0.to_bytes().to_vec().to_base32(),
             bech32::Variant::Bech32,
-        )?)
+        )
+        .unwrap()
     }
 
     /// Import from a bech32 encoded string
@@ -165,13 +166,9 @@ impl PublicKeyHex {
     }
 
     /// Export as a bech32 encoded string
-    pub fn try_as_bech32_string(&self) -> Result<String, Error> {
-        let vec: Vec<u8> = hex::decode(&self.0)?;
-        Ok(bech32::encode(
-            "npub",
-            vec.to_base32(),
-            bech32::Variant::Bech32,
-        )?)
+    pub fn as_bech32_string(&self) -> String {
+        let vec: Vec<u8> = hex::decode(&self.0).unwrap();
+        bech32::encode("npub", vec.to_base32(), bech32::Variant::Bech32).unwrap()
     }
 
     /// Try from &str
@@ -321,7 +318,7 @@ mod test {
     fn test_pubkey_bech32() {
         let pk = PublicKey::mock();
 
-        let encoded = pk.try_as_bech32_string().unwrap();
+        let encoded = pk.as_bech32_string();
         println!("bech32: {}", encoded);
 
         let decoded = PublicKey::try_from_bech32_string(&encoded).unwrap();
