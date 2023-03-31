@@ -24,10 +24,7 @@
     missing_docs,
     missing_copy_implementations
 )]
-
-#![deny(
-    clippy::string_slice
-)]
+#![deny(clippy::string_slice)]
 
 mod error;
 pub use error::Error;

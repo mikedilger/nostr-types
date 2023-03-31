@@ -90,8 +90,7 @@ impl Visitor<'_> for IdVisitor {
     where
         E: serde::de::Error,
     {
-        let vec: Vec<u8> =
-            hex::decode(v).map_err(|e| serde::de::Error::custom(format!("{e}")))?;
+        let vec: Vec<u8> = hex::decode(v).map_err(|e| serde::de::Error::custom(format!("{e}")))?;
 
         Ok(Id(vec.try_into().map_err(|e: Vec<u8>| {
             E::custom(format!(

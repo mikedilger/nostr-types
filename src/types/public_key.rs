@@ -114,8 +114,7 @@ impl Visitor<'_> for PublicKeyVisitor {
     where
         E: serde::de::Error,
     {
-        let vec: Vec<u8> =
-            hex::decode(v).map_err(|e| serde::de::Error::custom(format!("{e}")))?;
+        let vec: Vec<u8> = hex::decode(v).map_err(|e| serde::de::Error::custom(format!("{e}")))?;
 
         // If we don't catch this ourselves, the below from_bytes will panic when it
         // gets into an assertion within generic-array
@@ -124,8 +123,7 @@ impl Visitor<'_> for PublicKeyVisitor {
         }
 
         Ok(PublicKey(
-            VerifyingKey::from_bytes(&vec)
-                .map_err(|e| serde::de::Error::custom(format!("{e}")))?,
+            VerifyingKey::from_bytes(&vec).map_err(|e| serde::de::Error::custom(format!("{e}")))?,
         ))
     }
 }

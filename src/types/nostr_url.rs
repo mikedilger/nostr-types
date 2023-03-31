@@ -75,7 +75,8 @@ impl NostrBech32 {
         let mut output: Vec<NostrBech32> = Vec::new();
         let mut cursor = 0;
         while let Some((relstart, relend)) = find_nostr_bech32_pos(s.get(cursor..).unwrap()) {
-            if let Some(nurl) = NostrBech32::try_from_string(s.get(cursor + relstart..cursor + relend).unwrap())
+            if let Some(nurl) =
+                NostrBech32::try_from_string(s.get(cursor + relstart..cursor + relend).unwrap())
             {
                 output.push(nurl);
             }
@@ -117,7 +118,9 @@ impl NostrUrl {
         let mut output: Vec<NostrUrl> = Vec::new();
         let mut cursor = 0;
         while let Some((relstart, relend)) = find_nostr_url_pos(s.get(cursor..).unwrap()) {
-            if let Some(nurl) = NostrUrl::try_from_string(s.get(cursor+relstart .. cursor+relend).unwrap()) {
+            if let Some(nurl) =
+                NostrUrl::try_from_string(s.get(cursor + relstart..cursor + relend).unwrap())
+            {
                 output.push(nurl);
             }
             cursor += relend;
@@ -243,7 +246,7 @@ note10ttnuuvcs29y3k23gwrcurw2ksvgd7c2rrqlfx7urmt5m963vhss8nja90
         assert!(fixed.len() > sample3.len());
     }
 
-     #[test]
+    #[test]
     fn test_nostr_url_unicode_issues() {
         let sample = r#"🌝🐸note1fntxtkcy9pjwucqwa9mddn7v03wwwsu9j330jj350nvhpky2tuaspk6nqc"#;
         assert!(NostrUrl::try_from_string(sample).is_none())
