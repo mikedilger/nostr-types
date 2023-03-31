@@ -50,19 +50,19 @@ impl NostrBech32 {
     /// Try to convert a string into a NostrBech32. Must not have leading or trailing
     /// junk for this to work.
     pub fn try_from_string(s: &str) -> Option<NostrBech32> {
-        if &s[..5] == "npub1" {
+        if s.get(..5) == Some("npub1") {
             if let Ok(pk) = PublicKey::try_from_bech32_string(s) {
                 return Some(NostrBech32::Pubkey(pk));
             }
-        } else if &s[..9] == "nprofile1" {
+        } else if s.get(..9) == Some("nprofile1") {
             if let Ok(p) = Profile::try_from_bech32_string(s) {
                 return Some(NostrBech32::Profile(p));
             }
-        } else if &s[..5] == "note1" {
+        } else if s.get(..5) == Some("note1") {
             if let Ok(id) = Id::try_from_bech32_string(s) {
                 return Some(NostrBech32::Id(id));
             }
-        } else if &s[..7] == "nevent1" {
+        } else if s.get(..7) == Some("nevent1") {
             if let Ok(ep) = EventPointer::try_from_bech32_string(s) {
                 return Some(NostrBech32::EventPointer(ep));
             }
@@ -105,7 +105,7 @@ impl NostrUrl {
     /// Try to convert a string into a NostrUrl. Must not have leading or trailing
     /// junk for this to work.
     pub fn try_from_string(s: &str) -> Option<NostrUrl> {
-        if &s[..6] != "nostr:" {
+        if s.get(..6) != Some("nostr:") {
             return None;
         }
         NostrBech32::try_from_string(&s[6..]).map(NostrUrl)
@@ -132,7 +132,7 @@ impl NostrUrl {
         let mut cursor = 0;
         while let Some((relstart, relend)) = find_nostr_bech32_pos(&s[cursor..]) {
             // If it already has it, leave it alone
-            if relstart >= 6 && &s[cursor + relstart - 6..cursor + relstart] == "nostr:" {
+            if relstart >= 6 && s.get(cursor + relstart - 6..cursor + relstart) == Some("nostr:") {
                 output.push_str(&s[cursor..cursor + relend]);
             } else {
                 output.push_str(&s[cursor..cursor + relstart]);
