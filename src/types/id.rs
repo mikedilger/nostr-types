@@ -162,7 +162,7 @@ impl IdHex {
         if chars > 64 {
             chars = 64;
         }
-        IdHexPrefix(self.0[0..chars].to_owned())
+        IdHexPrefix(self.0.get(0..chars).unwrap().to_owned())
     }
 }
 

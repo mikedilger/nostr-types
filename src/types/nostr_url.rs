@@ -74,8 +74,8 @@ impl NostrBech32 {
     pub fn find_all_in_string(s: &str) -> Vec<NostrBech32> {
         let mut output: Vec<NostrBech32> = Vec::new();
         let mut cursor = 0;
-        while let Some((relstart, relend)) = find_nostr_bech32_pos(&s[cursor..]) {
-            if let Some(nurl) = NostrBech32::try_from_string(&s[cursor + relstart..cursor + relend])
+        while let Some((relstart, relend)) = find_nostr_bech32_pos(s.get(cursor..).unwrap()) {
+            if let Some(nurl) = NostrBech32::try_from_string(s.get(cursor + relstart..cursor + relend).unwrap())
             {
                 output.push(nurl);
             }
@@ -108,7 +108,7 @@ impl NostrUrl {
         if s.get(..6) != Some("nostr:") {
             return None;
         }
-        NostrBech32::try_from_string(&s[6..]).map(NostrUrl)
+        NostrBech32::try_from_string(s.get(6..).unwrap()).map(NostrUrl)
     }
 
     /// Find all `NostrUrl`s in a string, returned in the order found
@@ -116,8 +116,8 @@ impl NostrUrl {
     pub fn find_all_in_string(s: &str) -> Vec<NostrUrl> {
         let mut output: Vec<NostrUrl> = Vec::new();
         let mut cursor = 0;
-        while let Some((relstart, relend)) = find_nostr_url_pos(&s[cursor..]) {
-            if let Some(nurl) = NostrUrl::try_from_string(&s[cursor + relstart..cursor + relend]) {
+        while let Some((relstart, relend)) = find_nostr_url_pos(s.get(cursor..).unwrap()) {
+            if let Some(nurl) = NostrUrl::try_from_string(s.get(cursor+relstart .. cursor+relend).unwrap()) {
                 output.push(nurl);
             }
             cursor += relend;
@@ -130,18 +130,18 @@ impl NostrUrl {
     pub fn urlize(s: &str) -> String {
         let mut output: String = String::with_capacity(s.len());
         let mut cursor = 0;
-        while let Some((relstart, relend)) = find_nostr_bech32_pos(&s[cursor..]) {
+        while let Some((relstart, relend)) = find_nostr_bech32_pos(s.get(cursor..).unwrap()) {
             // If it already has it, leave it alone
             if relstart >= 6 && s.get(cursor + relstart - 6..cursor + relstart) == Some("nostr:") {
-                output.push_str(&s[cursor..cursor + relend]);
+                output.push_str(s.get(cursor..cursor + relend).unwrap());
             } else {
-                output.push_str(&s[cursor..cursor + relstart]);
+                output.push_str(s.get(cursor..cursor + relstart).unwrap());
                 output.push_str("nostr:");
-                output.push_str(&s[cursor + relstart..cursor + relend]);
+                output.push_str(s.get(cursor + relstart..cursor + relend).unwrap());
             }
             cursor += relend;
         }
-        output.push_str(&s[cursor..]);
+        output.push_str(s.get(cursor..).unwrap());
         output
     }
 }

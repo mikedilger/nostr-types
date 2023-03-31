@@ -97,14 +97,14 @@ fn prefix_match(s1: &str, s2: &str) -> PrefixMatch {
             }
         }
         Ordering::Greater => {
-            if &s1[..s2.len()] == s2 {
+            if s1.get(..s2.len()) == Some(s2) {
                 PrefixMatch::Shorter
             } else {
                 PrefixMatch::Mismatch
             }
         }
         Ordering::Less => {
-            if s1 == &s2[..s1.len()] {
+            if Some(s1) == s2.get(..s1.len()) {
                 PrefixMatch::Longer
             } else {
                 PrefixMatch::Mismatch
