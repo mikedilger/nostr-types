@@ -242,4 +242,10 @@ note10ttnuuvcs29y3k23gwrcurw2ksvgd7c2rrqlfx7urmt5m963vhss8nja90
         assert!(fixed.contains("nostr:note1"));
         assert!(fixed.len() > sample3.len());
     }
+
+     #[test]
+    fn test_nostr_url_unicode_issues() {
+        let sample = r#"🌝🐸note1fntxtkcy9pjwucqwa9mddn7v03wwwsu9j330jj350nvhpky2tuaspk6nqc"#;
+        assert!(NostrUrl::try_from_string(&sample).is_none())
+    }
 }
