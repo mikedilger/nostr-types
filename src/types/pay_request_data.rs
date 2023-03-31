@@ -146,7 +146,7 @@ impl<'de> Visitor<'de> for PayRequestDataVisitor {
         if let Some(Value::String(s)) = map.remove("nostrPubkey") {
             m.nostr_pubkey = match PublicKeyHex::try_from_string(s) {
                 Ok(pkh) => pkh,
-                Err(e) => return Err(DeError::custom(format!("{}", e))),
+                Err(e) => return Err(DeError::custom(format!("{e}"))),
             };
         } else {
             return Err(DeError::custom("Missing nostrPubkey".to_owned()));

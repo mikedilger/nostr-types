@@ -154,7 +154,7 @@ impl Event {
         privkey: &PrivateKey,
         zero_bits: u8,
     ) -> Result<Event, Error> {
-        let target = Some(format!("{}", zero_bits));
+        let target = Some(format!("{zero_bits}"));
 
         // Strip any pre-existing nonce tags
         input.tags.retain(|t| !matches!(t, Tag::Nonce { .. }));
@@ -188,7 +188,7 @@ impl Event {
                     }
 
                     input.tags[index] = Tag::Nonce {
-                        nonce: format!("{}", attempt),
+                        nonce: format!("{attempt}"),
                         target: target.clone(),
                     };
 
@@ -325,7 +325,7 @@ impl Event {
                 },
                 Tag::Other {
                     tag: "amount".to_owned(),
-                    data: vec![format!("{}", millisatoshis)],
+                    data: vec![format!("{millisatoshis}")],
                 },
             ],
             content,
@@ -400,7 +400,7 @@ impl Event {
                 petname,
             } = tag
             {
-                if self.content.contains(&format!("#[{}]", n)) {
+                if self.content.contains(&format!("#[{n}]")) {
                     output.push((
                         pubkey.to_owned(),
                         recommended_relay_url
@@ -828,11 +828,11 @@ impl Event {
                 // Convert hex strings into functional types
                 let signature = match Signature::try_from_hex_string(sig) {
                     Ok(sig) => sig,
-                    Err(e) => return EventDelegation::InvalidDelegation(format!("{}", e)),
+                    Err(e) => return EventDelegation::InvalidDelegation(format!("{e}")),
                 };
                 let delegator_pubkey = match PublicKey::try_from_hex_string(pubkey) {
                     Ok(pk) => pk,
-                    Err(e) => return EventDelegation::InvalidDelegation(format!("{}", e)),
+                    Err(e) => return EventDelegation::InvalidDelegation(format!("{e}")),
                 };
 
                 // Verify the delegation tag
@@ -863,7 +863,7 @@ impl Event {
                         return EventDelegation::DelegatedBy(delegator_pubkey);
                     }
                     Err(e) => {
-                        return EventDelegation::InvalidDelegation(format!("{}", e));
+                        return EventDelegation::InvalidDelegation(format!("{e}"));
                     }
                 }
             }
@@ -898,7 +898,7 @@ mod test {
         let privkey = PrivateKey::mock();
         let pubkey = privkey.public_key();
         let preevent = PreEvent {
-            pubkey: pubkey.clone(),
+            pubkey,
             created_at: Unixtime::mock(),
             kind: EventKind::TextNote,
             tags: vec![Tag::Event {
@@ -947,7 +947,7 @@ mod test {
             )
             .unwrap();
         let preevent = PreEvent {
-            pubkey: pubkey.clone(),
+            pubkey,
             created_at,
             kind: EventKind::TextNote,
             tags: vec![

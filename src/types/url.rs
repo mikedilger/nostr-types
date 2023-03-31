@@ -70,7 +70,7 @@ impl Url {
             match host {
                 url::Host::Domain(_) => {
                     // Strange that we can't access as a string
-                    let s = format!("{}", host);
+                    let s = format!("{host}");
                     if s != s.trim() || s.starts_with("localhost") {
                         return Err(Error::InvalidUrlHost(s));
                     }
@@ -78,13 +78,13 @@ impl Url {
                 url::Host::Ipv4(addr) => {
                     let addrx: core_net::Ipv4Addr = unsafe { std::mem::transmute(addr) };
                     if !addrx.is_global() {
-                        return Err(Error::InvalidUrlHost(format!("{}", host)));
+                        return Err(Error::InvalidUrlHost(format!("{host}")));
                     }
                 }
                 url::Host::Ipv6(addr) => {
                     let addrx: core_net::Ipv6Addr = unsafe { std::mem::transmute(addr) };
                     if !addrx.is_global() {
-                        return Err(Error::InvalidUrlHost(format!("{}", host)));
+                        return Err(Error::InvalidUrlHost(format!("{host}")));
                     }
                 }
             }

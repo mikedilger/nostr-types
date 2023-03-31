@@ -168,7 +168,7 @@ mod test {
     #[test]
     fn test_tolerate_nulls() {
         let json = r##"{"name":"monlovesmango","picture":"https://astral.ninja/aura/monlovesmango.svg","about":"building on nostr","nip05":"monlovesmango@astral.ninja","lud06":null,"testing":"123"}"##;
-        let m: Metadata = serde_json::from_str(&json).unwrap();
+        let m: Metadata = serde_json::from_str(json).unwrap();
         assert_eq!(m.name, Some("monlovesmango".to_owned()));
         assert_eq!(m.other.get("lud06"), Some(&Value::Null));
         assert_eq!(
@@ -181,7 +181,7 @@ mod test {
     fn test_metadata_lnurls() {
         // test lud06
         let json = r##"{"name":"mikedilger","about":"Author of Gossip client: https://github.com/mikedilger/gossip\nexpat American living in New Zealand","picture":"https://avatars.githubusercontent.com/u/1669069","nip05":"_@mikedilger.com","banner":"https://mikedilger.com/banner.jpg","display_name":"Michael Dilger","location":"New Zealand","lud06":"lnurl1dp68gurn8ghj7ampd3kx2ar0veekzar0wd5xjtnrdakj7tnhv4kxctttdehhwm30d3h82unvwqhkgetrv4h8gcn4dccnxv563ep","website":"https://mikedilger.com"}"##;
-        let m: Metadata = serde_json::from_str(&json).unwrap();
+        let m: Metadata = serde_json::from_str(json).unwrap();
         assert_eq!(
             m.lnurl().as_deref(),
             Some("https://walletofsatoshi.com/.well-known/lnurlp/decentbun13")
@@ -189,7 +189,7 @@ mod test {
 
         // test lud16
         let json = r##"{"name":"mikedilger","about":"Author of Gossip client: https://github.com/mikedilger/gossip\nexpat American living in New Zealand","picture":"https://avatars.githubusercontent.com/u/1669069","nip05":"_@mikedilger.com","banner":"https://mikedilger.com/banner.jpg","display_name":"Michael Dilger","location":"New Zealand","lud16":"decentbun13@walletofsatoshi.com","website":"https://mikedilger.com"}"##;
-        let m: Metadata = serde_json::from_str(&json).unwrap();
+        let m: Metadata = serde_json::from_str(json).unwrap();
         assert_eq!(
             m.lnurl().as_deref(),
             Some("https://walletofsatoshi.com/.well-known/lnurlp/decentbun13")

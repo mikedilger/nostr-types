@@ -130,26 +130,26 @@ impl fmt::Display for RelayInformationDocument {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Relay Information:")?;
         if let Some(name) = &self.name {
-            write!(f, " Name=\"{}\"", name)?;
+            write!(f, " Name=\"{name}\"")?;
         }
         if let Some(desc) = &self.description {
-            write!(f, " Description=\"{}\"", desc)?;
+            write!(f, " Description=\"{desc}\"")?;
         }
         if let Some(pubkey) = &self.pubkey {
-            write!(f, " Pubkey=\"{}\"", pubkey)?;
+            write!(f, " Pubkey=\"{pubkey}\"")?;
         }
         if let Some(contact) = &self.contact {
-            write!(f, " Contact=\"{}\"", contact)?;
+            write!(f, " Contact=\"{contact}\"")?;
         }
         write!(f, " NIPS={:?}", self.supported_nips)?;
         if let Some(software) = &self.software {
-            write!(f, " Software=\"{}\"", software)?;
+            write!(f, " Software=\"{software}\"")?;
         }
         if let Some(version) = &self.version {
-            write!(f, " Version=\"{}\"", version)?;
+            write!(f, " Version=\"{version}\"")?;
         }
         for (k, v) in self.other.iter() {
-            write!(f, " {}=\"{}\"", k, v)?;
+            write!(f, " {k}=\"{v}\"")?;
         }
         Ok(())
     }
@@ -213,7 +213,7 @@ impl<'de> Visitor<'de> for RidVisitor {
         if let Some(Value::String(s)) = map.remove("pubkey") {
             rid.pubkey = match PublicKeyHexPrefix::try_from_string(s) {
                 Ok(pkh) => Some(pkh),
-                Err(e) => return Err(DeError::custom(format!("{}", e))),
+                Err(e) => return Err(DeError::custom(format!("{e}"))),
             };
         }
         if let Some(Value::String(s)) = map.remove("contact") {

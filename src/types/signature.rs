@@ -63,7 +63,7 @@ impl Visitor<'_> for SignatureVisitor {
         E: serde::de::Error,
     {
         let vec: Vec<u8> =
-            hex::decode(v).map_err(|e| serde::de::Error::custom(format!("{}", e)))?;
+            hex::decode(v).map_err(|e| serde::de::Error::custom(format!("{e}")))?;
 
         // If we don't catch this ourselves, the below from_bytes will panic when it
         // gets into an assertion within generic-array
@@ -72,7 +72,7 @@ impl Visitor<'_> for SignatureVisitor {
         }
 
         let ksig: KSignature =
-            KSignature::try_from(&*vec).map_err(|e| DeserializeError::custom(format!("{}", e)))?;
+            KSignature::try_from(&*vec).map_err(|e| DeserializeError::custom(format!("{e}")))?;
 
         Ok(Signature(ksig))
     }

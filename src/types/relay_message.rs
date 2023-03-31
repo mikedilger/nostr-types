@@ -134,7 +134,7 @@ impl<'de> Visitor<'de> for RelayMessageVisitor {
                 .ok_or_else(|| DeError::custom("Message missing challenge field"))?;
             Ok(RelayMessage::Auth(challenge))
         } else {
-            Err(DeError::custom(format!("Unknown Message: {}", word)))
+            Err(DeError::custom(format!("Unknown Message: {word}")))
         }
     }
 }

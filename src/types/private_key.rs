@@ -535,7 +535,7 @@ mod test {
         let pk = PrivateKey::generate();
         // we use a low log_n here because this is run slowly in debug mode
         let exported = pk.export_encrypted("secret", 13).unwrap();
-        println!("{}", exported);
+        println!("{exported}");
         let imported_pk = PrivateKey::import_encrypted(&exported, "secret").unwrap();
 
         // Be sure the keys generate identical public keys
@@ -599,7 +599,7 @@ mod test {
         let mut pk = PrivateKey::mock();
 
         let encoded = pk.as_bech32_string();
-        println!("bech32: {}", encoded);
+        println!("bech32: {encoded}");
 
         let decoded = PrivateKey::try_from_bech32_string(&encoded).unwrap();
 
@@ -614,7 +614,7 @@ mod test {
 
         let message = "hello world, this should come out just dandy.".as_bytes();
         let (iv, encrypted) = private_key
-            .nip04_encrypt(&other_public_key, &message)
+            .nip04_encrypt(&other_public_key, message)
             .unwrap();
         let decrypted = private_key
             .nip04_decrypt(&other_public_key, &encrypted, iv)

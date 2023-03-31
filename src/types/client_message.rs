@@ -119,7 +119,7 @@ impl<'de> Visitor<'de> for ClientMessageVisitor {
                 .ok_or_else(|| DeError::custom("Message missing event field"))?;
             Ok(ClientMessage::Auth(Box::new(event)))
         } else {
-            Err(DeError::custom(format!("Unknown Message: {}", word)))
+            Err(DeError::custom(format!("Unknown Message: {word}")))
         }
     }
 }

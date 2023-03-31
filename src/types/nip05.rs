@@ -57,7 +57,7 @@ mod test {
   }
 }"#;
 
-        let nip05: Nip05 = serde_json::from_str(&body).unwrap();
+        let nip05: Nip05 = serde_json::from_str(body).unwrap();
 
         let bobs_pk: PublicKeyHex = nip05.names.get("bob").unwrap().clone();
         assert_eq!(

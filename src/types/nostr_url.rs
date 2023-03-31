@@ -224,7 +224,7 @@ nprofile1qqsrjerj9rhamu30sjnuudk3zxeh3njl852mssqng7z4up9jfj8yupqpzamhxue69uhhyet
 #[1]
 "#;
         let fixed = NostrUrl::urlize(sample);
-        println!("{}", fixed);
+        println!("{fixed}");
         assert!(fixed.contains("nostr:nprofile1"));
 
         let sample2 = r#"Have you been switching nostr clients lately?
@@ -246,6 +246,6 @@ note10ttnuuvcs29y3k23gwrcurw2ksvgd7c2rrqlfx7urmt5m963vhss8nja90
      #[test]
     fn test_nostr_url_unicode_issues() {
         let sample = r#"🌝🐸note1fntxtkcy9pjwucqwa9mddn7v03wwwsu9j330jj350nvhpky2tuaspk6nqc"#;
-        assert!(NostrUrl::try_from_string(&sample).is_none())
+        assert!(NostrUrl::try_from_string(sample).is_none())
     }
 }

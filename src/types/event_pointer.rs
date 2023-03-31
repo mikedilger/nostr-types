@@ -96,7 +96,7 @@ mod test {
     #[test]
     fn test_profile_bech32() {
         let bech32 = EventPointer::mock().as_bech32_string();
-        println!("{}", bech32);
+        println!("{bech32}");
         assert_eq!(
             EventPointer::mock(),
             EventPointer::try_from_bech32_string(&bech32).unwrap()

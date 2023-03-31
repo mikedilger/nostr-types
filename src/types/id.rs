@@ -91,7 +91,7 @@ impl Visitor<'_> for IdVisitor {
         E: serde::de::Error,
     {
         let vec: Vec<u8> =
-            hex::decode(v).map_err(|e| serde::de::Error::custom(format!("{}", e)))?;
+            hex::decode(v).map_err(|e| serde::de::Error::custom(format!("{e}")))?;
 
         Ok(Id(vec.try_into().map_err(|e: Vec<u8>| {
             E::custom(format!(
@@ -274,7 +274,7 @@ mod test {
     #[test]
     fn test_id_bech32() {
         let bech32 = Id::mock().as_bech32_string();
-        println!("{}", bech32);
+        println!("{bech32}");
         assert_eq!(Id::mock(), Id::try_from_bech32_string(&bech32).unwrap());
     }
 }

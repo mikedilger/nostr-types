@@ -137,7 +137,7 @@ impl Visitor<'_> for DelegationConditionsVisitor {
     where
         E: DeError,
     {
-        DelegationConditions::try_from_str(v).map_err(|e| E::custom(format!("{}", e)))
+        DelegationConditions::try_from_str(v).map_err(|e| E::custom(format!("{e}")))
     }
 }
 
@@ -198,7 +198,7 @@ mod test {
             .unwrap();
 
             let verify_result = conditions.verify_signature(
-                &PublicKey::try_from_hex_string(&pubkey.as_str()).unwrap(),
+                &PublicKey::try_from_hex_string(pubkey.as_str()).unwrap(),
                 &delegatee_public_key,
                 Signature::try_from(sig).unwrap(),
             );

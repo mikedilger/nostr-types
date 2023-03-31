@@ -298,15 +298,15 @@ mod test {
 
     #[test]
     fn test_replaceable_ephemeral() {
-        assert_eq!(Metadata.is_replaceable(), true);
-        assert_eq!(TextNote.is_replaceable(), false);
-        assert_eq!(Zap.is_replaceable(), false);
-        assert_eq!(LongFormContent.is_replaceable(), false);
+        assert!(Metadata.is_replaceable());
+        assert!(! TextNote.is_replaceable());
+        assert!(! Zap.is_replaceable());
+        assert!(! LongFormContent.is_replaceable());
 
-        assert_eq!(TextNote.is_ephemeral(), false);
-        assert_eq!(Auth.is_ephemeral(), true);
+        assert!(! TextNote.is_ephemeral());
+        assert!(Auth.is_ephemeral());
 
-        assert_eq!(TextNote.is_parameterized_replaceable(), false);
-        assert_eq!(LongFormContent.is_parameterized_replaceable(), true);
+        assert!(! TextNote.is_parameterized_replaceable());
+        assert!(LongFormContent.is_parameterized_replaceable());
     }
 }
