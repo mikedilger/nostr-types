@@ -6,7 +6,7 @@ use crate::Error;
 use base64::Engine;
 use k256::sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
@@ -170,6 +170,7 @@ impl Event {
 
         let quitting = Arc::new(AtomicBool::new(false));
         let nonce = Arc::new(AtomicU64::new(0)); // will store the nonce that works
+        let best_bits = Arc::new(AtomicU8::new(0));
 
         let mut join_handles: Vec<JoinHandle<_>> = Vec::with_capacity(cores);
 
@@ -181,6 +182,7 @@ impl Event {
             let quitting = quitting.clone();
             let nonce = nonce.clone();
             let zero_bits = zero_bits;
+            let best_bits = best_bits.clone();
             let join_handle = thread::spawn(move || {
                 loop {
                     if quitting.load(Ordering::Relaxed) {
@@ -192,12 +194,16 @@ impl Event {
                         target: target.clone(),
                     };
 
-                    let id = Self::hash(&input).unwrap();
+                    let Id(id) = Self::hash(&input).unwrap();
 
-                    if get_leading_zero_bits(&id.0) >= zero_bits {
+                    let leading_zeroes = get_leading_zero_bits(&id);
+                    if leading_zeroes >= zero_bits {
                         nonce.store(attempt, Ordering::Relaxed);
                         quitting.store(true, Ordering::Relaxed);
                         break;
+                    } else if leading_zeroes > best_bits.load(Ordering::Relaxed) {
+                        best_bits.store(leading_zeroes, Ordering::Relaxed);
+                        println!("PoW: {}/{}", leading_zeroes, zero_bits);
                     }
 
                     attempt += 1;
