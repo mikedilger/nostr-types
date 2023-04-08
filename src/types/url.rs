@@ -42,7 +42,7 @@ impl UncheckedUrl {
 /// Internet based host.
 ///
 /// We don't serialize/deserialize these directly, see `UncheckedUrl` for that
-#[derive(Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Url(pub String);
 
 impl fmt::Display for Url {
@@ -114,7 +114,7 @@ impl Url {
 
 /// A Url validated as a nostr relay url in canonical form
 /// We don't serialize/deserialize these directly, see `UncheckedUrl` for that
-#[derive(Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct RelayUrl(pub String);
 
 impl fmt::Display for RelayUrl {

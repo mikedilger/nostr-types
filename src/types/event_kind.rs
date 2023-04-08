@@ -1,6 +1,7 @@
 use serde::de::Error as DeError;
-use serde::de::{Deserialize, Deserializer, Visitor};
-use serde::ser::{Serialize, Serializer};
+use serde::de::{Deserializer, Visitor};
+use serde::ser::Serializer;
+use serde::{Deserialize, Serialize};
 use std::convert::From;
 use std::fmt;
 
@@ -288,6 +289,19 @@ impl Visitor<'_> for EventKindVisitor {
     {
         Ok(From::<u64>::from(v))
     }
+}
+
+/// Either an EventKind or a range (a vector of length 2 with start and end)
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(untagged)]
+pub enum EventKindOrRange {
+    /// A single EventKind
+    EventKind(EventKind),
+
+    /// A range of EventKinds
+    // NOTE: the internal Vec should have exactly 2 fields.  To force this with a tuple
+    //       struct makes ser/de a bitch, so we don't.
+    Range(Vec<EventKind>),
 }
 
 #[cfg(test)]

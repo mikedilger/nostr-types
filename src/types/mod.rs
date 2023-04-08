@@ -21,7 +21,7 @@ mod event;
 pub use event::{Event, PreEvent};
 
 mod event_kind;
-pub use event_kind::{EventKind, EventKindIterator};
+pub use event_kind::{EventKind, EventKindIterator, EventKindOrRange};
 
 mod filter;
 pub use filter::Filter;
@@ -57,7 +57,9 @@ mod relay_message;
 pub use relay_message::RelayMessage;
 
 mod relay_information_document;
-pub use relay_information_document::{RelayInformationDocument, RelayLimitation};
+pub use relay_information_document::{
+    Fee, RelayFees, RelayInformationDocument, RelayLimitation, RelayRetention,
+};
 
 mod signature;
 pub use signature::{Signature, SignatureHex};

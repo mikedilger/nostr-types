@@ -1,12 +1,13 @@
-use super::{PublicKeyHexPrefix, Url};
+use super::{EventKind, EventKindOrRange, PublicKeyHexPrefix, Url};
 use serde::de::Error as DeError;
-use serde::de::{Deserialize, Deserializer, MapAccess, Visitor};
-use serde::ser::{Serialize, SerializeMap, Serializer};
+use serde::de::{Deserializer, MapAccess, Visitor};
+use serde::ser::{SerializeMap, Serializer};
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::fmt;
 
 /// Relay limitations
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct RelayLimitation {
     /// max message length
     pub max_message_length: usize,
@@ -42,6 +43,48 @@ pub struct RelayLimitation {
     pub payment_required: bool,
 }
 
+/// Relay retention
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct RelayRetention {
+    /// kinds
+    pub kinds: Option<Vec<EventKindOrRange>>,
+
+    /// time
+    pub time: Option<usize>,
+
+    /// count
+    pub count: Option<usize>,
+}
+
+/// Fee
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct Fee {
+    /// Amount of the fee
+    pub amount: usize,
+
+    /// Unit of the amount
+    pub unit: String,
+
+    /// Kinds of events
+    pub kinds: Option<Vec<EventKindOrRange>>,
+
+    /// Period purchase lasts for
+    pub period: Option<usize>,
+}
+
+/// Relay fees
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct RelayFees {
+    /// Admission fee (read and write)
+    pub admission: Vec<Fee>,
+
+    /// Subscription fee (read)
+    pub subscription: Vec<Fee>,
+
+    /// Publication fee (write)
+    pub publication: Vec<Fee>,
+}
+
 /// Relay information document as described in NIP-11, supplied by a relay
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RelayInformationDocument {
@@ -69,10 +112,27 @@ pub struct RelayInformationDocument {
     /// limitation
     pub limitation: Option<RelayLimitation>,
 
+    /// retention
+    pub retention: Option<Vec<RelayRetention>>,
+
+    /// content limitation: relay countries
+    pub relay_countries: Option<Vec<String>>,
+
+    /// community preferences: language tags
+    pub language_tags: Option<Vec<String>>,
+
+    /// community preferences: tags
+    pub tags: Option<Vec<String>>,
+
+    /// community preferences: posting policy
+    pub posting_policy: Option<Url>,
+
     /// payments_url
     pub payments_url: Option<Url>,
 
-    // fees...
+    /// fees
+    pub fees: Option<RelayFees>,
+
     /// Additional fields not specified in NIP-11
     pub other: Map<String, Value>,
 }
@@ -88,7 +148,13 @@ impl Default for RelayInformationDocument {
             software: None,
             version: None,
             limitation: None,
+            retention: None,
+            relay_countries: None,
+            language_tags: None,
+            tags: None,
+            posting_policy: None,
             payments_url: None,
+            fees: None,
             other: Map::new(),
         }
     }
@@ -119,8 +185,85 @@ impl RelayInformationDocument {
             supported_nips: vec![11, 12, 13, 14],
             software: None,
             version: None,
-            limitation: None,
-            payments_url: None,
+            limitation: Some(RelayLimitation {
+                max_message_length: 16384,
+                max_subscriptions: 20,
+                max_filters: 100,
+                max_limit: 5000,
+                max_subid_length: 100,
+                min_prefix: 4,
+                max_event_tags: 100,
+                max_content_length: 8196,
+                min_pow_difficulty: 30,
+                auth_required: true,
+                payment_required: true,
+            }),
+            retention: Some(vec![
+                RelayRetention {
+                    kinds: Some(vec![
+                        EventKindOrRange::EventKind(EventKind::Metadata),
+                        EventKindOrRange::EventKind(EventKind::TextNote),
+                        EventKindOrRange::Range(vec![
+                            EventKind::EventDeletion,
+                            EventKind::Reaction,
+                        ]),
+                        EventKindOrRange::Range(vec![
+                            EventKind::ChannelCreation,
+                            EventKind::PublicChatReserved49,
+                        ]),
+                    ]),
+                    time: Some(3600),
+                    count: None,
+                },
+                RelayRetention {
+                    kinds: Some(vec![EventKindOrRange::Range(vec![
+                        EventKind::Other(40000),
+                        EventKind::Other(49999),
+                    ])]),
+                    time: Some(100),
+                    count: None,
+                },
+                RelayRetention {
+                    kinds: Some(vec![EventKindOrRange::Range(vec![
+                        EventKind::Other(30000),
+                        EventKind::Other(39999),
+                    ])]),
+                    time: None,
+                    count: Some(1000),
+                },
+                RelayRetention {
+                    kinds: None,
+                    time: Some(3600),
+                    count: Some(10000),
+                },
+            ]),
+            relay_countries: Some(vec!["CA".to_owned(), "US".to_owned()]),
+            language_tags: Some(vec!["en".to_owned()]),
+            tags: Some(vec!["sfw-only".to_owned(), "bitcoin-only".to_owned()]),
+            posting_policy: Some(
+                Url::try_from_str("https://example.com/posting-policy.html").unwrap(),
+            ),
+            payments_url: Some(Url::try_from_str("https://example.com/payments").unwrap()),
+            fees: Some(RelayFees {
+                admission: vec![Fee {
+                    amount: 1000000,
+                    unit: "msats".to_owned(),
+                    kinds: None,
+                    period: None,
+                }],
+                subscription: vec![Fee {
+                    amount: 5000000,
+                    unit: "msats".to_owned(),
+                    kinds: None,
+                    period: Some(2592000),
+                }],
+                publication: vec![Fee {
+                    amount: 100,
+                    unit: "msats".to_owned(),
+                    kinds: Some(vec![EventKindOrRange::EventKind(EventKind::EventDeletion)]),
+                    period: None,
+                }],
+            }),
             other: m,
         }
     }
@@ -168,6 +311,14 @@ impl Serialize for RelayInformationDocument {
         map.serialize_entry("supported_nips", &json!(&self.supported_nips))?;
         map.serialize_entry("software", &json!(&self.software))?;
         map.serialize_entry("version", &json!(&self.version))?;
+        map.serialize_entry("limitation", &json!(&self.limitation))?;
+        map.serialize_entry("retention", &json!(&self.retention))?;
+        map.serialize_entry("relay_countries", &json!(&self.relay_countries))?;
+        map.serialize_entry("language_tags", &json!(&self.language_tags))?;
+        map.serialize_entry("tags", &json!(&self.tags))?;
+        map.serialize_entry("posting_policy", &json!(&self.posting_policy))?;
+        map.serialize_entry("payments_url", &json!(&self.payments_url))?;
+        map.serialize_entry("fees", &json!(&self.fees))?;
         for (k, v) in &self.other {
             map.serialize_entry(&k, &v)?;
         }
@@ -234,6 +385,54 @@ impl<'de> Visitor<'de> for RidVisitor {
         if let Some(Value::String(s)) = map.remove("version") {
             rid.version = Some(s);
         }
+        if let Some(v) = map.remove("limitation") {
+            rid.limitation = match serde_json::from_value::<Option<RelayLimitation>>(v) {
+                Ok(x) => x,
+                Err(e) => return Err(DeError::custom(format!("{e}"))),
+            }
+        }
+        if let Some(v) = map.remove("retention") {
+            rid.retention = match serde_json::from_value::<Option<Vec<RelayRetention>>>(v) {
+                Ok(x) => x,
+                Err(e) => return Err(DeError::custom(format!("{e}"))),
+            };
+        }
+        if let Some(v) = map.remove("relay_countries") {
+            rid.relay_countries = match serde_json::from_value::<Option<Vec<String>>>(v) {
+                Ok(x) => x,
+                Err(e) => return Err(DeError::custom(format!("{e}"))),
+            }
+        }
+        if let Some(v) = map.remove("language_tags") {
+            rid.language_tags = match serde_json::from_value::<Option<Vec<String>>>(v) {
+                Ok(x) => x,
+                Err(e) => return Err(DeError::custom(format!("{e}"))),
+            }
+        }
+        if let Some(v) = map.remove("tags") {
+            rid.tags = match serde_json::from_value::<Option<Vec<String>>>(v) {
+                Ok(x) => x,
+                Err(e) => return Err(DeError::custom(format!("{e}"))),
+            }
+        }
+        if let Some(v) = map.remove("posting_policy") {
+            rid.posting_policy = match serde_json::from_value::<Option<Url>>(v) {
+                Ok(x) => x,
+                Err(e) => return Err(DeError::custom(format!("{e}"))),
+            }
+        }
+        if let Some(v) = map.remove("payments_url") {
+            rid.payments_url = match serde_json::from_value::<Option<Url>>(v) {
+                Ok(x) => x,
+                Err(e) => return Err(DeError::custom(format!("{e}"))),
+            }
+        }
+        if let Some(v) = map.remove("fees") {
+            rid.fees = match serde_json::from_value::<Option<RelayFees>>(v) {
+                Ok(x) => x,
+                Err(e) => return Err(DeError::custom(format!("{e}"))),
+            }
+        }
 
         rid.other = map;
 
@@ -247,14 +446,26 @@ mod test {
 
     test_serde! {RelayInformationDocument, test_relay_information_document_serde}
 
+    /*
+        #[test]
+        fn test_to_json_only() {
+            let mock = RelayInformationDocument::mock();
+            let s = serde_json::to_string(&mock).unwrap();
+            println!("{}", s);
+    }
+        */
+
     #[test]
     fn test_relay_information_document_json() {
-        let json = r##"{ "name": "A Relay", "description": null, "myfield": [1,2], "supported_nips": [11,12] }"##;
+        let json = r##"{ "name": "A Relay", "description": null, "myfield": [1,2], "supported_nips": [11,12], "retention": [
+    { "kinds": [0, 1, [5, 7], [40, 49]], "time": 3600 },
+    { "kinds": [[40000, 49999]], "time": 100 },
+    { "kinds": [[30000, 39999]], "count": 1000 },
+    { "time": 3600, "count": 10000 }
+  ] }"##;
         let rid: RelayInformationDocument = serde_json::from_str(json).unwrap();
         let json2 = serde_json::to_string(&rid).unwrap();
-
-        let expected_json2 = r##"{"name":"A Relay","description":null,"pubkey":null,"contact":null,"supported_nips":[11,12],"software":null,"version":null,"myfield":[1,2]}"##;
-
+        let expected_json2 = r##"{"name":"A Relay","description":null,"pubkey":null,"contact":null,"supported_nips":[11,12],"software":null,"version":null,"limitation":null,"retention":[{"count":null,"kinds":[0,1,[5,7],[40,49]],"time":3600},{"count":null,"kinds":[[40000,49999]],"time":100},{"count":1000,"kinds":[[30000,39999]],"time":null},{"count":10000,"kinds":null,"time":3600}],"relay_countries":null,"language_tags":null,"tags":null,"posting_policy":null,"payments_url":null,"fees":null,"myfield":[1,2]}"##;
         assert_eq!(json2, expected_json2);
     }
 }
