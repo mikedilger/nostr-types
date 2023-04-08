@@ -40,32 +40,47 @@ impl EventPointer {
         if data.0 != "nevent" {
             Err(Error::WrongBech32("nevent".to_string(), data.0))
         } else {
-            let tlv = Vec::<u8>::from_base32(&data.1)?;
-            if tlv[0] != 0 || tlv[1] != 32 {
-                return Err(Error::InvalidProfile);
-            }
-            let id: Id = Id(tlv[2..2 + 32]
-                .try_into()
-                .map_err(|_| Error::WrongLengthHexString)?);
             let mut relays: Vec<UncheckedUrl> = Vec::new();
-            let mut pos = 2 + 32;
-            while tlv.len() >= pos + 2 {
-                let typ = tlv[pos];
-                let len = tlv[pos + 1];
+            let mut id: Option<Id> = None;
+            let tlv = Vec::<u8>::from_base32(&data.1)?;
+            let mut pos = 0;
+            loop {
+                // we need at least 2 more characters for anything meaningful
+                if pos > tlv.len() - 2 {
+                    break;
+                }
+                let ty = tlv[pos];
+                let len = tlv[pos + 1] as usize;
                 pos += 2;
-                if typ != 1 {
+                if pos + len > tlv.len() {
                     return Err(Error::InvalidProfile);
                 }
-                if tlv.len() < pos + len as usize {
-                    return Err(Error::InvalidProfile);
+                match ty {
+                    0 => {
+                        // special, 32 bytes of id
+                        if len != 32 {
+                            return Err(Error::InvalidEventPointer);
+                        }
+                        id = Some(Id(tlv[pos..pos + len]
+                            .try_into()
+                            .map_err(|_| Error::WrongLengthHexString)?));
+                    }
+                    1 => {
+                        // relay
+                        let relay_bytes = &tlv[pos..pos + len];
+                        let relay_str = std::str::from_utf8(relay_bytes)?;
+                        let relay = UncheckedUrl::from_str(relay_str);
+                        relays.push(relay);
+                    }
+                    _ => {} // unhandled type for nprofile
                 }
-                let relay_bytes = &tlv[pos..pos + (len as usize)];
-                let relay_str = std::str::from_utf8(relay_bytes)?;
-                let relay = UncheckedUrl::from_str(relay_str);
-                relays.push(relay);
-                pos += len as usize;
+                pos += len;
             }
-            Ok(EventPointer { id, relays })
+            if let Some(id) = id {
+                Ok(EventPointer { id, relays })
+            } else {
+                Err(Error::InvalidEventPointer)
+            }
         }
     }
 
@@ -126,5 +141,11 @@ mod test {
             event_pointer,
             EventPointer::try_from_bech32_string(bech32).unwrap()
         );
+
+        // Try this one that used to fail
+        let bech32 =
+            "nevent1qqstxx3lk7zqfyn8cyyptvujfxq9w6mad4205x54772tdkmyqaay9scrqsqqqpp8x4vwhf";
+        let _ = EventPointer::try_from_bech32_string(bech32).unwrap();
+        // it won't be equal, but should have the basics and should not error.
     }
 }

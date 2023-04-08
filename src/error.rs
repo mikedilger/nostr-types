@@ -51,6 +51,10 @@ pub enum Error {
     #[error("Invalid Encrypted Private Key")]
     InvalidEncryptedPrivateKey,
 
+    /// Invalid Event Pointer
+    #[error("Invalid event pointer")]
+    InvalidEventPointer,
+
     /// Invalid event Id
     #[error("Invalid event Id")]
     InvalidId,

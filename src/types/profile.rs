@@ -40,30 +40,45 @@ impl Profile {
         if data.0 != "nprofile" {
             Err(Error::WrongBech32("nprofile".to_string(), data.0))
         } else {
-            let tlv = Vec::<u8>::from_base32(&data.1)?;
-            if tlv[0] != 0 || tlv[1] != 32 {
-                return Err(Error::InvalidProfile);
-            }
-            let pubkey = PublicKey::from_bytes(&tlv[2..2 + 32])?;
             let mut relays: Vec<UncheckedUrl> = Vec::new();
-            let mut pos = 2 + 32;
-            while tlv.len() >= pos + 2 {
-                let typ = tlv[pos];
-                let len = tlv[pos + 1];
+            let mut pubkey: Option<PublicKey> = None;
+            let tlv = Vec::<u8>::from_base32(&data.1)?;
+            let mut pos = 0;
+            loop {
+                // we need at least 2 more characters for anything meaningful
+                if pos > tlv.len() - 2 {
+                    break;
+                }
+                let ty = tlv[pos];
+                let len = tlv[pos + 1] as usize;
                 pos += 2;
-                if typ != 1 {
+                if pos + len > tlv.len() {
                     return Err(Error::InvalidProfile);
                 }
-                if tlv.len() < pos + len as usize {
-                    return Err(Error::InvalidProfile);
+                match ty {
+                    0 => {
+                        // special,  32 bytes of the public key
+                        if len != 32 {
+                            return Err(Error::InvalidProfile);
+                        }
+                        pubkey = Some(PublicKey::from_bytes(&tlv[pos..pos + len])?);
+                    }
+                    1 => {
+                        // relay
+                        let relay_bytes = &tlv[pos..pos + len];
+                        let relay_str = std::str::from_utf8(relay_bytes)?;
+                        let relay = UncheckedUrl::from_str(relay_str);
+                        relays.push(relay);
+                    }
+                    _ => {} // unhandled type for nprofile
                 }
-                let relay_bytes = &tlv[pos..pos + (len as usize)];
-                let relay_str = std::str::from_utf8(relay_bytes)?;
-                let relay = UncheckedUrl::from_str(relay_str);
-                relays.push(relay);
-                pos += len as usize;
+                pos += len;
             }
-            Ok(Profile { pubkey, relays })
+            if let Some(pubkey) = pubkey {
+                Ok(Profile { pubkey, relays })
+            } else {
+                Err(Error::InvalidProfile)
+            }
         }
     }
 
