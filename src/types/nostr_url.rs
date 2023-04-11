@@ -3,7 +3,7 @@ use lazy_static::lazy_static;
 
 /// A bech32 sequence representing a nostr object (or set of objects)
 // note, internally we store them as the object the sequence represents
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum NostrBech32 {
     /// npub - a NostrBech32 representing a public key
     Pubkey(PublicKey),
@@ -87,7 +87,7 @@ impl NostrBech32 {
 }
 
 /// A Nostr URL (starting with 'nostr:')
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct NostrUrl(pub NostrBech32);
 
 impl std::fmt::Display for NostrUrl {

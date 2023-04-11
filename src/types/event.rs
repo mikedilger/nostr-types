@@ -604,6 +604,8 @@ impl Event {
 
         let mut output: Vec<(Id, Option<RelayUrl>)> = Vec::new();
 
+        // Look for nostr links within the content
+
         // Collect every 'e' tag marked as 'mention'
         for tag in self.tags.iter() {
             if let Tag::Event {

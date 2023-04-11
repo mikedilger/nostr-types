@@ -31,11 +31,11 @@ pub use error::Error;
 
 mod types;
 pub use types::{
-    find_nostr_bech32_pos, find_nostr_url_pos, ClientMessage, DelegationConditions,
+    find_nostr_bech32_pos, find_nostr_url_pos, ClientMessage, ContentSegment, DelegationConditions,
     EncryptedPrivateKey, Event, EventDelegation, EventKind, EventKindIterator, EventKindOrRange,
     EventPointer, Fee, Filter, Id, IdHex, IdHexPrefix, KeySecurity, Metadata, Nip05, NostrBech32,
     NostrUrl, PayRequestData, PreEvent, PrivateKey, Profile, PublicKey, PublicKeyHex,
     PublicKeyHexPrefix, RelayFees, RelayInformationDocument, RelayLimitation, RelayMessage,
-    RelayRetention, RelayUrl, Signature, SignatureHex, SimpleRelayList, SimpleRelayUsage,
-    SubscriptionId, Tag, UncheckedUrl, Unixtime, Url,
+    RelayRetention, RelayUrl, ShatteredContent, Signature, SignatureHex, SimpleRelayList,
+    SimpleRelayUsage, Span, SubscriptionId, Tag, UncheckedUrl, Unixtime, Url,
 };
