@@ -85,6 +85,9 @@ pub enum Tag {
     /// Parameter of a parameterized replaceable event
     Parameter(String),
 
+    /// Title (30023 long form)
+    Title(String),
+
     /// Any other tag
     Other {
         /// The tag name
@@ -114,6 +117,7 @@ impl Tag {
             Tag::Subject(_) => "subject".to_string(),
             Tag::Nonce { .. } => "nonce".to_string(),
             Tag::Parameter(_) => "parameter".to_string(),
+            Tag::Title(_) => "title".to_string(),
             Tag::Other { tag, .. } => tag.clone(),
             Tag::Empty => panic!("empty tags have no tagname"),
         }
@@ -242,6 +246,12 @@ impl Serialize for Tag {
                 let mut seq = serializer.serialize_seq(None)?;
                 seq.serialize_element("parameter")?;
                 seq.serialize_element(parameter)?;
+                seq.end()
+            }
+            Tag::Title(title) => {
+                let mut seq = serializer.serialize_seq(None)?;
+                seq.serialize_element("title")?;
+                seq.serialize_element(title)?;
                 seq.end()
             }
             Tag::Other { tag, data } => {
@@ -447,6 +457,17 @@ impl<'de> Visitor<'de> for TagVisitor {
                 None => "".to_owned(), // implicit parameter
             };
             Ok(Tag::Parameter(param))
+        } else if tagname == "title" {
+            let title = match seq.next_element()? {
+                Some(s) => s,
+                None => {
+                    return Ok(Tag::Other {
+                        tag: tagname.to_string(),
+                        data: vec![],
+                    });
+                }
+            };
+            Ok(Tag::Title(title))
         } else {
             let mut data = Vec::new();
             loop {
