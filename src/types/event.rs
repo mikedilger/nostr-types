@@ -7,6 +7,7 @@ use base64::Engine;
 use k256::sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
@@ -153,6 +154,7 @@ impl Event {
         mut input: PreEvent,
         privkey: &PrivateKey,
         zero_bits: u8,
+        tx: Sender<String>,
     ) -> Result<Event, Error> {
         let target = Some(format!("{zero_bits}"));
 
@@ -183,6 +185,7 @@ impl Event {
             let nonce = nonce.clone();
             let zero_bits = zero_bits;
             let best_bits = best_bits.clone();
+            let tx = tx.clone();
             let join_handle = thread::spawn(move || {
                 loop {
                     if quitting.load(Ordering::Relaxed) {
@@ -203,7 +206,8 @@ impl Event {
                         break;
                     } else if leading_zeroes > best_bits.load(Ordering::Relaxed) {
                         best_bits.store(leading_zeroes, Ordering::Relaxed);
-                        println!("PoW: {}/{}", leading_zeroes, zero_bits);
+                        let msg = format!("PoW: {}/{}", leading_zeroes, zero_bits);
+                        tx.send(msg.to_owned()).unwrap();
                     }
 
                     attempt += 1;
