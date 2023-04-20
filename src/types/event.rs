@@ -154,7 +154,7 @@ impl Event {
         mut input: PreEvent,
         privkey: &PrivateKey,
         zero_bits: u8,
-        tx: Sender<String>,
+        msg_sender: Option<Sender<String>>,
     ) -> Result<Event, Error> {
         let target = Some(format!("{zero_bits}"));
 
@@ -185,7 +185,7 @@ impl Event {
             let nonce = nonce.clone();
             let zero_bits = zero_bits;
             let best_bits = best_bits.clone();
-            let tx = tx.clone();
+            let msg_sender = msg_sender.clone();
             let join_handle = thread::spawn(move || {
                 loop {
                     if quitting.load(Ordering::Relaxed) {
@@ -206,8 +206,10 @@ impl Event {
                         break;
                     } else if leading_zeroes > best_bits.load(Ordering::Relaxed) {
                         best_bits.store(leading_zeroes, Ordering::Relaxed);
-                        let msg = format!("PoW: {}/{}", leading_zeroes, zero_bits);
-                        tx.send(msg.to_owned()).unwrap();
+                        if let Some(sender) = msg_sender.clone() {
+                            let msg = format!("PoW: {}/{}", leading_zeroes, zero_bits);
+                            sender.send(msg.to_owned()).unwrap();
+                        }
                     }
 
                     attempt += 1;
