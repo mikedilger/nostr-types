@@ -1,6 +1,6 @@
+use super::{find_nostr_bech32_pos, NostrBech32, NostrUrl};
 use lazy_static::lazy_static;
 use linkify::{LinkFinder, LinkKind};
-use super::{find_nostr_bech32_pos, NostrBech32, NostrUrl};
 use regex::Regex;
 
 /// This is like Range<usize>, except we impl offset() on it
@@ -61,6 +61,7 @@ impl ShatteredContent {
     }
 
     /// View a slice of the original content as specified in a Span
+    #[allow(clippy::string_slice)] // the Span is trusted
     pub fn slice<'a>(&'a self, span: &Span) -> Option<&'a str> {
         if span.end <= self.allocated.len() {
             Some(&self.allocated[span.start..span.end])
@@ -71,6 +72,7 @@ impl ShatteredContent {
 }
 
 /// Break content into a linear sequence of `ContentSegment`s
+#[allow(clippy::string_slice)] // start/end from find_nostr_bech32_pos is trusted
 fn shatter_content_1(mut content: &str) -> Vec<ContentSegment> {
     let mut segments: Vec<ContentSegment> = Vec::new();
     let mut offset: usize = 0; // used to adjust Span ranges
@@ -108,6 +110,7 @@ fn shatter_content_1(mut content: &str) -> Vec<ContentSegment> {
 }
 
 // Pass 2 - `TagReference`s
+#[allow(clippy::string_slice)] // Regex positions are trusted
 fn shatter_content_2(content: &str) -> Vec<ContentSegment> {
     lazy_static! {
         static ref TAG_RE: Regex = Regex::new(r"(\#\[\d+\])").unwrap();
@@ -143,13 +146,11 @@ fn shatter_content_3(content: &str) -> Vec<ContentSegment> {
                 start: span.start(),
                 end: span.end(),
             }));
-        } else {
-            if !span.as_str().is_empty() {
-                segments.push(ContentSegment::Plain(Span {
-                    start: span.start(),
-                    end: span.end(),
-                }));
-            }
+        } else if !span.as_str().is_empty() {
+            segments.push(ContentSegment::Plain(Span {
+                start: span.start(),
+                end: span.end(),
+            }));
         }
     }
 
