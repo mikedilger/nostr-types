@@ -149,4 +149,8 @@ pub enum Error {
     /// Wrong Decryption Password
     #[error("Wrong decryption password")]
     WrongDecryptionPassword,
+
+    /// Zap Receipt issue
+    #[error("Invalid Zap Receipt: {0}")]
+    ZapReceipt(String)
 }

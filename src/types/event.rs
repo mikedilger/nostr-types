@@ -1,13 +1,15 @@
 use super::{
-    EventDelegation, EventKind, Id, Metadata, PrivateKey, PublicKey, PublicKeyHex, RelayUrl,
+    EventDelegation, EventKind, Id, Metadata, MilliSatoshi, PrivateKey, PublicKey, PublicKeyHex, RelayUrl,
     Signature, Tag, Unixtime,
 };
 use crate::Error;
 use base64::Engine;
 use k256::sha2::{Digest, Sha256};
+use lightning_invoice::Invoice;
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "speedy")]
 use speedy::{Readable, Writable};
+use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
@@ -110,6 +112,13 @@ impl PreEvent {
             ots: None,
         })
     }
+}
+
+#[derive(Clone, Debug, Copy)]
+pub struct ZapData {
+    pub id: Id,
+    pub amount: MilliSatoshi,
+    pub pubkey: PublicKey,
 }
 
 impl Event {
@@ -728,6 +737,85 @@ impl Event {
         } else {
             Some((ids, self.content.clone()))
         }
+    }
+
+    /// If this event zaps another event, get data about that.
+    ///
+    /// That includes the Id, the amount, and the public key of the provider,
+    /// all of which should be verified by the caller.
+    ///
+    /// Errors returned from this are not fatal, but may be useful for
+    /// explaining to a user why a zap receipt is invalid.
+    pub fn zaps(&self) -> Result<Option<ZapData>, Error>
+    {
+        if self.kind != EventKind::Zap {
+            return Ok(None);
+        }
+
+        let mut zapped_id: Option<Id> = None;
+        let mut zapped_amount: Option<MilliSatoshi> = None;
+        let mut zapped_pubkey: Option<PublicKey> = None;
+
+        for tag in self.tags.iter() {
+            if let Tag::Other { tag, data } = tag {
+                // Find the bolt11 tag
+                if tag != "bolt11" { continue; }
+                if data.len() == 0 {
+                    return Err(Error::ZapReceipt("missing bolt11 tag value".to_string()));
+                }
+
+                // Extract as an Invoice
+                let result = Invoice::from_str(&data[0]);
+                if let Err(e) = result {
+                    return Err(Error::ZapReceipt(format!("bolt11 failed to parse: {}", e)));
+                }
+                let invoice = result.unwrap();
+
+                // Verify the signature
+                if let Err(e) = invoice.check_signature() {
+                    return Err(Error::ZapReceipt(format!("bolt11 signature check failed: {}", e)));
+                }
+
+                // Get the public key
+                let secpk = match invoice.payee_pub_key() {
+                    Some(pubkey) => pubkey.to_owned(),
+                    None => invoice.recover_payee_pub_key()
+                };
+                let (xonlypk, _) = secpk.x_only_public_key();
+                let pubkeybytes = xonlypk.serialize();
+                let pubkey = match PublicKey::from_bytes(&pubkeybytes) {
+                    Ok(pubkey) => pubkey,
+                    Err(e) => return Err(Error::ZapReceipt(format!("payee public key error: {}", e))),
+                };
+                zapped_pubkey = Some(pubkey);
+
+                if let Some(u) = invoice.amount_milli_satoshis() {
+                    zapped_amount = Some(MilliSatoshi(u));
+                } else {
+                    return Err(Error::ZapReceipt("Amount missing from zap receipt".to_string()));
+                }
+            }
+            if let Tag::Event { id, recommended_relay_url: _, marker: _ } = tag {
+                zapped_id = Some(*id);
+            }
+        }
+
+        if zapped_id.is_none() {
+            // This probably means a person was zapped, not a note. So not an error.
+            return Ok(None);
+        }
+        if zapped_amount.is_none() {
+            return Err(Error::ZapReceipt("Missing amount".to_string()));
+        }
+        if zapped_pubkey.is_none() {
+            return Err(Error::ZapReceipt("Missing payee public key".to_string()));
+        }
+
+        Ok(Some(ZapData {
+            id: zapped_id.unwrap(),
+            amount: zapped_amount.unwrap(),
+            pubkey: zapped_pubkey.unwrap(),
+        }))
     }
 
     /// If this event specifies the client that created it, return that client string

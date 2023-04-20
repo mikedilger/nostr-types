@@ -64,6 +64,9 @@ pub use relay_information_document::{
     Fee, RelayFees, RelayInformationDocument, RelayLimitation, RelayRetention,
 };
 
+mod satoshi;
+pub use satoshi::MilliSatoshi;
+
 mod signature;
 pub use signature::{Signature, SignatureHex};
 
