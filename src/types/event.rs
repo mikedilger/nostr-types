@@ -172,7 +172,7 @@ impl Event {
 
         let quitting = Arc::new(AtomicBool::new(false));
         let nonce = Arc::new(AtomicU64::new(0)); // will store the nonce that works
-        let best_bits = Arc::new(AtomicU8::new(0));
+        let best_work = Arc::new(AtomicU8::new(0));
 
         let mut join_handles: Vec<JoinHandle<_>> = Vec::with_capacity(cores);
 
@@ -184,7 +184,7 @@ impl Event {
             let quitting = quitting.clone();
             let nonce = nonce.clone();
             let zero_bits = zero_bits;
-            let best_bits = best_bits.clone();
+            let best_work = best_work.clone();
             let work_sender = work_sender.clone();
             let join_handle = thread::spawn(move || {
                 loop {
@@ -203,9 +203,12 @@ impl Event {
                     if leading_zeroes >= zero_bits {
                         nonce.store(attempt, Ordering::Relaxed);
                         quitting.store(true, Ordering::Relaxed);
+                        if let Some(sender) = work_sender.clone() {
+                            sender.send(leading_zeroes).unwrap();
+                        }
                         break;
-                    } else if leading_zeroes > best_bits.load(Ordering::Relaxed) {
-                        best_bits.store(leading_zeroes, Ordering::Relaxed);
+                    } else if leading_zeroes > best_work.load(Ordering::Relaxed) {
+                        best_work.store(leading_zeroes, Ordering::Relaxed);
                         if let Some(sender) = work_sender.clone() {
                             sender.send(leading_zeroes).unwrap();
                         }
