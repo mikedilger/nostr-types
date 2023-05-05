@@ -1,10 +1,13 @@
 use super::{EventKind, IdHex, IdHexPrefix, PublicKeyHex, PublicKeyHexPrefix, Unixtime};
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "speedy")]
+use speedy::{Readable, Writable};
 use std::cmp::Ordering;
 use std::ops::Deref;
 
 /// Filter which specify what events a client is looking for
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct Filter {
     /// Events which match these ids
     #[serde(skip_serializing_if = "Vec::is_empty")]

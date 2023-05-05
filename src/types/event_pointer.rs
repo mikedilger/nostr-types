@@ -2,9 +2,12 @@ use super::{Id, UncheckedUrl};
 use crate::Error;
 use bech32::{FromBase32, ToBase32};
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "speedy")]
+use speedy::{Readable, Writable};
 
 /// An event id along with some relays in which that event may be found.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct EventPointer {
     /// Event id
     pub id: Id,

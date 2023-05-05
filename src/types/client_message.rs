@@ -2,10 +2,13 @@ use super::{Event, Filter, SubscriptionId};
 use serde::de::Error as DeError;
 use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
+#[cfg(feature = "speedy")]
+use speedy::{Readable, Writable};
 use std::fmt;
 
 /// A message from a client to a relay
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub enum ClientMessage {
     /// An event
     Event(Box<Event>),

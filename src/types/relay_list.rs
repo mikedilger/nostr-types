@@ -2,11 +2,14 @@ use super::UncheckedUrl;
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "speedy")]
+use speedy::{Readable, Writable};
 use std::collections::HashMap;
 use std::fmt;
 
 /// When and how to use a Relay
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct SimpleRelayUsage {
     /// Whether to write to this relay
     pub write: bool,
@@ -26,6 +29,7 @@ impl Default for SimpleRelayUsage {
 
 /// A list of relays with SimpleRelayUsage
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct SimpleRelayList(pub HashMap<UncheckedUrl, SimpleRelayUsage>);
 
 impl SimpleRelayList {

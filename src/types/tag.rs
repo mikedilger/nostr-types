@@ -1,10 +1,13 @@
 use crate::{DelegationConditions, Id, PublicKeyHex, SignatureHex, UncheckedUrl, Unixtime};
 use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
+#[cfg(feature = "speedy")]
+use speedy::{Readable, Writable};
 use std::fmt;
 
 /// A tag on an Event
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub enum Tag {
     /// Content Warning to alert client to hide content until user approves
     ContentWarning(String),

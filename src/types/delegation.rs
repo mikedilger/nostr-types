@@ -3,6 +3,8 @@ use crate::Error;
 use serde::de::Error as DeError;
 use serde::de::{Deserialize, Deserializer, Visitor};
 use serde::ser::{Serialize, Serializer};
+#[cfg(feature = "speedy")]
+use speedy::{Readable, Writable};
 use std::fmt;
 
 /// Delegation information for an Event
@@ -20,6 +22,7 @@ pub enum EventDelegation {
 
 /// Conditions of delegation
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct DelegationConditions {
     /// If the delegation is only for a given event kind
     pub kind: Option<EventKind>,

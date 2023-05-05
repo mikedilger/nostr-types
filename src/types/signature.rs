@@ -5,6 +5,8 @@ use serde::de::Error as DeserializeError;
 use serde::de::{Deserialize as De, Deserializer, Visitor};
 use serde::ser::{Serialize as Se, Serializer};
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "speedy")]
+use speedy::{Context, Readable, Reader, Writable, Writer};
 use std::fmt;
 
 /// A Schnorr signature that signs an Event, taken on the Event Id field
@@ -77,6 +79,36 @@ impl Visitor<'_> for SignatureVisitor {
     }
 }
 
+#[cfg(feature = "speedy")]
+impl<'a, C: Context> Readable<'a, C> for Signature {
+    #[inline]
+    fn read_from<R: Reader<'a, C>>(reader: &mut R) -> Result<Self, C::Error> {
+        let bytes = <[u8; 32]>::read_from( reader )?;
+        let sig = KSignature::try_from(&bytes[..]).map_err(|e| {
+            speedy::Error::custom(e)
+        })?;
+        Ok(Signature(sig))
+    }
+
+    #[inline]
+    fn minimum_bytes_needed() -> usize {
+        32
+    }
+}
+
+#[cfg(feature = "speedy")]
+impl<C: Context> Writable<C> for Signature {
+    #[inline]
+    fn write_to<T: ?Sized + Writer<C>>(&self, writer: &mut T) -> Result<(), C::Error> {
+        self.0.to_bytes().write_to( writer )
+    }
+
+    #[inline]
+    fn bytes_needed(&self) -> Result<usize, C::Error> {
+        Ok(32)
+    }
+}
+
 /// A Schnorr signature that signs an Event, taken on the Event Id field, as a hex string
 #[derive(
     AsMut,
@@ -94,6 +126,7 @@ impl Visitor<'_> for SignatureVisitor {
     PartialEq,
     Serialize,
 )]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct SignatureHex(pub String);
 
 impl SignatureHex {

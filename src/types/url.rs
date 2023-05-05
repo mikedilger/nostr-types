@@ -1,9 +1,12 @@
 use crate::error::Error;
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "speedy")]
+use speedy::{Readable, Writable};
 use std::fmt;
 
 /// A string that is supposed to represent a URL but which might be invalid
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, PartialOrd, Serialize, Ord)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct UncheckedUrl(pub String);
 
 impl fmt::Display for UncheckedUrl {
@@ -43,6 +46,7 @@ impl UncheckedUrl {
 ///
 /// We don't serialize/deserialize these directly, see `UncheckedUrl` for that
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct Url(pub String);
 
 impl fmt::Display for Url {
@@ -115,6 +119,7 @@ impl Url {
 /// A Url validated as a nostr relay url in canonical form
 /// We don't serialize/deserialize these directly, see `UncheckedUrl` for that
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct RelayUrl(pub String);
 
 impl fmt::Display for RelayUrl {

@@ -1,6 +1,8 @@
 use crate::Error;
 use derive_more::{AsMut, AsRef, Deref, Display, From, Into};
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "speedy")]
+use speedy::{Readable, Writable};
 use std::ops::{Add, Sub};
 use std::time::Duration;
 
@@ -25,6 +27,7 @@ use std::time::Duration;
     PartialOrd,
     Serialize,
 )]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct Unixtime(pub i64);
 
 impl Unixtime {

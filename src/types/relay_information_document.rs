@@ -4,10 +4,13 @@ use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
+#[cfg(feature = "speedy")]
+use speedy::{Readable, Writable};
 use std::fmt;
 
 /// Relay limitations
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct RelayLimitation {
     /// max message length
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -67,6 +70,7 @@ pub struct RelayLimitation {
 
 /// Relay retention
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct RelayRetention {
     /// kinds
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -86,6 +90,7 @@ pub struct RelayRetention {
 
 /// Fee
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct Fee {
     /// Amount of the fee
     pub amount: usize,
@@ -106,6 +111,7 @@ pub struct Fee {
 
 /// Relay fees
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct RelayFees {
     /// Admission fee (read and write)
     #[serde(skip_serializing_if = "Vec::is_empty")]

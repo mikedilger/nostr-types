@@ -2,9 +2,12 @@ use super::{PublicKey, UncheckedUrl};
 use crate::Error;
 use bech32::{FromBase32, ToBase32};
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "speedy")]
+use speedy::{Readable, Writable};
 
 /// A person's profile on nostr which consists of the data needed in order to follow someone.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct Profile {
     /// Their public key
     pub pubkey: PublicKey,

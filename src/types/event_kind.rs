@@ -2,6 +2,8 @@ use serde::de::Error as DeError;
 use serde::de::{Deserializer, Visitor};
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "speedy")]
+use speedy::{Context, Readable, Reader, Writable, Writer};
 use std::convert::From;
 use std::fmt;
 
@@ -291,8 +293,36 @@ impl Visitor<'_> for EventKindVisitor {
     }
 }
 
+#[cfg(feature = "speedy")]
+impl<'a, C: Context> Readable<'a, C> for EventKind {
+    #[inline]
+    fn read_from<R: Reader<'a, C>>(reader: &mut R) -> Result<Self, C::Error> {
+        let value = u64::read_from(reader)?;
+        Ok(value.into())
+    }
+
+    #[inline]
+    fn minimum_bytes_needed() -> usize {
+        <u64 as Readable<'a, C>>::minimum_bytes_needed()
+    }
+}
+
+#[cfg(feature = "speedy")]
+impl<C: Context> Writable<C> for EventKind {
+    #[inline]
+    fn write_to<T: ?Sized + Writer<C>>(&self, writer: &mut T) -> Result<(), C::Error> {
+        writer.write_u64(u64::from(*self))
+    }
+
+    #[inline]
+    fn bytes_needed(&self) -> Result<usize, C::Error> {
+        Ok(std::mem::size_of::<u64>())
+    }
+}
+
 /// Either an EventKind or a range (a vector of length 2 with start and end)
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 #[serde(untagged)]
 pub enum EventKindOrRange {
     /// A single EventKind

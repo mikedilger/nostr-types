@@ -6,6 +6,8 @@ use k256::schnorr::VerifyingKey;
 use serde::de::{Deserializer, Visitor};
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "speedy")]
+use speedy::{Context, Readable, Reader, Writable, Writer};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
@@ -134,6 +136,37 @@ impl Hash for PublicKey {
     }
 }
 
+#[cfg(feature = "speedy")]
+impl<'a, C: Context> Readable<'a, C> for PublicKey {
+    #[inline]
+    fn read_from<R: Reader<'a, C>>(reader: &mut R) -> Result<Self, C::Error> {
+        let bytes = <[u8; 32]>::read_from( reader )?;
+        let vk = VerifyingKey::from_bytes(&bytes).map_err(|e| {
+            speedy::Error::custom(e)
+        })?;
+        Ok(PublicKey(vk))
+    }
+
+    #[inline]
+    fn minimum_bytes_needed() -> usize {
+        32
+    }
+}
+
+#[cfg(feature = "speedy")]
+impl<C: Context> Writable<C> for PublicKey {
+    #[inline]
+    fn write_to<T: ?Sized + Writer<C>>(&self, writer: &mut T) -> Result<(), C::Error> {
+        self.0.to_bytes().write_to( writer )
+    }
+
+    #[inline]
+    fn bytes_needed(&self) -> Result<usize, C::Error> {
+        Ok(32)
+    }
+}
+
+
 /// This is a public key, which identifies an actor (usually a person) and is shared, as a hex string
 ///
 /// You can convert from a `PublicKey` into this with `From`/`Into`.  You can convert this back to a `PublicKey` with `TryFrom`/`TryInto`.
@@ -153,6 +186,7 @@ impl Hash for PublicKey {
     PartialEq,
     Serialize,
 )]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct PublicKeyHex(String);
 
 impl PublicKeyHex {
@@ -244,6 +278,7 @@ impl TryFrom<PublicKeyHex> for PublicKey {
     PartialEq,
     Serialize,
 )]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct PublicKeyHexPrefix(String);
 
 impl PublicKeyHexPrefix {

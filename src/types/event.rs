@@ -6,6 +6,8 @@ use crate::Error;
 use base64::Engine;
 use k256::sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "speedy")]
+use speedy::{Readable, Writable};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
@@ -14,6 +16,7 @@ use std::thread::JoinHandle;
 
 /// The main event type
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct Event {
     /// The Id of the event, generated as a SHA256 of the inner event data
     pub id: Id,

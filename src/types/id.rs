@@ -4,12 +4,15 @@ use derive_more::{AsMut, AsRef, Deref, Display, From, FromStr, Into};
 use serde::de::{Deserializer, Visitor};
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "speedy")]
+use speedy::{Readable, Writable};
 use std::fmt;
 
 /// An event identifier, constructed as a SHA256 hash of the event fields according to NIP-01
 #[derive(
     AsMut, AsRef, Clone, Copy, Debug, Deref, Eq, From, Hash, Into, Ord, PartialEq, PartialOrd,
 )]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct Id(pub [u8; 32]);
 
 impl Id {
@@ -120,6 +123,7 @@ impl Visitor<'_> for IdVisitor {
     PartialEq,
     Serialize,
 )]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct IdHex(String);
 
 impl IdHex {
@@ -203,6 +207,7 @@ impl From<IdHex> for Id {
     PartialEq,
     Serialize,
 )]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct IdHexPrefix(String);
 
 impl IdHexPrefix {
