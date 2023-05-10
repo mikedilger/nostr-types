@@ -140,10 +140,8 @@ impl Hash for PublicKey {
 impl<'a, C: Context> Readable<'a, C> for PublicKey {
     #[inline]
     fn read_from<R: Reader<'a, C>>(reader: &mut R) -> Result<Self, C::Error> {
-        let bytes = <[u8; 32]>::read_from( reader )?;
-        let vk = VerifyingKey::from_bytes(&bytes).map_err(|e| {
-            speedy::Error::custom(e)
-        })?;
+        let bytes = <[u8; 32]>::read_from(reader)?;
+        let vk = VerifyingKey::from_bytes(&bytes).map_err(|e| speedy::Error::custom(e))?;
         Ok(PublicKey(vk))
     }
 
@@ -157,7 +155,7 @@ impl<'a, C: Context> Readable<'a, C> for PublicKey {
 impl<C: Context> Writable<C> for PublicKey {
     #[inline]
     fn write_to<T: ?Sized + Writer<C>>(&self, writer: &mut T) -> Result<(), C::Error> {
-        self.0.to_bytes().write_to( writer )
+        self.0.to_bytes().write_to(writer)
     }
 
     #[inline]
@@ -165,7 +163,6 @@ impl<C: Context> Writable<C> for PublicKey {
         Ok(32)
     }
 }
-
 
 /// This is a public key, which identifies an actor (usually a person) and is shared, as a hex string
 ///
