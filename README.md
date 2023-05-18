@@ -30,38 +30,6 @@ it knowing, so if it says `Medium` that is the maximum security, not a guarantee
 of security). Private keys can be imported and exported in a password-keyed encrypted form
 without weakening their security.
 
-## Progress
-
-Basic functionality is coded for the following NIPs. Be aware that we only provide types,
-so a lot of NIP content is not applicable.
-
-
-- [x] NIP-01
-- [x] NIP-02
-- [ ] NIP-03 - OpenTimestamps are low priority
-- [ ] NIP-04 - Will not support. Do not recommend.
-- [x] NIP-05
-- [ ] NIP-06 - Not interesting to me, not being a bitcoiner; low priority
-- [x] NIP-07 - n/a
-- [ ] NIP-08 - TBD
-- [x] NIP-09 - mostly n/a but supported where applicable
-- [x] NIP-10 - mostly n/a but supported where applicable
-- [x] NIP-11
-- [ ] NIP-12 - TBD
-- [ ] NIP-13 - TBD
-- [x] NIP-14
-- [ ] NIP-15 - n/a
-- [x] NIP-16
-- [x] NIP-19 - supported for keys only
-- [x] NIP-20 - mostly n/a but supported where applicable
-- [x] NIP-22 - n/a
-- [x] NIP-25 - mostly n/a but supported where applicable
-- [ ] NIP-26 - TBD, can be done manually currently.
-- [ ] NIP-28 - Partially. EventKind recognizes, them but content handling not there.
-- [x] NIP-35 - n/a
-- [x] NIP-36 - mostly n/a but supported where applicable
-- [x] NIP-40 - mostly n/a but supported where applicable
-
 ## License
 
  * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
