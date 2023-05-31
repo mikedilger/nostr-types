@@ -109,7 +109,7 @@ impl Visitor<'_> for PublicKeyVisitor {
     type Value = PublicKey;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a hexadecimal string representing 32 bytes")
+        write!(f, "a lowercase hexadecimal string representing 32 bytes")
     }
 
     fn visit_str<E>(self, v: &str) -> Result<PublicKey, E>
@@ -173,15 +173,13 @@ impl<C: Context> Writable<C> for PublicKey {
     Clone,
     Debug,
     Deref,
-    Deserialize,
     Display,
     Eq,
     From,
     FromStr,
     Hash,
     Into,
-    PartialEq,
-    Serialize,
+    PartialEq
 )]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct PublicKeyHex(String);
@@ -254,6 +252,49 @@ impl TryFrom<PublicKeyHex> for PublicKey {
 
     fn try_from(pkh: PublicKeyHex) -> Result<PublicKey, Error> {
         PublicKey::try_from_hex_string(&pkh.0)
+    }
+}
+
+impl Serialize for PublicKeyHex {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.0)    }
+}
+
+impl<'de> Deserialize<'de> for PublicKeyHex {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(PublicKeyHexVisitor)
+    }
+}
+
+struct PublicKeyHexVisitor;
+
+impl Visitor<'_> for PublicKeyHexVisitor {
+    type Value = PublicKeyHex;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a lowercase hexadecimal string representing 32 bytes")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<PublicKeyHex, E>
+    where
+        E: serde::de::Error,
+    {
+        if v.len() != 64 {
+            return Err(serde::de::Error::custom("PublicKeyHex is not 64 characters long"));
+        }
+
+        let vec: Vec<u8> = hex::decode(v).map_err(|e| serde::de::Error::custom(format!("{e}")))?;
+        if vec.len() != 32 {
+            return Err(serde::de::Error::custom("Invalid PublicKeyHex"));
+        }
+
+        Ok(PublicKeyHex(v.to_owned()))
     }
 }
 

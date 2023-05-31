@@ -86,7 +86,7 @@ impl Visitor<'_> for IdVisitor {
     type Value = Id;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a hexadecimal string representing 32 bytes")
+        write!(f, "a lowercase hexadecimal string representing 32 bytes")
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Id, E>
@@ -113,15 +113,13 @@ impl Visitor<'_> for IdVisitor {
     Clone,
     Debug,
     Deref,
-    Deserialize,
     Display,
     Eq,
     From,
     FromStr,
     Hash,
     Into,
-    PartialEq,
-    Serialize,
+    PartialEq
 )]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct IdHex(String);
@@ -189,6 +187,50 @@ impl From<IdHex> for Id {
         Id::try_from_hex_string(&h.0).unwrap()
     }
 }
+
+impl Serialize for IdHex {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.0)    }
+}
+
+impl<'de> Deserialize<'de> for IdHex {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(IdHexVisitor)
+    }
+}
+
+struct IdHexVisitor;
+
+impl Visitor<'_> for IdHexVisitor {
+    type Value = IdHex;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a lowercase hexadecimal string representing 32 bytes")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<IdHex, E>
+    where
+        E: serde::de::Error,
+    {
+        if v.len() != 64 {
+            return Err(serde::de::Error::custom("IdHex is not 64 characters long"));
+        }
+
+        let vec: Vec<u8> = hex::decode(v).map_err(|e| serde::de::Error::custom(format!("{e}")))?;
+        if vec.len() != 32 {
+            return Err(serde::de::Error::custom("Invalid IdHex"));
+        }
+
+        Ok(IdHex(v.to_owned()))
+    }
+}
+
 
 /// An event identifier prefix, constructed as a SHA256 hash of the event fields according to NIP-01, as a hex string
 #[derive(
