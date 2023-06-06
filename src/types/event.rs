@@ -760,7 +760,7 @@ impl Event {
             if let Tag::Other { tag, data } = tag {
                 // Find the bolt11 tag
                 if tag != "bolt11" { continue; }
-                if data.len() == 0 {
+                if data.is_empty() {
                     return Err(Error::ZapReceipt("missing bolt11 tag value".to_string()));
                 }
 
