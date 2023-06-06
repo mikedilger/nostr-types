@@ -9,65 +9,65 @@ use std::fmt;
 
 /// A kind of Event
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(u64)]
+#[repr(u32)]
 pub enum EventKind {
     /// Event sets the metadata associated with a public key
-    Metadata,
+    Metadata = 0,
     /// Event is a text note
-    TextNote,
+    TextNote = 1,
     /// Event contains a relay URL which the author recommends
-    RecommendRelay,
+    RecommendRelay = 2,
     /// Event contains tags which represent the authors contacts including the
     /// authors pet names for them
-    ContactList,
+    ContactList = 3,
     /// Event is an encrypted direct message
-    EncryptedDirectMessage,
+    EncryptedDirectMessage = 4,
     /// Event is an authors request to delete previous events
-    EventDeletion,
+    EventDeletion = 5,
     /// Repost
-    Repost,
+    Repost = 6,
     /// Event is a reaction to a `TextNote` event
-    Reaction,
+    Reaction = 7,
     /// Event creates a public channel
-    ChannelCreation,
+    ChannelCreation = 40,
     /// Event sets metadata on a public channel
-    ChannelMetadata,
+    ChannelMetadata = 41,
     /// Event creates a message on a public channel
-    ChannelMessage,
+    ChannelMessage = 42,
     /// Event hides a message on a public channel
-    ChannelHideMessage,
+    ChannelHideMessage = 43,
     /// Event mutes a user on a public channel
-    ChannelMuteUser,
+    ChannelMuteUser = 44,
     /// Reserved for future public channel usage
-    PublicChatReserved45,
+    PublicChatReserved45 = 45,
     /// Reserved for future public channel usage
-    PublicChatReserved46,
+    PublicChatReserved46 = 46,
     /// Reserved for future public channel usage
-    PublicChatReserved47,
+    PublicChatReserved47 = 47,
     /// Reserved for future public channel usage
-    PublicChatReserved48,
+    PublicChatReserved48 = 48,
     /// Reserved for future public channel usage
-    PublicChatReserved49,
+    PublicChatReserved49 = 49,
     /// Zap Request
-    ZapRequest,
+    ZapRequest = 9734,
     /// Zap
-    Zap,
+    Zap = 9735,
     /// Relays List (NIP-23)
-    RelaysListNip23,
+    RelaysListNip23 = 10001,
     /// Relays List (NIP-65)
-    RelayList,
+    RelayList = 10002,
     /// Authentication
-    Auth,
+    Auth = 22242,
     /// Long-form Content
-    LongFormContent,
+    LongFormContent = 30023,
     /// Client Settings
-    ClientSettings,
+    ClientSettings = 31111,
     /// Relay-specific replaceable event
-    Replaceable(u64),
+    Replaceable(u32),
     /// Ephemeral event, sent to all clients with matching filters and should not be stored
-    Ephemeral(u64),
+    Ephemeral(u32),
     /// Something else?
-    Other(u64),
+    Other(u32),
 }
 
 use EventKind::*;
@@ -86,7 +86,7 @@ impl EventKind {
             Metadata => true,
             ContactList => true,
             _ => {
-                let u: u64 = From::from(*self);
+                let u: u32 = From::from(*self);
                 (10000..=19999).contains(&u)
             }
         }
@@ -94,13 +94,13 @@ impl EventKind {
 
     /// If this event kind is ephemeral
     pub fn is_ephemeral(&self) -> bool {
-        let u: u64 = From::from(*self);
+        let u: u32 = From::from(*self);
         (20000..=29999).contains(&u)
     }
 
     /// If this event kind is parameterized replaceable
     pub fn is_parameterized_replaceable(&self) -> bool {
-        let u: u64 = From::from(*self);
+        let u: u32 = From::from(*self);
         (30000..=39999).contains(&u)
     }
 
@@ -187,8 +187,8 @@ impl Iterator for EventKindIterator {
     }
 }
 
-impl From<u64> for EventKind {
-    fn from(u: u64) -> Self {
+impl From<u32> for EventKind {
+    fn from(u: u32) -> Self {
         match u {
             0 => Metadata,
             1 => TextNote,
@@ -222,8 +222,8 @@ impl From<u64> for EventKind {
     }
 }
 
-impl From<EventKind> for u64 {
-    fn from(e: EventKind) -> u64 {
+impl From<EventKind> for u32 {
+    fn from(e: EventKind) -> u32 {
         match e {
             Metadata => 0,
             TextNote => 1,
@@ -262,8 +262,8 @@ impl Serialize for EventKind {
     where
         S: Serializer,
     {
-        let u: u64 = From::from(*self);
-        serializer.serialize_u64(u)
+        let u: u32 = From::from(*self);
+        serializer.serialize_u32(u)
     }
 }
 
@@ -272,7 +272,7 @@ impl<'de> Deserialize<'de> for EventKind {
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_u64(EventKindVisitor)
+        deserializer.deserialize_u32(EventKindVisitor)
     }
 }
 
@@ -285,11 +285,19 @@ impl Visitor<'_> for EventKindVisitor {
         write!(f, "an unsigned number that matches a known EventKind")
     }
 
+    fn visit_u32<E>(self, v: u32) -> Result<EventKind, E>
+    where
+        E: DeError,
+    {
+        Ok(From::<u32>::from(v))
+    }
+
+    // JsonValue numbers come in as u64
     fn visit_u64<E>(self, v: u64) -> Result<EventKind, E>
     where
         E: DeError,
     {
-        Ok(From::<u64>::from(v))
+        Ok(From::<u32>::from(v as u32))
     }
 }
 
@@ -297,13 +305,13 @@ impl Visitor<'_> for EventKindVisitor {
 impl<'a, C: Context> Readable<'a, C> for EventKind {
     #[inline]
     fn read_from<R: Reader<'a, C>>(reader: &mut R) -> Result<Self, C::Error> {
-        let value = u64::read_from(reader)?;
+        let value = u32::read_from(reader)?;
         Ok(value.into())
     }
 
     #[inline]
     fn minimum_bytes_needed() -> usize {
-        <u64 as Readable<'a, C>>::minimum_bytes_needed()
+        <u32 as Readable<'a, C>>::minimum_bytes_needed()
     }
 }
 
@@ -311,12 +319,12 @@ impl<'a, C: Context> Readable<'a, C> for EventKind {
 impl<C: Context> Writable<C> for EventKind {
     #[inline]
     fn write_to<T: ?Sized + Writer<C>>(&self, writer: &mut T) -> Result<(), C::Error> {
-        writer.write_u64(u64::from(*self))
+        writer.write_u32(u32::from(*self))
     }
 
     #[inline]
     fn bytes_needed(&self) -> Result<usize, C::Error> {
-        Ok(std::mem::size_of::<u64>())
+        Ok(std::mem::size_of::<u32>())
     }
 }
 

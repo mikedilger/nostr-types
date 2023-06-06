@@ -50,7 +50,7 @@ impl DelegationConditions {
     fn compile_full_string(&self) -> String {
         let mut parts: Vec<String> = Vec::new();
         if let Some(kind) = self.kind {
-            parts.push(format!("kind={}", u64::from(kind)));
+            parts.push(format!("kind={}", u32::from(kind)));
         }
         if let Some(created_after) = self.created_after {
             parts.push(format!("created_at>{}", created_after.0));
@@ -73,7 +73,7 @@ impl DelegationConditions {
         let parts = s.split('&');
         for part in parts {
             if let Some(kindstr) = part.strip_prefix("kind=") {
-                let event_num = kindstr.parse::<u64>()?;
+                let event_num = kindstr.parse::<u32>()?;
                 let event_kind: EventKind = From::from(event_num);
                 output.kind = Some(event_kind);
             }

@@ -121,7 +121,7 @@ pub enum Error {
 
     /// Unknown event kind
     #[error("Unknown event kind = {0}")]
-    UnknownEventKind(u64),
+    UnknownEventKind(u32),
 
     /// Unknown Key Security
     #[error("Unknown key security = {0}")]
