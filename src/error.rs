@@ -146,6 +146,10 @@ pub enum Error {
     #[error("Wrong length hex string")]
     WrongLengthHexString,
 
+    /// Wrong length bytes for event kind
+    #[error("Wrong length bytes for event kind")]
+    WrongLengthKindBytes,
+
     /// Wrong Decryption Password
     #[error("Wrong decryption password")]
     WrongDecryptionPassword,
