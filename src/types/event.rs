@@ -114,10 +114,16 @@ impl PreEvent {
     }
 }
 
+/// Data about a Zap
 #[derive(Clone, Debug, Copy)]
 pub struct ZapData {
+    /// The event that was zapped
     pub id: Id,
+
+    /// The amount that the event was zapped
     pub amount: MilliSatoshi,
+
+    /// The public key of the person who provided the zap
     pub pubkey: PublicKey,
 }
 
