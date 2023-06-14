@@ -200,6 +200,11 @@ impl Event {
             let work_sender = work_sender.clone();
             let join_handle = thread::spawn(move || {
                 loop {
+                    // Lower the thread priority so other threads aren't starved
+                    let _ = thread_priority::set_current_thread_priority(
+                        thread_priority::ThreadPriority::Min
+                    );
+
                     if quitting.load(Ordering::Relaxed) {
                         break;
                     }
