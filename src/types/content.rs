@@ -3,7 +3,7 @@ use lazy_static::lazy_static;
 use linkify::{LinkFinder, LinkKind};
 use regex::Regex;
 
-/// This is like Range<usize>, except we impl offset() on it
+/// This is like `Range<usize>`, except we impl offset() on it
 /// This is like linkify::Span, except we impl offset() on it and don't need
 ///   the as_str() or kind() functions.
 #[derive(Clone, Copy, Debug)]
