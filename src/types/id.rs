@@ -107,20 +107,7 @@ impl Visitor<'_> for IdVisitor {
 /// An event identifier, constructed as a SHA256 hash of the event fields according to NIP-01, as a hex string
 ///
 /// You can convert from an `Id` into this with `From`/`Into`.  You can convert this back to an `Id` with `TryFrom`/`TryInto`.
-#[derive(
-    AsMut,
-    AsRef,
-    Clone,
-    Debug,
-    Deref,
-    Display,
-    Eq,
-    From,
-    FromStr,
-    Hash,
-    Into,
-    PartialEq
-)]
+#[derive(AsMut, AsRef, Clone, Debug, Deref, Display, Eq, From, FromStr, Hash, Into, PartialEq)]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct IdHex(String);
 
@@ -193,7 +180,8 @@ impl Serialize for IdHex {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&self.0)    }
+        serializer.serialize_str(&self.0)
+    }
 }
 
 impl<'de> Deserialize<'de> for IdHex {
@@ -230,7 +218,6 @@ impl Visitor<'_> for IdHexVisitor {
         Ok(IdHex(v.to_owned()))
     }
 }
-
 
 /// An event identifier prefix, constructed as a SHA256 hash of the event fields according to NIP-01, as a hex string
 #[derive(

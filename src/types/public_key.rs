@@ -167,20 +167,7 @@ impl<C: Context> Writable<C> for PublicKey {
 /// This is a public key, which identifies an actor (usually a person) and is shared, as a hex string
 ///
 /// You can convert from a `PublicKey` into this with `From`/`Into`.  You can convert this back to a `PublicKey` with `TryFrom`/`TryInto`.
-#[derive(
-    AsMut,
-    AsRef,
-    Clone,
-    Debug,
-    Deref,
-    Display,
-    Eq,
-    From,
-    FromStr,
-    Hash,
-    Into,
-    PartialEq
-)]
+#[derive(AsMut, AsRef, Clone, Debug, Deref, Display, Eq, From, FromStr, Hash, Into, PartialEq)]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct PublicKeyHex(String);
 
@@ -260,7 +247,8 @@ impl Serialize for PublicKeyHex {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&self.0)    }
+        serializer.serialize_str(&self.0)
+    }
 }
 
 impl<'de> Deserialize<'de> for PublicKeyHex {
@@ -286,7 +274,9 @@ impl Visitor<'_> for PublicKeyHexVisitor {
         E: serde::de::Error,
     {
         if v.len() != 64 {
-            return Err(serde::de::Error::custom("PublicKeyHex is not 64 characters long"));
+            return Err(serde::de::Error::custom(
+                "PublicKeyHex is not 64 characters long",
+            ));
         }
 
         let vec: Vec<u8> = hex::decode(v).map_err(|e| serde::de::Error::custom(format!("{e}")))?;

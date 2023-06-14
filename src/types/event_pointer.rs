@@ -89,25 +89,29 @@ impl EventPointer {
                 }
                 let raw = &tlv[pos..pos + len];
                 match ty {
-                    0 => { // special (32 bytes of id)
+                    0 => {
+                        // special (32 bytes of id)
                         if len != 32 {
                             return Err(Error::InvalidEventPointer);
                         }
-                        id = Some(Id(raw.try_into()
-                                     .map_err(|_| Error::WrongLengthHexString)?));
+                        id = Some(Id(raw
+                            .try_into()
+                            .map_err(|_| Error::WrongLengthHexString)?));
                     }
-                    1 => { // relay
+                    1 => {
+                        // relay
                         let relay_str = std::str::from_utf8(raw)?;
                         let relay = UncheckedUrl::from_str(relay_str);
                         relays.push(relay);
                     }
-                    2 => { // author
+                    2 => {
+                        // author
                         author = Some(PublicKey::from_bytes(raw)?);
                     }
-                    3 => { // kind
+                    3 => {
+                        // kind
                         let kindnum = u32::from_be_bytes(
-                            raw.try_into()
-                                .map_err(|_| Error::WrongLengthKindBytes)?
+                            raw.try_into().map_err(|_| Error::WrongLengthKindBytes)?,
                         );
                         kind = Some(kindnum.into());
                     }
@@ -116,7 +120,12 @@ impl EventPointer {
                 pos += len;
             }
             if let Some(id) = id {
-                Ok(EventPointer { id, relays, kind, author })
+                Ok(EventPointer {
+                    id,
+                    relays,
+                    kind,
+                    author,
+                })
             } else {
                 Err(Error::InvalidEventPointer)
             }
@@ -171,7 +180,7 @@ mod test {
                 UncheckedUrl::from_str("wss://djbas.sadkb.com"),
             ],
             kind: None,
-            author: None
+            author: None,
         };
 
         // As serialized by us (not necessarily in the order others would do it)
@@ -205,9 +214,12 @@ mod test {
                 UncheckedUrl::from_str("wss://djbas.sadkb.com"),
             ],
             kind: Some(EventKind::TextNote),
-            author: Some(PublicKey::try_from_hex_string(
-                "000000000332c7831d9c5a99f183afc2813a6f69a16edda7f6fc0ed8110566e6"
-            ).unwrap()),
+            author: Some(
+                PublicKey::try_from_hex_string(
+                    "000000000332c7831d9c5a99f183afc2813a6f69a16edda7f6fc0ed8110566e6",
+                )
+                .unwrap(),
+            ),
         };
 
         // As serialized by us (not necessarily in the order others would do it)

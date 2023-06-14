@@ -1,6 +1,6 @@
 use super::{
-    EventDelegation, EventKind, Id, Metadata, MilliSatoshi, PrivateKey, PublicKey, PublicKeyHex, RelayUrl,
-    Signature, Tag, Unixtime,
+    EventDelegation, EventKind, Id, Metadata, MilliSatoshi, PrivateKey, PublicKey, PublicKeyHex,
+    RelayUrl, Signature, Tag, Unixtime,
 };
 use crate::Error;
 use base64::Engine;
@@ -202,7 +202,7 @@ impl Event {
                 loop {
                     // Lower the thread priority so other threads aren't starved
                     let _ = thread_priority::set_current_thread_priority(
-                        thread_priority::ThreadPriority::Min
+                        thread_priority::ThreadPriority::Min,
                     );
 
                     if quitting.load(Ordering::Relaxed) {
@@ -751,8 +751,7 @@ impl Event {
     ///
     /// Errors returned from this are not fatal, but may be useful for
     /// explaining to a user why a zap receipt is invalid.
-    pub fn zaps(&self) -> Result<Option<ZapData>, Error>
-    {
+    pub fn zaps(&self) -> Result<Option<ZapData>, Error> {
         if self.kind != EventKind::Zap {
             return Ok(None);
         }
@@ -764,7 +763,9 @@ impl Event {
         for tag in self.tags.iter() {
             if let Tag::Other { tag, data } = tag {
                 // Find the bolt11 tag
-                if tag != "bolt11" { continue; }
+                if tag != "bolt11" {
+                    continue;
+                }
                 if data.is_empty() {
                     return Err(Error::ZapReceipt("missing bolt11 tag value".to_string()));
                 }
@@ -778,29 +779,41 @@ impl Event {
 
                 // Verify the signature
                 if let Err(e) = invoice.check_signature() {
-                    return Err(Error::ZapReceipt(format!("bolt11 signature check failed: {}", e)));
+                    return Err(Error::ZapReceipt(format!(
+                        "bolt11 signature check failed: {}",
+                        e
+                    )));
                 }
 
                 // Get the public key
                 let secpk = match invoice.payee_pub_key() {
                     Some(pubkey) => pubkey.to_owned(),
-                    None => invoice.recover_payee_pub_key()
+                    None => invoice.recover_payee_pub_key(),
                 };
                 let (xonlypk, _) = secpk.x_only_public_key();
                 let pubkeybytes = xonlypk.serialize();
                 let pubkey = match PublicKey::from_bytes(&pubkeybytes) {
                     Ok(pubkey) => pubkey,
-                    Err(e) => return Err(Error::ZapReceipt(format!("payee public key error: {}", e))),
+                    Err(e) => {
+                        return Err(Error::ZapReceipt(format!("payee public key error: {}", e)))
+                    }
                 };
                 zapped_pubkey = Some(pubkey);
 
                 if let Some(u) = invoice.amount_milli_satoshis() {
                     zapped_amount = Some(MilliSatoshi(u));
                 } else {
-                    return Err(Error::ZapReceipt("Amount missing from zap receipt".to_string()));
+                    return Err(Error::ZapReceipt(
+                        "Amount missing from zap receipt".to_string(),
+                    ));
                 }
             }
-            if let Tag::Event { id, recommended_relay_url: _, marker: _ } = tag {
+            if let Tag::Event {
+                id,
+                recommended_relay_url: _,
+                marker: _,
+            } = tag
+            {
                 zapped_id = Some(*id);
             }
         }

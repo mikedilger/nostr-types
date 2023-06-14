@@ -156,5 +156,5 @@ pub enum Error {
 
     /// Zap Receipt issue
     #[error("Invalid Zap Receipt: {0}")]
-    ZapReceipt(String)
+    ZapReceipt(String),
 }
