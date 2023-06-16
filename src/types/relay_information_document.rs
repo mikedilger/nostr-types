@@ -68,6 +68,46 @@ pub struct RelayLimitation {
     pub payment_required: Option<bool>,
 }
 
+impl fmt::Display for RelayLimitation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Relay Limitation:")?;
+        if let Some(mml) = &self.max_message_length {
+            write!(f, " MaxMessageLength=\"{mml}\"")?;
+        }
+        if let Some(ms) = &self.max_subscriptions {
+            write!(f, " MaxSubscriptions=\"{ms}\"")?;
+        }
+        if let Some(mf) = &self.max_filters {
+            write!(f, " MaxFilters=\"{mf}\"")?;
+        }
+        if let Some(ml) = &self.max_limit {
+            write!(f, " MaxLimit=\"{ml}\"")?;
+        }
+        if let Some(msil) = &self.max_subid_length {
+            write!(f, " MaxSubidLength=\"{msil}\"")?;
+        }
+        if let Some(mp) = &self.min_prefix {
+            write!(f, " MinPrefix=\"{mp}\"")?;
+        }
+        if let Some(met) = &self.max_event_tags {
+            write!(f, " MaxEventTags=\"{met}\"")?;
+        }
+        if let Some(mcl) = &self.max_content_length {
+            write!(f, " MaxContentLength=\"{mcl}\"")?;
+        }
+        if let Some(mpd) = &self.min_pow_difficulty {
+            write!(f, " MinPowDifficulty=\"{mpd}\"")?;
+        }
+        if let Some(ar) = &self.auth_required {
+            write!(f, " AuthRequired=\"{ar}\"")?;
+        }
+        if let Some(pr) = &self.payment_required {
+            write!(f, " PaymentRequired=\"{pr}\"")?;
+        }
+        Ok(())
+    }
+}
+
 /// Relay retention
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
@@ -86,6 +126,20 @@ pub struct RelayRetention {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
     pub count: Option<usize>,
+}
+
+impl fmt::Display for RelayRetention {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Relay Retention:")?;
+        write!(f, " Kinds=\"{:?}\"", self.kinds)?;
+        if let Some(time) = &self.time {
+            write!(f, " Time=\"{time}\"")?;
+        }
+        if let Some(count) = &self.count {
+            write!(f, " Count=\"{count}\"")?;
+        }
+        Ok(())
+    }
 }
 
 /// Fee
@@ -109,6 +163,17 @@ pub struct Fee {
     pub period: Option<usize>,
 }
 
+impl fmt::Display for Fee {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Fee=[{} {}", self.amount, self.unit)?;
+        write!(f, " Kinds=\"{:?}\"", self.kinds)?;
+        if let Some(period) = &self.period {
+            write!(f, " Period=\"{}\"", period)?;
+        }
+        write!(f, "]")
+    }
+}
+
 /// Relay fees
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
@@ -127,6 +192,25 @@ pub struct RelayFees {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
     pub publication: Vec<Fee>,
+}
+
+impl fmt::Display for RelayFees {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Relay Fees:")?;
+        write!(f, " Admission=[")?;
+        for fee in &self.admission {
+            write!(f, "{} ", fee)?;
+        }
+        write!(f, "],Subscription=[")?;
+        for fee in &self.subscription {
+            write!(f, "{} ", fee)?;
+        }
+        write!(f, "],Publication=[")?;
+        for fee in &self.publication {
+            write!(f, "{} ", fee)?;
+        }
+        write!(f, "]")
+    }
 }
 
 /// Relay information document as described in NIP-11, supplied by a relay
@@ -336,6 +420,42 @@ impl fmt::Display for RelayInformationDocument {
         }
         if let Some(version) = &self.version {
             write!(f, " Version=\"{version}\"")?;
+        }
+        if let Some(limitation) = &self.limitation {
+            write!(f, " Limitation=\"{limitation}\"")?;
+        }
+        for retention in &self.retention {
+            write!(f, " Retention=\"{retention}\"")?;
+        }
+        if ! self.relay_countries.is_empty() {
+            write!(f, " Countries=[")?;
+            for country in &self.relay_countries {
+                write!(f, "{country},")?;
+            }
+            write!(f, "]")?;
+        }
+        if ! self.language_tags.is_empty() {
+            write!(f, " Languages=[")?;
+            for language in &self.language_tags {
+                write!(f, "{language},")?;
+            }
+            write!(f, "]")?;
+        }
+        if ! self.tags.is_empty() {
+            write!(f, " Tags=[")?;
+            for tag in &self.tags {
+                write!(f, "{tag},")?;
+            }
+            write!(f, "]")?;
+        }
+        if let Some(policy_url) = &self.posting_policy {
+            write!(f, " PostingPolicy={policy_url}")?;
+        }
+        if let Some(url) = &self.payments_url {
+            write!(f, " PaymentsUrl={url}")?;
+        }
+        if let Some(fees) = &self.fees {
+            write!(f, " Fees={fees}")?;
         }
         for (k, v) in self.other.iter() {
             write!(f, " {k}=\"{v}\"")?;
