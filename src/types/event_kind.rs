@@ -106,16 +106,12 @@ impl EventKind {
 
     /// If this event kind is feed related.
     pub fn is_feed_related(&self) -> bool {
-        match *self {
-            TextNote => true,
-            EncryptedDirectMessage => true, // can be
-            EventDeletion => true,          // affects other events in the feed
-            Repost => true,
-            Reaction => true,
-            Zap => true, // like reaction, affects zap counts
-            LongFormContent => true,
-            _ => false,
-        }
+        self.is_feed_displayable() || self.augments_feed_related()
+    }
+
+    /// If this event kind is feed displayable.
+    pub fn is_feed_displayable(&self) -> bool {
+        matches!(*self, TextNote | EncryptedDirectMessage | Repost | LongFormContent)
     }
 
     /// If this event kind augments a feed related event
