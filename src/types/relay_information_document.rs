@@ -427,21 +427,21 @@ impl fmt::Display for RelayInformationDocument {
         for retention in &self.retention {
             write!(f, " Retention=\"{retention}\"")?;
         }
-        if ! self.relay_countries.is_empty() {
+        if !self.relay_countries.is_empty() {
             write!(f, " Countries=[")?;
             for country in &self.relay_countries {
                 write!(f, "{country},")?;
             }
             write!(f, "]")?;
         }
-        if ! self.language_tags.is_empty() {
+        if !self.language_tags.is_empty() {
             write!(f, " Languages=[")?;
             for language in &self.language_tags {
                 write!(f, "{language},")?;
             }
             write!(f, "]")?;
         }
-        if ! self.tags.is_empty() {
+        if !self.tags.is_empty() {
             write!(f, " Tags=[")?;
             for tag in &self.tags {
                 write!(f, "{tag},")?;

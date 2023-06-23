@@ -111,7 +111,10 @@ impl EventKind {
 
     /// If this event kind is feed displayable.
     pub fn is_feed_displayable(&self) -> bool {
-        matches!(*self, TextNote | EncryptedDirectMessage | Repost | LongFormContent)
+        matches!(
+            *self,
+            TextNote | EncryptedDirectMessage | Repost | LongFormContent
+        )
     }
 
     /// If this event kind augments a feed related event
