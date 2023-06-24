@@ -18,7 +18,7 @@ pub struct PayRequestData {
     pub allows_nostr: Option<bool>,
 
     /// The nostr public key of the zapper
-    pub nostr_pubkey: PublicKeyHex,
+    pub nostr_pubkey: Option<PublicKeyHex>,
 
     /// Other fields such as:
     ///
@@ -35,7 +35,7 @@ impl Default for PayRequestData {
             callback: UncheckedUrl("".to_owned()),
             metadata: vec![],
             allows_nostr: None,
-            nostr_pubkey: PublicKeyHex::mock(),
+            nostr_pubkey: None,
             other: Map::new(),
         }
     }
@@ -61,7 +61,7 @@ impl PayRequestData {
                  "decentbun13@walletofsatoshi.com".to_owned()),
             ],
             allows_nostr: Some(true),
-            nostr_pubkey: PublicKeyHex::try_from_str("be1d89794bf92de5dd64c1e60f6a2c70c140abac9932418fee30c5c637fe9479").unwrap(),
+            nostr_pubkey: Some(PublicKeyHex::try_from_str("be1d89794bf92de5dd64c1e60f6a2c70c140abac9932418fee30c5c637fe9479").unwrap()),
             other: map,
         }
     }
@@ -145,11 +145,9 @@ impl<'de> Visitor<'de> for PayRequestDataVisitor {
 
         if let Some(Value::String(s)) = map.remove("nostrPubkey") {
             m.nostr_pubkey = match PublicKeyHex::try_from_string(s) {
-                Ok(pkh) => pkh,
+                Ok(pkh) => Some(pkh),
                 Err(e) => return Err(DeError::custom(format!("{e}"))),
             };
-        } else {
-            return Err(DeError::custom("Missing nostrPubkey".to_owned()));
         }
 
         m.other = map;
