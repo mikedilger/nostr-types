@@ -1,4 +1,6 @@
-use crate::{DelegationConditions, Id, PublicKeyHex, SignatureHex, UncheckedUrl, Unixtime};
+use crate::{
+    DelegationConditions, EventKind, Id, PublicKeyHex, SignatureHex, UncheckedUrl, Unixtime,
+};
 use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
 #[cfg(feature = "speedy")]
@@ -9,6 +11,21 @@ use std::fmt;
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub enum Tag {
+    /// Address 'a' tag to a parameterized replaceable event
+    Address {
+        /// EventKind
+        kind: EventKind,
+
+        /// Author
+        pubkey: PublicKeyHex,
+
+        /// d-tag identifier
+        d: String,
+
+        /// Relay URL
+        relay_url: Option<UncheckedUrl>,
+    },
+
     /// Content Warning to alert client to hide content until user approves
     ContentWarning(String),
 
@@ -108,6 +125,7 @@ impl Tag {
     /// Get the tag name for the tag (the first string in the array)a
     pub fn tagname(&self) -> String {
         match self {
+            Tag::Address { .. } => "address".to_string(),
             Tag::ContentWarning(_) => "content-warning".to_string(),
             Tag::Delegation { .. } => "delegation".to_string(),
             Tag::Event { .. } => "e".to_string(),
@@ -143,6 +161,22 @@ impl Serialize for Tag {
         S: Serializer,
     {
         match self {
+            Tag::Address {
+                kind,
+                pubkey,
+                d,
+                relay_url,
+            } => {
+                let mut seq = serializer.serialize_seq(None)?;
+                seq.serialize_element("a")?;
+                let k: u32 = From::from(*kind);
+                let s = format!("{}:{}:{}", k, pubkey, d);
+                seq.serialize_element(&s)?;
+                if let Some(ru) = relay_url {
+                    seq.serialize_element(ru)?;
+                }
+                seq.end()
+            }
             Tag::ContentWarning(msg) => {
                 let mut seq = serializer.serialize_seq(None)?;
                 seq.serialize_element("content-warning")?;
@@ -299,7 +333,53 @@ impl<'de> Visitor<'de> for TagVisitor {
             Some(e) => e,
             None => return Ok(Tag::Empty),
         };
-        if tagname == "content-warning" {
+        if tagname == "a" {
+            if let Some(a) = seq.next_element::<&str>()? {
+                let relay_url: Option<UncheckedUrl> = seq.next_element()?;
+                let failvec = match relay_url {
+                    Some(ref url) => vec![a.to_string(), url.as_str().to_owned()],
+                    None => vec![a.to_string()],
+                };
+
+                let parts: Vec<&str> = a.split(':').collect();
+                if parts.len() != 3 {
+                    return Ok(Tag::Other {
+                        tag: tagname.to_string(),
+                        data: failvec,
+                    });
+                }
+                let kindnum: u32 = match parts[0].parse::<u32>() {
+                    Ok(u) => u,
+                    Err(_) => {
+                        return Ok(Tag::Other {
+                            tag: tagname.to_string(),
+                            data: failvec,
+                        });
+                    }
+                };
+                let kind: EventKind = From::from(kindnum);
+                let pubkey: PublicKeyHex = match PublicKeyHex::try_from_str(parts[1]) {
+                    Ok(pk) => pk,
+                    Err(_) => {
+                        return Ok(Tag::Other {
+                            tag: tagname.to_string(),
+                            data: failvec,
+                        });
+                    }
+                };
+                Ok(Tag::Address {
+                    kind,
+                    pubkey,
+                    d: parts[2].to_string(),
+                    relay_url,
+                })
+            } else {
+                Ok(Tag::Other {
+                    tag: tagname.to_string(),
+                    data: vec![],
+                })
+            }
+        } else if tagname == "content-warning" {
             let msg = match seq.next_element()? {
                 Some(s) => s,
                 None => {
@@ -493,4 +573,27 @@ mod test {
     use super::*;
 
     test_serde! {Tag, test_tag_serde}
+
+    #[test]
+    fn test_a_tag() {
+        let tag = Tag::Address {
+            kind: EventKind::LongFormContent,
+            pubkey: PublicKeyHex::mock_deterministic(),
+            d: "Testing123".to_owned(),
+            relay_url: Some(UncheckedUrl("wss://relay.mikedilger.com/".to_string())),
+        };
+        let string = serde_json::to_string(&tag).unwrap();
+        let tag2 = serde_json::from_str(&string).unwrap();
+        assert_eq!(tag, tag2);
+
+        let tag = Tag::Address {
+            kind: EventKind::LongFormContent,
+            pubkey: PublicKeyHex::mock_deterministic(),
+            d: "Testing123".to_owned(),
+            relay_url: None,
+        };
+        let string = serde_json::to_string(&tag).unwrap();
+        let tag2 = serde_json::from_str(&string).unwrap();
+        assert_eq!(tag, tag2);
+    }
 }

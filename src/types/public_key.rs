@@ -186,6 +186,12 @@ impl PublicKeyHex {
         From::from(PublicKey::mock())
     }
 
+    // Mock data for testing
+    #[allow(dead_code)]
+    pub(crate) fn mock_deterministic() -> PublicKeyHex {
+        From::from(PublicKey::mock_deterministic())
+    }
+
     /// Export as a bech32 encoded string
     pub fn as_bech32_string(&self) -> String {
         let vec: Vec<u8> = hex::decode(&self.0).unwrap();
