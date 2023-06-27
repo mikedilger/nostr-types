@@ -26,14 +26,17 @@ pub use event::{Event, PreEvent, ZapData};
 mod event_kind;
 pub use event_kind::{EventKind, EventKindIterator, EventKindOrRange};
 
+mod event_pointer;
+pub use event_pointer::EventPointer;
+
+mod event_addr;
+pub use event_addr::EventAddr;
+
 mod filter;
 pub use filter::Filter;
 
 mod id;
 pub use id::{Id, IdHex, IdHexPrefix};
-
-mod event_pointer;
-pub use event_pointer::EventPointer;
 
 mod metadata;
 pub use metadata::Metadata;

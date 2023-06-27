@@ -51,6 +51,10 @@ pub enum Error {
     #[error("Invalid Encrypted Private Key")]
     InvalidEncryptedPrivateKey,
 
+    /// Invalid Event Addr
+    #[error("Invalid event addr")]
+    InvalidEventAddr,
+
     /// Invalid Event Pointer
     #[error("Invalid event pointer")]
     InvalidEventPointer,
@@ -138,6 +142,7 @@ pub enum Error {
     /// UTF-8 error
     #[error("UTF-8 Error: {0}")]
     Utf8Error(#[from] std::str::Utf8Error),
+
     /// Wrong event kind
     #[error("Wrong event kind")]
     WrongEventKind,

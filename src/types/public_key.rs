@@ -83,6 +83,14 @@ impl PublicKey {
     pub(crate) fn mock() -> PublicKey {
         PrivateKey::generate().public_key()
     }
+
+    #[allow(dead_code)]
+    pub(crate) fn mock_deterministic() -> PublicKey {
+        PublicKey::try_from_hex_string(
+            "ee11a5dff40c19a555f41fe42b48f00e618c91225622ae37b6c2bb67b76c4e49",
+        )
+        .unwrap()
+    }
 }
 
 impl Serialize for PublicKey {

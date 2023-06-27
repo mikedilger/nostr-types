@@ -1,27 +1,33 @@
-use super::{EventPointer, Id, Profile, PublicKey};
+use super::{EventAddr, EventPointer, Id, Profile, PublicKey, UncheckedUrl};
 use lazy_static::lazy_static;
 
 /// A bech32 sequence representing a nostr object (or set of objects)
 // note, internally we store them as the object the sequence represents
 #[derive(Clone, Debug)]
 pub enum NostrBech32 {
-    /// npub - a NostrBech32 representing a public key
-    Pubkey(PublicKey),
-    /// nprofile - a NostrBech32 representing a public key and a set of relay URLs
-    Profile(Profile),
-    /// note - a NostrBech32 representing an event
-    Id(Id),
+    /// naddr - a NostrBech32 parameterized replaceable event coordinate
+    EventAddr(EventAddr),
     /// nevent - a NostrBech32 representing an event and a set of relay URLs
     EventPointer(EventPointer),
+    /// note - a NostrBech32 representing an event
+    Id(Id),
+    /// nprofile - a NostrBech32 representing a public key and a set of relay URLs
+    Profile(Profile),
+    /// npub - a NostrBech32 representing a public key
+    Pubkey(PublicKey),
+    /// nrelay - a NostrBech32 representing a relay URL
+    Relay(UncheckedUrl),
 }
 
 impl std::fmt::Display for NostrBech32 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            NostrBech32::Pubkey(pk) => write!(f, "{}", pk.as_bech32_string()),
-            NostrBech32::Profile(p) => write!(f, "{}", p.as_bech32_string()),
-            NostrBech32::Id(i) => write!(f, "{}", i.as_bech32_string()),
+            NostrBech32::EventAddr(ea) => write!(f, "{}", ea.as_bech32_string()),
             NostrBech32::EventPointer(ep) => write!(f, "{}", ep.as_bech32_string()),
+            NostrBech32::Id(i) => write!(f, "{}", i.as_bech32_string()),
+            NostrBech32::Profile(p) => write!(f, "{}", p.as_bech32_string()),
+            NostrBech32::Pubkey(pk) => write!(f, "{}", pk.as_bech32_string()),
+            NostrBech32::Relay(url) => write!(f, "{}", url.as_bech32_string()),
         }
     }
 }
@@ -47,24 +53,37 @@ impl NostrBech32 {
         NostrBech32::EventPointer(ep)
     }
 
+    /// Create from an `UncheckedUrl`
+    pub fn new_relay(url: UncheckedUrl) -> NostrBech32 {
+        NostrBech32::Relay(url)
+    }
+
     /// Try to convert a string into a NostrBech32. Must not have leading or trailing
     /// junk for this to work.
     pub fn try_from_string(s: &str) -> Option<NostrBech32> {
-        if s.get(..5) == Some("npub1") {
-            if let Ok(pk) = PublicKey::try_from_bech32_string(s) {
-                return Some(NostrBech32::Pubkey(pk));
+        if s.get(..6) == Some("naddr1") {
+            if let Ok(ea) = EventAddr::try_from_bech32_string(s) {
+                return Some(NostrBech32::EventAddr(ea));
             }
-        } else if s.get(..9) == Some("nprofile1") {
-            if let Ok(p) = Profile::try_from_bech32_string(s) {
-                return Some(NostrBech32::Profile(p));
+        } else if s.get(..7) == Some("nevent1") {
+            if let Ok(ep) = EventPointer::try_from_bech32_string(s) {
+                return Some(NostrBech32::EventPointer(ep));
             }
         } else if s.get(..5) == Some("note1") {
             if let Ok(id) = Id::try_from_bech32_string(s) {
                 return Some(NostrBech32::Id(id));
             }
-        } else if s.get(..7) == Some("nevent1") {
-            if let Ok(ep) = EventPointer::try_from_bech32_string(s) {
-                return Some(NostrBech32::EventPointer(ep));
+        } else if s.get(..9) == Some("nprofile1") {
+            if let Ok(p) = Profile::try_from_bech32_string(s) {
+                return Some(NostrBech32::Profile(p));
+            }
+        } else if s.get(..5) == Some("npub1") {
+            if let Ok(pk) = PublicKey::try_from_bech32_string(s) {
+                return Some(NostrBech32::Pubkey(pk));
+            }
+        } else if s.get(..7) == Some("nrelay1") {
+            if let Ok(url) = UncheckedUrl::try_from_bech32_string(s) {
+                return Some(NostrBech32::Relay(url));
             }
         }
         None
