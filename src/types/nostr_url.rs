@@ -224,6 +224,18 @@ mod test {
         let nurl = NostrBech32::try_from_string(d).unwrap();
         assert!(matches!(nurl, NostrBech32::EventPointer(..)));
 
+        let e = "naddr1qqxk67txd9e8xardv96x7mt9qgsgfvxyd2mfntp4avk29pj8pwz7pqwmyzrummmrjv3rdsuhg9mc9agrqsqqqa28rkfdwv";
+        let nurl = NostrBech32::try_from_string(e).unwrap();
+        assert!(matches!(nurl, NostrBech32::EventAddr(..)));
+
+        let f = "naddr1qq9xuum9vd382mntv4eqz8nhwden5te0dehhxarj9eek2argvehhyurjd9mxzcme9e3k7mgpzamhxue69uhhyetvv9ujucm4wfex2mn59en8j6gpzfmhxue69uhhqatjwpkx2urpvuhx2ucpr9mhxue69uhkummnw3ezu7n9vfjkget99e3kcmm4vsq32amnwvaz7tm9v3jkutnwdaehgu3wd3skueqpp4mhxue69uhkummn9ekx7mqpr9mhxue69uhhqatjv9mxjerp9ehx7um5wghxcctwvsq3samnwvaz7tmjv4kxz7fwwdhx7un59eek7cmfv9kqz9rhwden5te0wfjkccte9ejxzmt4wvhxjmcpr4mhxue69uhkummnw3ezu6r0wa6x7cnfw33k76tw9eeksmmsqy2hwumn8ghj7mn0wd68ytn2v96x6tnvd9hxkqgkwaehxw309ashgmrpwvhxummnw3ezumrpdejqzynhwden5te0danxvcmgv95kutnsw43qzynhwden5te0wfjkccte9enrw73wd9hsz9rhwden5te0wfjkccte9ehx7um5wghxyecpzemhxue69uhhyetvv9ujumn0wd68ytnfdenx7qg7waehxw309ahx7um5wgkhyetvv9ujumn0ddhhgctjduhxxmmdqy28wumn8ghj7cnvv9ehgu3wvcmh5tnc09aqzymhwden5te0wfjkcctev93xcefwdaexwqgcwaehxw309akxjemgw3hxjmn8wfjkccte9e3k7mgprfmhxue69uhhyetvv9ujumn0wd68y6trdpjhxtn0wfnszyrhwden5te0dehhxarj9emkjmn9qyrkxmmjv93kcegzypl4c26wfzswnlk2vwjxky7dhqjgnaqzqwvdvz3qwz5k3j4grrt46qcyqqq823cd90lu6";
+        let nurl = NostrBech32::try_from_string(f).unwrap();
+        assert!(matches!(nurl, NostrBech32::EventAddr(..)));
+
+        let g = "nrelay1qqghwumn8ghj7mn0wd68yv339e3k7mgftj9ag";
+        let nurl = NostrBech32::try_from_string(g).unwrap();
+        assert!(matches!(nurl, NostrBech32::Relay(..)));
+
         // too short
         let short = "npub1sn0wdenkukak0d9dfczzeacvhkrgz92ak56egt7vdgzn8pv2wfqqhrjdv";
         assert!(NostrBech32::try_from_string(short).is_none());
