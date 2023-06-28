@@ -107,6 +107,7 @@ impl PreEvent {
                 pubkey: recipient_public_key.into(),
                 recommended_relay_url: None, // FIXME,
                 petname: None,
+                trailing: Vec::new(),
             }],
             content,
             ots: None,
@@ -183,6 +184,7 @@ impl Event {
         input.tags.push(Tag::Nonce {
             nonce: "0".to_string(),
             target: target.clone(),
+            trailing: Vec::new(),
         });
         let index = input.tags.len() - 1;
 
@@ -218,6 +220,7 @@ impl Event {
                     input.tags[index] = Tag::Nonce {
                         nonce: format!("{attempt}"),
                         target: target.clone(),
+                        trailing: Vec::new(),
                     };
 
                     let Id(id) = Self::hash(&input).unwrap();
@@ -253,6 +256,7 @@ impl Event {
         input.tags[index] = Tag::Nonce {
             nonce: format!("{}", nonce.load(Ordering::Relaxed)),
             target,
+            trailing: Vec::new(),
         };
         let id = Self::hash(&input).unwrap();
 
@@ -355,6 +359,7 @@ impl Event {
                     pubkey: recipient_pubkey,
                     recommended_relay_url: None,
                     petname: None,
+                    trailing: Vec::new(),
                 },
                 Tag::Other {
                     tag: "relays".to_owned(),
@@ -374,6 +379,7 @@ impl Event {
                 id: ze,
                 recommended_relay_url: None,
                 marker: None,
+                trailing: Vec::new(),
             });
         }
 
@@ -410,6 +416,7 @@ impl Event {
                 pubkey,
                 recommended_relay_url,
                 petname,
+                ..
             } = tag
             {
                 output.push((
@@ -435,6 +442,7 @@ impl Event {
                 pubkey,
                 recommended_relay_url,
                 petname,
+                ..
             } = tag
             {
                 if self.content.contains(&format!("#[{n}]")) {
@@ -492,6 +500,7 @@ impl Event {
                 id,
                 recommended_relay_url,
                 marker,
+                ..
             } = tag
             {
                 if marker.is_some() && marker.as_deref().unwrap() == "reply" {
@@ -511,6 +520,7 @@ impl Event {
                 id,
                 recommended_relay_url,
                 marker,
+                ..
             } = tag
             {
                 if marker.is_some() && marker.as_deref().unwrap() == "root" {
@@ -529,6 +539,7 @@ impl Event {
             id,
             recommended_relay_url,
             marker,
+            ..
         }) = self
             .tags
             .iter()
@@ -564,6 +575,7 @@ impl Event {
                 id,
                 recommended_relay_url,
                 marker,
+                ..
             } = tag
             {
                 if marker.is_some() && marker.as_deref().unwrap() == "root" {
@@ -591,6 +603,7 @@ impl Event {
             id,
             recommended_relay_url,
             marker,
+            ..
         }) = self.tags.iter().find(|t| matches!(t, Tag::Event { .. }))
         {
             if marker.is_none() {
@@ -616,7 +629,7 @@ impl Event {
             if let Tag::Event {
                 id,
                 recommended_relay_url,
-                marker: _,
+                ..
             } = tag
             {
                 output.push((
@@ -649,6 +662,7 @@ impl Event {
                 id,
                 recommended_relay_url,
                 marker,
+                ..
             } = tag
             {
                 if marker.is_some() && marker.as_deref().unwrap() == "mention" {
@@ -675,6 +689,7 @@ impl Event {
                     id,
                     recommended_relay_url,
                     marker,
+                    ..
                 } = tag
                 {
                     if marker.is_none() {
@@ -703,7 +718,7 @@ impl Event {
         if let Some(Tag::Event {
             id,
             recommended_relay_url,
-            marker: _,
+            ..
         }) = self
             .tags
             .iter()
@@ -733,12 +748,7 @@ impl Event {
 
         // All 'e' tags are deleted
         for tag in self.tags.iter() {
-            if let Tag::Event {
-                id,
-                recommended_relay_url: _,
-                marker: _,
-            } = tag
-            {
+            if let Tag::Event { id, .. } = tag {
                 ids.push(*id);
             }
         }
@@ -814,12 +824,7 @@ impl Event {
                     ));
                 }
             }
-            if let Tag::Event {
-                id,
-                recommended_relay_url: _,
-                marker: _,
-            } = tag
-            {
+            if let Tag::Event { id, .. } = tag {
                 zapped_id = Some(*id);
             }
         }
@@ -858,8 +863,8 @@ impl Event {
     /// If this event specifies a subject, return that subject string
     pub fn subject(&self) -> Option<String> {
         for tag in self.tags.iter() {
-            if let Tag::Subject(sub) = tag {
-                return Some(sub.clone());
+            if let Tag::Subject { subject, .. } = tag {
+                return Some(subject.clone());
             }
         }
 
@@ -869,8 +874,8 @@ impl Event {
     /// If this event specifies a content warning, return that subject string
     pub fn content_warning(&self) -> Option<String> {
         for tag in self.tags.iter() {
-            if let Tag::ContentWarning(warn) = tag {
-                return Some(warn.clone());
+            if let Tag::ContentWarning { warning, .. } = tag {
+                return Some(warning.clone());
             }
         }
 
@@ -881,7 +886,7 @@ impl Event {
     pub fn parameter(&self) -> Option<String> {
         if self.kind.is_parameterized_replaceable() {
             for tag in self.tags.iter() {
-                if let Tag::Parameter(param) = tag {
+                if let Tag::Parameter { param, .. } = tag {
                     return Some(param.to_owned());
                 }
             }
@@ -900,8 +905,8 @@ impl Event {
         let mut output: Vec<String> = Vec::new();
 
         for tag in self.tags.iter() {
-            if let Tag::Hashtag(hash) = tag {
-                output.push(hash.clone());
+            if let Tag::Hashtag { hashtag, .. } = tag {
+                output.push(hashtag.clone());
             }
         }
 
@@ -935,7 +940,7 @@ impl Event {
         // Check that they meant it
         let mut target_zeroes: u8 = 0;
         for tag in self.tags.iter() {
-            if let Tag::Nonce { nonce: _, target } = tag {
+            if let Tag::Nonce { target, .. } = tag {
                 if let Some(t) = target {
                     target_zeroes = t.parse::<u8>().unwrap_or(0);
                 }
@@ -954,6 +959,7 @@ impl Event {
                 pubkey,
                 conditions,
                 sig,
+                ..
             } = tag
             {
                 // Convert hex strings into functional types
@@ -1036,6 +1042,7 @@ mod test {
                 id: Id::mock(),
                 recommended_relay_url: Some(UncheckedUrl::mock()),
                 marker: None,
+                trailing: Vec::new(),
             }],
             content: "Hello World!".to_string(),
             ots: None,
@@ -1086,12 +1093,14 @@ mod test {
                     id: Id::mock(),
                     recommended_relay_url: Some(UncheckedUrl::mock()),
                     marker: None,
+                    trailing: Vec::new(),
                 },
                 Tag::Delegation {
                     pubkey: PublicKeyHex::try_from_string(delegator_pubkey.as_hex_string())
                         .unwrap(),
                     conditions,
                     sig,
+                    trailing: Vec::new(),
                 },
             ],
             content: "Hello World!".to_string(),

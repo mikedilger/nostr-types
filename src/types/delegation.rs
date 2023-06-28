@@ -210,6 +210,7 @@ mod test {
             pubkey,
             conditions,
             sig,
+            ..
         } = dt
         {
             assert_eq!(
@@ -242,6 +243,7 @@ mod test {
             pubkey,
             conditions,
             sig,
+            ..
         } = dt
         {
             assert_eq!(
