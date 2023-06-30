@@ -1,4 +1,6 @@
+use crate::Error;
 use super::{EventAddr, EventPointer, Id, Profile, PublicKey, UncheckedUrl};
+use bech32::{FromBase32, ToBase32};
 use lazy_static::lazy_static;
 
 /// A bech32 sequence representing a nostr object (or set of objects)
@@ -15,8 +17,8 @@ pub enum NostrBech32 {
     Profile(Profile),
     /// npub - a NostrBech32 representing a public key
     Pubkey(PublicKey),
-    /// nrelay - a NostrBech32 representing a relay URL
-    Relay(UncheckedUrl),
+    /// nrelay - a NostrBech32 representing a set of relay URLs
+    Relay(Vec<UncheckedUrl>),
 }
 
 impl std::fmt::Display for NostrBech32 {
@@ -27,7 +29,7 @@ impl std::fmt::Display for NostrBech32 {
             NostrBech32::Id(i) => write!(f, "{}", i.as_bech32_string()),
             NostrBech32::Profile(p) => write!(f, "{}", p.as_bech32_string()),
             NostrBech32::Pubkey(pk) => write!(f, "{}", pk.as_bech32_string()),
-            NostrBech32::Relay(url) => write!(f, "{}", url.as_bech32_string()),
+            NostrBech32::Relay(urls) => write!(f, "{}", Self::vec_url_as_bech32_string(&urls)),
         }
     }
 }
@@ -54,8 +56,8 @@ impl NostrBech32 {
     }
 
     /// Create from an `UncheckedUrl`
-    pub fn new_relay(url: UncheckedUrl) -> NostrBech32 {
-        NostrBech32::Relay(url)
+    pub fn new_relay(urls: Vec<UncheckedUrl>) -> NostrBech32 {
+        NostrBech32::Relay(urls)
     }
 
     /// Try to convert a string into a NostrBech32. Must not have leading or trailing
@@ -82,8 +84,8 @@ impl NostrBech32 {
                 return Some(NostrBech32::Pubkey(pk));
             }
         } else if s.get(..7) == Some("nrelay1") {
-            if let Ok(url) = UncheckedUrl::try_from_bech32_string(s) {
-                return Some(NostrBech32::Relay(url));
+            if let Ok(urls) = Self::vec_urls_try_from_bech32_string(s) {
+                return Some(NostrBech32::Relay(urls));
             }
         }
         None
@@ -102,6 +104,53 @@ impl NostrBech32 {
             cursor += relend;
         }
         output
+    }
+
+    fn vec_url_as_bech32_string(urls: &[UncheckedUrl]) -> String {
+        // Compose
+        let mut tlv: Vec<u8> = Vec::new();
+
+        for url in urls {
+            tlv.push(1); // relay
+            tlv.push(url.0.len() as u8); // length
+            tlv.extend(url.0.as_bytes());
+        }
+
+        bech32::encode("nrelay", tlv.to_base32(), bech32::Variant::Bech32).unwrap()
+    }
+
+    fn vec_urls_try_from_bech32_string(s: &str) -> Result<Vec<UncheckedUrl>, Error> {
+        let data = bech32::decode(s)?;
+        if data.0 != "nrelay" {
+            Err(Error::WrongBech32("nrelay".to_string(), data.0))
+        } else {
+            let mut output: Vec<UncheckedUrl> = Vec::new();
+            let tlv = Vec::<u8>::from_base32(&data.1)?;
+            let mut pos = 0;
+            loop {
+                // we need at least 2 more characters for anything meaningful
+                if pos > tlv.len() - 2 {
+                    break;
+                }
+                let ty = tlv[pos];
+                let len = tlv[pos + 1] as usize;
+                pos += 2;
+                if pos + len > tlv.len() {
+                    return Err(Error::InvalidUrlTlv);
+                }
+                let raw = &tlv[pos..pos + len];
+                match ty {
+                    1 => {
+                        let relay_str = std::str::from_utf8(raw)?;
+                        let relay = UncheckedUrl::from_str(relay_str);
+                        output.push(relay);
+                    },
+                    _ => {} // unhandled type for nrelay
+                }
+                pos += len;
+            }
+            Ok(output)
+        }
     }
 }
 

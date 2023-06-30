@@ -87,6 +87,10 @@ pub enum Error {
     #[error("Invalid URL: \"{0}\"")]
     InvalidUrl(#[from] url::ParseError),
 
+    /// Invalid URL TLV encoding
+    #[error("Invalid URL TLV encoding")]
+    InvalidUrlTlv,
+
     /// Invalid URL Host
     #[error("Invalid URL Host: \"{0}\"")]
     InvalidUrlHost(String),
