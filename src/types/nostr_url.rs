@@ -111,7 +111,7 @@ impl NostrBech32 {
         let mut tlv: Vec<u8> = Vec::new();
 
         for url in urls {
-            tlv.push(1); // relay
+            tlv.push(0); // special for nrelay
             tlv.push(url.0.len() as u8); // length
             tlv.extend(url.0.as_bytes());
         }
@@ -379,5 +379,17 @@ nostr:nrelay1qqvhwumn8ghj7un9d3shjtnwdaehgunfvd5zumrpdejqpdl8ln
 "#;
 
         assert_eq!(NostrUrl::find_all_in_string(sample).len(), 11);
+    }
+
+    #[test]
+    fn test_generate_nrelay() {
+        let urls = vec![
+            UncheckedUrl("wss://nostr.mikedilger.com/".to_owned()),
+            UncheckedUrl("wss://nostr2.mikedilger.com/".to_owned())
+        ];
+
+        let nb32 = NostrBech32::new_relay(urls);
+        let nurl = NostrUrl(nb32);
+        println!("{}", nurl);
     }
 }
