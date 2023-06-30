@@ -176,7 +176,7 @@ pub fn find_nostr_bech32_pos(s: &str) -> Option<(usize, usize)> {
     use regex::Regex;
     lazy_static! {
         static ref BECH32_RE: Regex = Regex::new(
-            r#"(?:^|[^a-zA-Z0-9])((?:nsec|npub|nprofile|note|nevent|nrelay|naddr)1[ac-hj-np-z02-9]{58,})(?:$|[^a-zA-Z0-9])"#
+            r#"(?:^|[^a-zA-Z0-9])((?:nsec|npub|nprofile|note|nevent|nrelay|naddr)1[ac-hj-np-z02-9]{7,})(?:$|[^a-zA-Z0-9])"#
         ).expect("Could not compile nostr URL regex");
     }
     BECH32_RE.captures(s).map(|cap| {
@@ -193,7 +193,7 @@ pub fn find_nostr_url_pos(s: &str) -> Option<(usize, usize)> {
     use regex::Regex;
     lazy_static! {
         static ref NOSTRURL_RE: Regex = Regex::new(
-            r#"(?:^|[^a-zA-Z0-9])(nostr:(?:nsec|npub|nprofile|note|nevent|nrelay|naddr)1[ac-hj-np-z02-9]{58,})(?:$|[^a-zA-Z0-9])"#
+            r#"(?:^|[^a-zA-Z0-9])(nostr:(?:nsec|npub|nprofile|note|nevent|nrelay|naddr)1[ac-hj-np-z02-9]{7,})(?:$|[^a-zA-Z0-9])"#
         ).expect("Could not compile nostr URL regex");
     }
     NOSTRURL_RE.captures(s).map(|cap| {
@@ -281,5 +281,54 @@ note10ttnuuvcs29y3k23gwrcurw2ksvgd7c2rrqlfx7urmt5m963vhss8nja90
     fn test_nostr_url_unicode_issues() {
         let sample = r#"🌝🐸note1fntxtkcy9pjwucqwa9mddn7v03wwwsu9j330jj350nvhpky2tuaspk6nqc"#;
         assert!(NostrUrl::try_from_string(sample).is_none())
+    }
+
+    #[test]
+    fn test_multiple_nostr_urls() {
+        let sample = r#"
+Here is a list of relays I use and consider reliable so far. I've included some relevant information for each relay such as if payment is required or [NIP-33](https://nips.be/33) is supported. I'll be updating this list as I discover more good relays, which ones do you find reliable?
+
+## Nokotaro
+
+nostr:nrelay1qq0hwumn8ghj7mn0wd68yttjv4kxz7fwdehkkmm5v9ex7tnrdakj78zlgae
+
+- Paid? **No**
+- [NIP-33](https://nips.be/33) supported? **Yes**
+- Operator: nostr:npub12ftld459xqw7s7fqnxstzu7r74l5yagxztwcwmaqj4d24jgpj2csee3mx0
+
+## Nostr World
+
+nostr:nrelay1qqvhwumn8ghj7mn0wd68ytthdaexcepwdqeh5tn2wqhsv5kg7j
+
+- Paid? **Yes**
+- [NIP-33](https://nips.be/33) supported? **Yes**
+- Operator: nostr:npub1zpq2gsz25wsgun2e4gtks9p63j7fvyfd46weyjzp5tv6yys89zcsjdflcv
+
+## Nos.lol
+
+nostr:nrelay1qq88wumn8ghj7mn0wvhxcmmv9uvj5a67
+
+- Paid? **No**
+- [NIP-33](https://nips.be/33) supported? **No**
+- Operator: nostr:npub1nlk894teh248w2heuu0x8z6jjg2hyxkwdc8cxgrjtm9lnamlskcsghjm9c
+
+## Nostr Wine
+
+nostr:nrelay1qqghwumn8ghj7mn0wd68ytnhd9hx2tcw2qslz
+
+- Paid? **Yes**
+- [NIP-33](https://nips.be/33) supported? **No**
+- Operators: nostr:npub1qlkwmzmrhzpuak7c2g9akvcrh7wzkd7zc7fpefw9najwpau662nqealf5y & nostr:npub18kzz4lkdtc5n729kvfunxuz287uvu9f64ywhjz43ra482t2y5sks0mx5sz
+
+## Nostrich Land
+
+nostr:nrelay1qqvhwumn8ghj7un9d3shjtnwdaehgunfvd5zumrpdejqpdl8ln
+
+- Paid? **Yes**
+- [NIP-33](https://nips.be/33) supported? **No**
+- Operator: nostr:nprofile1qqsxf8h0u35dmvg8cp0t5mg9z8f222v9grly6hcqw2cqvdsq3lrjlyspr9mhxue69uhhyetvv9ujumn0wd68y6trdqhxcctwvsj9ulqc
+"#;
+
+        assert_eq!(NostrUrl::find_all_in_string(sample).len(), 11);
     }
 }
