@@ -1,4 +1,4 @@
-use super::{find_nostr_bech32_pos, NostrBech32, NostrUrl};
+use super::{find_nostr_url_pos, NostrBech32, NostrUrl};
 use lazy_static::lazy_static;
 use linkify::{LinkFinder, LinkKind};
 use regex::Regex;
@@ -72,26 +72,19 @@ impl ShatteredContent {
 }
 
 /// Break content into a linear sequence of `ContentSegment`s
-#[allow(clippy::string_slice)] // start/end from find_nostr_bech32_pos is trusted
+#[allow(clippy::string_slice)] // start/end from find_nostr_url_pos is trusted
 fn shatter_content_1(mut content: &str) -> Vec<ContentSegment> {
     let mut segments: Vec<ContentSegment> = Vec::new();
     let mut offset: usize = 0; // used to adjust Span ranges
 
     // Pass 1 - `NostrUrl`s
-    while let Some((start, end)) = find_nostr_bech32_pos(content) {
-        // The stuff before it
-        if start >= 6 && content.get(start - 6..start) == Some("nostr:") {
-            let mut inner_segments = shatter_content_2(&content[..start - 6]);
-            apply_offset(&mut inner_segments, offset);
-            segments.append(&mut inner_segments);
-        } else {
-            let mut inner_segments = shatter_content_2(&content[..start]);
-            apply_offset(&mut inner_segments, offset);
-            segments.append(&mut inner_segments);
-        }
+    while let Some((start, end)) = find_nostr_url_pos(content) {
+        let mut inner_segments = shatter_content_2(&content[..start]);
+        apply_offset(&mut inner_segments, offset);
+        segments.append(&mut inner_segments);
 
         // The Nostr Bech32 itself
-        if let Some(nbech) = NostrBech32::try_from_string(&content[start..end]) {
+        if let Some(nbech) = NostrBech32::try_from_string(&content[start+6..end]) {
             segments.push(ContentSegment::NostrUrl(NostrUrl(nbech)));
         } else {
             segments.push(ContentSegment::Plain(Span { start, end }));

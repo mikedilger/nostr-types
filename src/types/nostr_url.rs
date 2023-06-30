@@ -176,7 +176,7 @@ pub fn find_nostr_bech32_pos(s: &str) -> Option<(usize, usize)> {
     use regex::Regex;
     lazy_static! {
         static ref BECH32_RE: Regex = Regex::new(
-            r#"(?:^|[^a-zA-Z0-9])((?:note|nevent|nprofile|npub)1[ac-hj-np-z02-9]{58,})(?:$|[^a-zA-Z0-9])"#
+            r#"(?:^|[^a-zA-Z0-9])((?:nsec|npub|nprofile|note|nevent|nrelay|naddr)1[ac-hj-np-z02-9]{58,})(?:$|[^a-zA-Z0-9])"#
         ).expect("Could not compile nostr URL regex");
     }
     BECH32_RE.captures(s).map(|cap| {
@@ -193,7 +193,7 @@ pub fn find_nostr_url_pos(s: &str) -> Option<(usize, usize)> {
     use regex::Regex;
     lazy_static! {
         static ref NOSTRURL_RE: Regex = Regex::new(
-            r#"(?:^|[^a-zA-Z0-9])(nostr:(?:note|nevent|nprofile|npub)1[ac-hj-np-z02-9]{58,})(?:$|[^a-zA-Z0-9])"#
+            r#"(?:^|[^a-zA-Z0-9])(nostr:(?:nsec|npub|nprofile|note|nevent|nrelay|naddr)1[ac-hj-np-z02-9]{58,})(?:$|[^a-zA-Z0-9])"#
         ).expect("Could not compile nostr URL regex");
     }
     NOSTRURL_RE.captures(s).map(|cap| {
