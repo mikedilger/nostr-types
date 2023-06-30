@@ -140,7 +140,7 @@ impl NostrBech32 {
                 }
                 let raw = &tlv[pos..pos + len];
                 match ty {
-                    1 => {
+                    0 | 1 => { // should be 0, but 1 is also a relay so we accept that too
                         let relay_str = std::str::from_utf8(raw)?;
                         let relay = UncheckedUrl::from_str(relay_str);
                         output.push(relay);
