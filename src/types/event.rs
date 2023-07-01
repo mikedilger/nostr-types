@@ -613,14 +613,15 @@ impl Event {
 
     /// All events IDs that this event refers to, whether root, reply, mention, or otherwise
     /// along with optional recommended relay URLs
-    pub fn referred_events(&self) -> Vec<(Id, Option<RelayUrl>)> {
-        let mut output: Vec<(Id, Option<RelayUrl>)> = Vec::new();
+    pub fn referred_events(&self) -> Vec<(Id, Option<RelayUrl>, Option<String>)> {
+        let mut output: Vec<(Id, Option<RelayUrl>, Option<String>)> = Vec::new();
 
         // Collect every 'e' tag
         for tag in self.tags.iter() {
             if let Tag::Event {
                 id,
                 recommended_relay_url,
+                marker,
                 ..
             } = tag
             {
@@ -629,6 +630,7 @@ impl Event {
                     recommended_relay_url
                         .as_ref()
                         .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                    marker.clone()
                 ));
             }
         }
