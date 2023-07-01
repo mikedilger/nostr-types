@@ -384,12 +384,8 @@ nostr:nrelay1qqvhwumn8ghj7un9d3shjtnwdaehgunfvd5zumrpdejqpdl8ln
 
     #[test]
     fn test_generate_nrelay() {
-        let urls = vec![
-            UncheckedUrl("wss://nostr.mikedilger.com/".to_owned()),
-            UncheckedUrl("wss://nostr2.mikedilger.com/".to_owned())
-        ];
-
-        let nb32 = NostrBech32::new_relay(urls);
+        let url = UncheckedUrl("wss://nostr.mikedilger.com/".to_owned());
+        let nb32 = NostrBech32::new_relay(url);
         let nurl = NostrUrl(nb32);
         println!("{}", nurl);
     }
