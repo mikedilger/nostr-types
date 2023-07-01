@@ -1,5 +1,5 @@
-use crate::Error;
 use super::{EventAddr, EventPointer, Id, Profile, PublicKey, UncheckedUrl};
+use crate::Error;
 use bech32::{FromBase32, ToBase32};
 use lazy_static::lazy_static;
 
@@ -136,12 +136,13 @@ impl NostrBech32 {
                     return Err(Error::InvalidUrlTlv);
                 }
                 let raw = &tlv[pos..pos + len];
+                #[allow(clippy::single_match)]
                 match ty {
                     0 => {
                         let relay_str = std::str::from_utf8(raw)?;
                         let relay = UncheckedUrl::from_str(relay_str);
                         url = Some(relay);
-                    },
+                    }
                     _ => {} // unhandled type for nrelay
                 }
                 pos += len;

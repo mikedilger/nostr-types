@@ -84,7 +84,7 @@ fn shatter_content_1(mut content: &str) -> Vec<ContentSegment> {
         segments.append(&mut inner_segments);
 
         // The Nostr Bech32 itself
-        if let Some(nbech) = NostrBech32::try_from_string(&content[start+6..end]) {
+        if let Some(nbech) = NostrBech32::try_from_string(&content[start + 6..end]) {
             segments.push(ContentSegment::NostrUrl(NostrUrl(nbech)));
         } else {
             segments.push(ContentSegment::Plain(Span { start, end }));

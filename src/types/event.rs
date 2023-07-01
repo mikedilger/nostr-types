@@ -463,7 +463,7 @@ impl Event {
     /// Is the event a reply?
     #[deprecated(since = "0.2.0", note = "please use `replies_to` instead")]
     pub fn is_reply(&self) -> bool {
-        if ! self.kind.is_feed_displayable() {
+        if !self.kind.is_feed_displayable() {
             return false;
         }
 
@@ -479,7 +479,7 @@ impl Event {
     /// If this event replies to another, get that other event's Id along with
     /// an optional recommended_relay_url
     pub fn replies_to(&self) -> Option<(Id, Option<RelayUrl>)> {
-        if ! self.kind.is_feed_displayable() {
+        if !self.kind.is_feed_displayable() {
             return None;
         }
 
@@ -564,7 +564,7 @@ impl Event {
     /// If this event replies to a thread, get that threads root event Id if
     /// available, along with an optional recommended_relay_url
     pub fn replies_to_root(&self) -> Option<(Id, Option<RelayUrl>)> {
-        if ! self.kind.is_feed_displayable() {
+        if !self.kind.is_feed_displayable() {
             return None;
         }
 
@@ -629,7 +629,7 @@ impl Event {
                     recommended_relay_url
                         .as_ref()
                         .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                    marker.clone()
+                    marker.clone(),
                 ));
             }
         }
@@ -640,7 +640,7 @@ impl Event {
     /// If this event mentions others, get those other event Ids
     /// and optional recommended relay Urls
     pub fn mentions(&self) -> Vec<(Id, Option<RelayUrl>)> {
-        if ! self.kind.is_feed_displayable() {
+        if !self.kind.is_feed_displayable() {
             return vec![];
         }
 
@@ -890,7 +890,7 @@ impl Event {
 
     /// Return all the hashtags this event refers to
     pub fn hashtags(&self) -> Vec<String> {
-        if ! self.kind.is_feed_displayable() {
+        if !self.kind.is_feed_displayable() {
             return vec![];
         }
 
@@ -907,7 +907,7 @@ impl Event {
 
     /// Return all the URLs this event refers to
     pub fn urls(&self) -> Vec<RelayUrl> {
-        if ! self.kind.is_feed_displayable() {
+        if !self.kind.is_feed_displayable() {
             return vec![];
         }
 
