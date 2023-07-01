@@ -589,16 +589,8 @@ impl Event {
             }
         }
 
-        let num_e_tags = self
-            .tags
-            .iter()
-            .filter(|e| matches!(e, Tag::Event { .. }))
-            .count();
-        if num_e_tags < 2 {
-            return None;
-        }
-
         // otherwise use the first 'e' tag if unmarked
+        // (even if there is only 1 'e' tag which means it is both root and reply)
         if let Some(Tag::Event {
             id,
             recommended_relay_url,
