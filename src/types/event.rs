@@ -483,6 +483,11 @@ impl Event {
             return None;
         }
 
+        // Kind=6 'e' tags are always considered mentions, not replies.
+        if self.kind == EventKind::Repost {
+            return None;
+        }
+
         // If there are no 'e' tags, then none
         let num_e_tags = self
             .tags
@@ -645,6 +650,27 @@ impl Event {
         }
 
         let mut output: Vec<(Id, Option<RelayUrl>)> = Vec::new();
+
+        // For kind=6, all 'e' tags are mentions
+        if self.kind == EventKind::Repost {
+            for tag in self.tags.iter() {
+                if let Tag::Event {
+                    id,
+                    recommended_relay_url,
+                    ..
+                } = tag
+                {
+                    output.push((
+                        *id,
+                        recommended_relay_url
+                            .as_ref()
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                    ));
+                }
+            }
+
+            return output;
+        }
 
         // Look for nostr links within the content
 
