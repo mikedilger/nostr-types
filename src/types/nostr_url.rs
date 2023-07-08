@@ -1,4 +1,4 @@
-use super::{EventAddr, EventPointer, Id, Profile, PublicKey, UncheckedUrl};
+use super::{EventAddr, EventPointer, Id, Profile, PublicKey, RelayUrl, UncheckedUrl};
 use crate::Error;
 use bech32::{FromBase32, ToBase32};
 use lazy_static::lazy_static;
@@ -216,6 +216,48 @@ impl NostrUrl {
         }
         output.push_str(s.get(cursor..).unwrap());
         output
+    }
+}
+
+impl From<EventAddr> for NostrUrl {
+    fn from(e: EventAddr) -> NostrUrl {
+        NostrUrl(NostrBech32::EventAddr(e))
+    }
+}
+
+impl From<EventPointer> for NostrUrl {
+    fn from(e: EventPointer) -> NostrUrl {
+        NostrUrl(NostrBech32::EventPointer(e))
+    }
+}
+
+impl From<Id> for NostrUrl {
+    fn from(i: Id) -> NostrUrl {
+        NostrUrl(NostrBech32::Id(i))
+    }
+}
+
+impl From<Profile> for NostrUrl {
+    fn from(p: Profile) -> NostrUrl {
+        NostrUrl(NostrBech32::Profile(p))
+    }
+}
+
+impl From<PublicKey> for NostrUrl {
+    fn from(p: PublicKey) -> NostrUrl {
+        NostrUrl(NostrBech32::Pubkey(p))
+    }
+}
+
+impl From<UncheckedUrl> for NostrUrl {
+    fn from(u: UncheckedUrl) -> NostrUrl {
+        NostrUrl(NostrBech32::Relay(u))
+    }
+}
+
+impl From<RelayUrl> for NostrUrl {
+    fn from(u: RelayUrl) -> NostrUrl {
+        NostrUrl(NostrBech32::Relay(UncheckedUrl(u.0)))
     }
 }
 
