@@ -126,6 +126,9 @@ pub struct ZapData {
 
     /// The public key of the person who provided the zap
     pub pubkey: PublicKey,
+
+    /// The public key of the zap provider, for verification purposes
+    pub provider_pubkey: PublicKey,
 }
 
 impl Event {
@@ -862,6 +865,7 @@ impl Event {
             id: zapped_id.unwrap(),
             amount: zapped_amount.unwrap(),
             pubkey: zapped_pubkey.unwrap(),
+            provider_pubkey: self.pubkey,
         }))
     }
 
