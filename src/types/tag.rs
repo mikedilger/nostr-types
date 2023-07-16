@@ -1,5 +1,5 @@
 use crate::{
-    DelegationConditions, EventKind, Id, PublicKeyHex, SignatureHex, UncheckedUrl, Unixtime,
+    DelegationConditions, Error, EventKind, Id, PublicKeyHex, SignatureHex, UncheckedUrl, Unixtime,
 };
 use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
@@ -207,6 +207,26 @@ impl Tag {
             Tag::Title { .. } => "title".to_string(),
             Tag::Other { tag, .. } => tag.clone(),
             Tag::Empty => panic!("empty tags have no tagname"),
+        }
+    }
+
+    /// Get the string value of the tag at an array index
+    pub fn value(&self, index: usize) -> Result<String, Error> {
+        use serde_json::Value;
+        let json = serde_json::to_value(self)?;
+        match json {
+            Value::Array(vec) => match vec.get(index) {
+                Some(val) => match val {
+                    Value::String(s) => Ok(s.to_owned()),
+                    _ => Err(Error::AssertionFailed(
+                        "Tag field is not a string".to_owned(),
+                    )),
+                },
+                None => Ok("".to_owned()),
+            },
+            _ => Err(Error::AssertionFailed(
+                "Tag JSON is not an array".to_owned(),
+            )),
         }
     }
 
