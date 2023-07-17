@@ -360,4 +360,13 @@ mod test {
         assert!(!TextNote.is_parameterized_replaceable());
         assert!(LongFormContent.is_parameterized_replaceable());
     }
+
+    #[cfg(feature = "speedy")]
+    #[test]
+    fn test_speedy_event_kind() {
+        let ek = EventKind::mock();
+        let bytes = ek.write_to_vec().unwrap();
+        let ek2 = EventKind::read_from_buffer(&bytes).unwrap();
+        assert_eq!(ek, ek2);
+    }
 }

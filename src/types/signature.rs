@@ -83,14 +83,14 @@ impl Visitor<'_> for SignatureVisitor {
 impl<'a, C: Context> Readable<'a, C> for Signature {
     #[inline]
     fn read_from<R: Reader<'a, C>>(reader: &mut R) -> Result<Self, C::Error> {
-        let bytes = <[u8; 32]>::read_from(reader)?;
+        let bytes: Vec<u8> = reader.read_vec(64)?;
         let sig = KSignature::try_from(&bytes[..]).map_err(|e| speedy::Error::custom(e))?;
         Ok(Signature(sig))
     }
 
     #[inline]
     fn minimum_bytes_needed() -> usize {
-        32
+        64
     }
 }
 
@@ -98,12 +98,14 @@ impl<'a, C: Context> Readable<'a, C> for Signature {
 impl<C: Context> Writable<C> for Signature {
     #[inline]
     fn write_to<T: ?Sized + Writer<C>>(&self, writer: &mut T) -> Result<(), C::Error> {
-        self.0.to_bytes().write_to(writer)
+        let bytes = self.0.to_bytes();
+        assert_eq!(bytes.as_slice().len(), 64);
+        writer.write_bytes(bytes.as_slice())
     }
 
     #[inline]
     fn bytes_needed(&self) -> Result<usize, C::Error> {
-        Ok(32)
+        Ok(64)
     }
 }
 
@@ -154,4 +156,13 @@ mod test {
     use super::*;
 
     test_serde! {Signature, test_signature_serde}
+
+    #[cfg(feature = "speedy")]
+    #[test]
+    fn test_speedy_signature() {
+        let sig = Signature::mock();
+        let bytes = sig.write_to_vec().unwrap();
+        let sig2 = Signature::read_from_buffer(&bytes).unwrap();
+        assert_eq!(sig, sig2);
+    }
 }

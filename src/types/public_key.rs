@@ -148,7 +148,7 @@ impl Hash for PublicKey {
 impl<'a, C: Context> Readable<'a, C> for PublicKey {
     #[inline]
     fn read_from<R: Reader<'a, C>>(reader: &mut R) -> Result<Self, C::Error> {
-        let bytes = <[u8; 32]>::read_from(reader)?;
+        let bytes: Vec<u8> = reader.read_vec(32)?;
         let vk = VerifyingKey::from_bytes(&bytes).map_err(|e| speedy::Error::custom(e))?;
         Ok(PublicKey(vk))
     }
@@ -163,7 +163,9 @@ impl<'a, C: Context> Readable<'a, C> for PublicKey {
 impl<C: Context> Writable<C> for PublicKey {
     #[inline]
     fn write_to<T: ?Sized + Writer<C>>(&self, writer: &mut T) -> Result<(), C::Error> {
-        self.0.to_bytes().write_to(writer)
+        let field_bytes = self.0.to_bytes();
+        assert_eq!(field_bytes.as_slice().len(), 32);
+        writer.write_bytes(field_bytes.as_slice())
     }
 
     #[inline]
@@ -398,5 +400,14 @@ mod test {
         let decoded = PublicKey::try_from_bech32_string(&encoded).unwrap();
 
         assert_eq!(pk, decoded);
+    }
+
+    #[cfg(feature = "speedy")]
+    #[test]
+    fn test_speedy_public_key() {
+        let pk = PublicKey::mock();
+        let bytes = pk.write_to_vec().unwrap();
+        let pk2 = PublicKey::read_from_buffer(&bytes).unwrap();
+        assert_eq!(pk, pk2);
     }
 }
