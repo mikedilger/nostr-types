@@ -1032,6 +1032,74 @@ impl Event {
     }
 }
 
+// Direct access into speedy-serialized bytes, to avoid alloc-deserialize just to peek
+// at one of these fields
+#[cfg(feature = "speedy")]
+impl Event {
+    /// Read the ID of the event from a speedy encoding without decoding
+    /// (zero allocation)
+    ///
+    /// Note this function is fragile, if the Event structure is reordered,
+    /// or if speedy code changes, this will break.  Neither should happen.
+    pub fn get_id_from_speedy_bytes(bytes: &[u8]) -> Option<Id> {
+        if bytes.len() < 32 {
+            None
+        } else {
+            if let Ok(arr) = <[u8; 32]>::try_from(&bytes[0..32]) {
+                Some(unsafe { std::mem::transmute(arr) })
+            } else {
+                None
+            }
+        }
+    }
+
+    /// Read the pubkey of the event from a speedy encoding without decoding
+    /// (close to zero allocation, VerifyingKey does stuff I didn't check)
+    ///
+    /// Note this function is fragile, if the Event structure is reordered,
+    /// or if speedy code changes, this will break.  Neither should happen.
+    pub fn get_pubkey_from_speedy_bytes(bytes: &[u8]) -> Option<PublicKey> {
+        use k256::schnorr::VerifyingKey;
+        if bytes.len() < 64 {
+            None
+        } else if let Ok(vk) = VerifyingKey::from_bytes(&bytes[32..64]) {
+            Some(PublicKey(vk))
+        } else {
+            None
+        }
+    }
+
+    /// Read the created_at of the event from a speedy encoding without decoding
+    /// (zero allocation)
+    ///
+    /// Note this function is fragile, if the Event structure is reordered,
+    /// or if speedy code changes, this will break.  Neither should happen.
+    pub fn get_created_at_from_speedy_bytes(bytes: &[u8]) -> Option<Unixtime> {
+        if bytes.len() < 72 {
+            None
+        } else if let Ok(i) = i64::read_from_buffer(&bytes[64..72]) {
+            Some(Unixtime(i))
+        } else {
+            None
+        }
+    }
+
+    /// Read the kind of the event from a speedy encoding without decoding
+    /// (zero allocation)
+    ///
+    /// Note this function is fragile, if the Event structure is reordered,
+    /// or if speedy code changes, this will break.  Neither should happen.
+    pub fn get_kind_from_speedy_bytes(bytes: &[u8]) -> Option<EventKind> {
+        if bytes.len() < 76 {
+            None
+        } else if let Ok(u) = u32::read_from_buffer(&bytes[72..76]) {
+            Some(u.into())
+        } else {
+            None
+        }
+    }
+}
+
 #[inline]
 fn get_leading_zero_bits(bytes: &[u8]) -> u8 {
     let mut res = 0_u8;
@@ -1187,5 +1255,41 @@ mod test {
     fn test_realworld_event_with_naddr_tag() {
         let raw = r##"{"id":"7760408f6459b9546c3a4e70e3e56756421fba34526b7d460db3fcfd2f8817db","pubkey":"460c25e682fda7832b52d1f22d3d22b3176d972f60dcdc3212ed8c92ef85065c","created_at":1687616920,"kind":1,"tags":[["p","1bc70a0148b3f316da33fe3c89f23e3e71ac4ff998027ec712b905cd24f6a411","","mention"],["a","30311:1bc70a0148b3f316da33fe3c89f23e3e71ac4ff998027ec712b905cd24f6a411:1687612774","","mention"]],"content":"Watching Karnage's stream to see if I learn something about design. \n\nnostr:naddr1qq9rzd3cxumrzv3hxu6qygqmcu9qzj9n7vtd5vl78jyly037wxkyl7vcqflvwy4eqhxjfa4yzypsgqqqwens0qfplk","sig":"dbc5d05a24bfe990a1faaedfcb81a98940d86a105711dbdad9145d05b0ad0f46e3e24eaa3fc283818f27e057fe836a029fd9a68e7f1de06ff477493199d64064"}"##;
         let _: Event = serde_json::from_str(&raw).unwrap();
+    }
+
+    #[cfg(feature = "speedy")]
+    #[test]
+    fn test_speedy_encoded_direct_field_access() {
+        use speedy::Writable;
+
+        let privkey = PrivateKey::mock();
+        let pubkey = privkey.public_key();
+        let preevent = PreEvent {
+            pubkey,
+            created_at: Unixtime(1680000012),
+            kind: EventKind::TextNote,
+            tags: vec![Tag::Event {
+                id: Id::mock(),
+                recommended_relay_url: Some(UncheckedUrl::mock()),
+                marker: None,
+                trailing: Vec::new(),
+            }],
+            content: "Hello World!".to_string(),
+            ots: None,
+        };
+        let event = Event::new(preevent, &privkey).unwrap();
+        let bytes = event.write_to_vec().unwrap();
+
+        let id = Event::get_id_from_speedy_bytes(&bytes).unwrap();
+        assert_eq!(id, event.id);
+
+        let pubkey = Event::get_pubkey_from_speedy_bytes(&bytes).unwrap();
+        assert_eq!(pubkey, event.pubkey);
+
+        let created_at = Event::get_created_at_from_speedy_bytes(&bytes).unwrap();
+        assert_eq!(created_at, Unixtime(1680000012));
+
+        let kind = Event::get_kind_from_speedy_bytes(&bytes).unwrap();
+        assert_eq!(kind, event.kind);
     }
 }

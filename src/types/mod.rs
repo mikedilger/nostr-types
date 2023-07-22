@@ -109,7 +109,7 @@ mod test {
         match message {
             RelayMessage::Event(_subid, event) => {
                 event.verify(None).unwrap();
-                println!("{}", event.content);
+                println!("{}", event.as_ref().content);
             }
             _ => panic!("Wrong message type"),
         }
