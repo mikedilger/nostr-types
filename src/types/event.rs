@@ -32,22 +32,22 @@ pub struct Event {
     /// The kind of event
     pub kind: EventKind,
 
-    /// A set of tags that apply to the event
-    pub tags: Vec<Tag>,
-
-    /// The content of the event
-    pub content: String,
+    /// The signature of the event, which cryptographically verifies that the holder of
+    /// the PrivateKey matching the event's PublicKey generated (or authorized) this event.
+    /// The signature is taken over the id field only, but the id field is taken over
+    /// the rest of the event data.
+    pub sig: Signature,
 
     /// An optional verified time for the event (using OpenTimestamp)
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
     pub ots: Option<String>,
 
-    /// The signature of the event, which cryptographically verifies that the holder of
-    /// the PrivateKey matching the event's PublicKey generated (or authorized) this event.
-    /// The signature is taken over the id field only, but the id field is taken over
-    /// the rest of the event data.
-    pub sig: Signature,
+    /// The content of the event
+    pub content: String,
+
+    /// A set of tags that apply to the event
+    pub tags: Vec<Tag>,
 }
 
 macro_rules! serialize_inner_event {
@@ -1291,5 +1291,39 @@ mod test {
 
         let kind = Event::get_kind_from_speedy_bytes(&bytes).unwrap();
         assert_eq!(kind, event.kind);
+
+        // Print to work out encoding
+        //   test like this to see printed data:
+        //   cargo test --features=speedy test_speedy_encoded_direct_field_access -- --nocapture
+        println!("EVENT BYTES: {:?}", bytes);
+        println!("ID: {:?}", event.id.0);
+        println!("PUBKEY: {:?}", event.pubkey.0.to_bytes());
+        println!("CREATED AT: {:?}", event.created_at.0.to_ne_bytes());
+        let kind32: u32 = event.kind.into();
+        println!("KIND: {:?}", kind32.to_ne_bytes());
+        println!("SIG: {:?}", event.sig.0.to_bytes());
+        if let Some(ots) = event.ots {
+            println!("OTS: [1, then] {:?}", ots.as_bytes());
+        } else {
+            println!("OTS: [0]");
+        }
+        println!(
+            "CONTENT: [len={:?}] {:?}",
+            (event.content.as_bytes().len() as u32).to_ne_bytes(),
+            event.content.as_bytes()
+        );
+        println!("TAGS: [len={:?}]", (event.tags.len() as u32).to_ne_bytes());
+        for tag in &event.tags {
+            println("  TAG: [len={:?}]", (tag.len() as u32).to_ne_bytes());
+        }
+
+        //1, 0, 0, 0, -- one tag
+        //  3, 0, 0, 0, -- Enum Variant #3
+        //    93, 246, 75, 51, 48, 61, 98, 175, 199, 153, 189, 195, 109, 23, 140, 7, 178, 225, 240, 216, 36, 243, 27, 125, 200, 18, 33, 148, 64, 175, 250, 182, -- Id
+        //       1, -- recommended_relay_url Option<UncheckedUrl is Some
+        //           19, 0, 0, 0, -- string is 19 chars long
+        //                47, 104, 111, 109, 101, 47, 117, 115, 101, 114, 47, 102, 105, 108, 101, 46, 116, 120, 116, -- "/home/user/file.txt"
+        //       0, -- marker Option<String> is None
+        //       0, 0, 0, 0 -- trailing Vec<String> is empty
     }
 }
