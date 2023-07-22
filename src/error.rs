@@ -123,6 +123,11 @@ pub enum Error {
     #[error("Try From Slice error: {0}")]
     Slice(#[from] std::array::TryFromSliceError),
 
+    /// Speedy error
+    #[cfg(feature = "speedy")]
+    #[error("Speedy (de)serialization error: {0}")]
+    Speedy(#[from] speedy::Error),
+
     /// Time error
     #[error("System Time Error: {0}")]
     Time(#[from] std::time::SystemTimeError),

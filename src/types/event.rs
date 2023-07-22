@@ -6,6 +6,8 @@ use crate::Error;
 use base64::Engine;
 use k256::sha2::{Digest, Sha256};
 use lightning_invoice::Invoice;
+#[cfg(feature = "speedy")]
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "speedy")]
 use speedy::{Readable, Writable};
@@ -1098,6 +1100,118 @@ impl Event {
             None
         }
     }
+
+    // Read the sig of the event from a speedy encoding without decoding
+    // (offset would be 76..140
+
+    /// Read the ots of the event from a speedy encoding without decoding
+    /// (zero allocation)
+    ///
+    /// Note this function is fragile, if the Event structure is reordered,
+    /// or if speedy code changes, this will break.  Neither should happen.
+    pub fn get_ots_from_speedy_bytes<'a>(bytes: &'a [u8]) -> Option<&'a str> {
+        if bytes.len() < 140 {
+            None
+        } else if bytes[140] == 0 {
+            None
+        } else if bytes.len() < 145 {
+            None
+        } else {
+            let len = u32::from_ne_bytes(bytes[141..145].try_into().unwrap());
+            unsafe {
+                Some(std::str::from_utf8_unchecked(
+                    &bytes[146..146 + len as usize],
+                ))
+            }
+        }
+    }
+
+    /// Read the content of the event from a speedy encoding without decoding
+    /// (zero allocation)
+    ///
+    /// Note this function is fragile, if the Event structure is reordered,
+    /// or if speedy code changes, this will break.  Neither should happen.
+    pub fn get_content_from_speedy_bytes<'a>(bytes: &'a [u8]) -> Option<&'a str> {
+        let start = if bytes.len() < 145 {
+            return None;
+        } else if bytes[140] == 0 {
+            141
+        } else {
+            // get OTS length and move past it
+            let len = u32::from_ne_bytes(bytes[141..145].try_into().unwrap());
+            141 + 4 + len as usize
+        };
+
+        let len = u32::from_ne_bytes(bytes[start..start + 4].try_into().unwrap());
+
+        unsafe {
+            Some(std::str::from_utf8_unchecked(
+                &bytes[start + 4..start + 4 + len as usize],
+            ))
+        }
+    }
+
+    /// Check if any human-readable tag matches the Regex in the speedy encoding
+    /// without decoding the whole thing (because our Tag representation is so complicated,
+    /// we do deserialize the tags for now)
+    ///
+    /// Note this function is fragile, if the Event structure is reordered,
+    /// or if speedy code changes, this will break.  Neither should happen.
+    pub fn tag_search_in_speedy_bytes(bytes: &[u8], re: &Regex) -> Result<bool, Error> {
+        if bytes.len() < 145 {
+            return Ok(false);
+        }
+
+        // skip OTS
+        let mut offset = if bytes[140] == 0 {
+            141
+        } else {
+            // get OTS length and move past it
+            let len = u32::from_ne_bytes(bytes[141..145].try_into().unwrap());
+            141 + 4 + len as usize
+        };
+
+        // skip content
+        let len = u32::from_ne_bytes(bytes[offset..offset + 4].try_into().unwrap());
+        offset += 4 + len as usize;
+
+        // Deserialize the tags
+        let tags: Vec<Tag> = Vec::<Tag>::read_from_buffer(&bytes[offset..])?;
+
+        // Search through them
+        for tag in &tags {
+            match tag {
+                Tag::ContentWarning { warning, .. } => {
+                    if re.is_match(warning.as_ref()) {
+                        return Ok(true);
+                    }
+                }
+                Tag::Hashtag { hashtag, .. } => {
+                    if re.is_match(hashtag.as_ref()) {
+                        return Ok(true);
+                    }
+                }
+                Tag::Subject { subject, .. } => {
+                    if re.is_match(subject.as_ref()) {
+                        return Ok(true);
+                    }
+                }
+                Tag::Title { title, .. } => {
+                    if re.is_match(title.as_ref()) {
+                        return Ok(true);
+                    }
+                }
+                Tag::Other { tag, data } => {
+                    if tag == "summary" && data.len() > 0 && re.is_match(data[0].as_ref()) {
+                        return Ok(true);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        Ok(false)
+    }
 }
 
 #[inline]
@@ -1268,12 +1382,18 @@ mod test {
             pubkey,
             created_at: Unixtime(1680000012),
             kind: EventKind::TextNote,
-            tags: vec![Tag::Event {
-                id: Id::mock(),
-                recommended_relay_url: Some(UncheckedUrl::mock()),
-                marker: None,
-                trailing: Vec::new(),
-            }],
+            tags: vec![
+                Tag::Event {
+                    id: Id::mock(),
+                    recommended_relay_url: Some(UncheckedUrl::mock()),
+                    marker: None,
+                    trailing: Vec::new(),
+                },
+                Tag::Hashtag {
+                    hashtag: "foodstr".to_string(),
+                    trailing: Vec::new(),
+                },
+            ],
             content: "Hello World!".to_string(),
             ots: None,
         };
@@ -1291,6 +1411,16 @@ mod test {
 
         let kind = Event::get_kind_from_speedy_bytes(&bytes).unwrap();
         assert_eq!(kind, event.kind);
+
+        let ots = Event::get_ots_from_speedy_bytes(&bytes);
+        assert_eq!(ots, None);
+
+        let content = Event::get_content_from_speedy_bytes(&bytes);
+        assert_eq!(content, Some(&*event.content));
+
+        let re = regex::Regex::new("foodstr").unwrap();
+        let found_foodstr = Event::tag_search_in_speedy_bytes(&bytes, &re).unwrap();
+        assert!(found_foodstr);
 
         // Print to work out encoding
         //   test like this to see printed data:
@@ -1313,11 +1443,8 @@ mod test {
             event.content.as_bytes()
         );
         println!("TAGS: [len={:?}]", (event.tags.len() as u32).to_ne_bytes());
-        for tag in &event.tags {
-            println("  TAG: [len={:?}]", (tag.len() as u32).to_ne_bytes());
-        }
 
-        //1, 0, 0, 0, -- one tag
+        //2, 0, 0, 0, -- one tags
         //  3, 0, 0, 0, -- Enum Variant #3
         //    93, 246, 75, 51, 48, 61, 98, 175, 199, 153, 189, 195, 109, 23, 140, 7, 178, 225, 240, 216, 36, 243, 27, 125, 200, 18, 33, 148, 64, 175, 250, 182, -- Id
         //       1, -- recommended_relay_url Option<UncheckedUrl is Some
@@ -1325,5 +1452,6 @@ mod test {
         //                47, 104, 111, 109, 101, 47, 117, 115, 101, 114, 47, 102, 105, 108, 101, 46, 116, 120, 116, -- "/home/user/file.txt"
         //       0, -- marker Option<String> is None
         //       0, 0, 0, 0 -- trailing Vec<String> is empty
+        //  ...
     }
 }
