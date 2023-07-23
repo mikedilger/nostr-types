@@ -1,5 +1,7 @@
 use derive_more::{AsMut, AsRef, Deref, Display, From, Into};
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "speedy")]
+use speedy::{Readable, Writable};
 use std::ops::Add;
 
 /// Bitcoin amount measured in millisatoshi
@@ -20,6 +22,7 @@ use std::ops::Add;
     PartialOrd,
     Serialize,
 )]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct MilliSatoshi(pub u64);
 
 impl MilliSatoshi {
