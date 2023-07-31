@@ -1,6 +1,6 @@
 use super::{
-    EventDelegation, EventKind, Id, Metadata, MilliSatoshi, PrivateKey, PublicKey, PublicKeyHex,
-    RelayUrl, Signature, Tag, Unixtime,
+    EventDelegation, EventKind, Id, Metadata, MilliSatoshi, NostrBech32, NostrUrl, PrivateKey,
+    PublicKey, PublicKeyHex, RelayUrl, Signature, Tag, Unixtime,
 };
 use crate::Error;
 use base64::Engine;
@@ -410,11 +410,10 @@ impl Event {
         Ok(s)
     }
 
-    /// If the event refers to people, get all the PublicKeys it refers to
+    /// If the event refers to people by tag, get all the PublicKeys it refers to
     /// along with recommended relay URL and petname for each
     pub fn people(&self) -> Vec<(PublicKeyHex, Option<RelayUrl>, Option<String>)> {
         let mut output: Vec<(PublicKeyHex, Option<RelayUrl>, Option<String>)> = Vec::new();
-
         // All 'p' tags
         for tag in self.tags.iter() {
             if let Tag::Pubkey {
@@ -437,31 +436,18 @@ impl Event {
         output
     }
 
-    /// If the event refers to people, get all the PublicKeys it refers to
-    /// along with recommended relay URL and petname for each, but only if they
-    /// are referenced within the note.
-    pub fn referenced_people(&self) -> Vec<(PublicKeyHex, Option<RelayUrl>, Option<String>)> {
-        let mut output: Vec<(PublicKeyHex, Option<RelayUrl>, Option<String>)> = Vec::new();
-        for (n, tag) in self.tags.iter().enumerate() {
-            if let Tag::Pubkey {
-                pubkey,
-                recommended_relay_url,
-                petname,
-                ..
-            } = tag
-            {
-                if self.content.contains(&format!("#[{n}]")) {
-                    output.push((
-                        pubkey.to_owned(),
-                        recommended_relay_url
-                            .as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                        petname.to_owned(),
-                    ));
-                }
+    /// If the event refers to people within the contents, get all the PublicKeys it refers
+    /// to within the contents.
+    pub fn people_referenced_in_content(&self) -> Vec<PublicKey> {
+        let mut output = Vec::new();
+        for nurl in NostrUrl::find_all_in_string(&self.content).drain(..) {
+            if let NostrBech32::Pubkey(pk) = nurl.0 {
+                output.push(pk);
+            }
+            if let NostrBech32::Profile(prof) = nurl.0 {
+                output.push(prof.pubkey);
             }
         }
-
         output
     }
 
