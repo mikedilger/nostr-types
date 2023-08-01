@@ -27,9 +27,9 @@ pub enum Error {
     #[error("Wrong Bech32 Kind: Expected {0} found {0}")]
     WrongBech32(String, String),
 
-    /// Signature error
-    #[error("ECDSA Signature Error: {0}")]
-    Signature(#[from] k256::ecdsa::Error),
+    /// Key or Signature error
+    #[error("Key or Signature Error: {0}")]
+    KeyOrSignature(#[from] secp256k1::Error),
 
     /// Event is in the future
     #[error("Event is in the future")]

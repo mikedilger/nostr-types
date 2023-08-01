@@ -1,8 +1,7 @@
 use crate::{Error, PrivateKey, Signature};
 use bech32::{FromBase32, ToBase32};
 use derive_more::{AsMut, AsRef, Deref, Display, From, FromStr, Into};
-use k256::ecdsa::signature::Verifier;
-use k256::schnorr::VerifyingKey;
+use secp256k1::SECP256K1;
 use serde::de::{Deserializer, Visitor};
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
@@ -12,15 +11,15 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 
 /// This is a public key, which identifies an actor (usually a person) and is shared.
-#[derive(AsMut, AsRef, Copy, Clone, Debug, Deref, Eq, From, Into, PartialEq)]
-pub struct PublicKey(pub VerifyingKey);
+#[derive(AsMut, AsRef, Copy, Clone, Debug, Deref, Eq, From, Into, PartialEq, Serialize, Deserialize)]
+pub struct PublicKey(pub secp256k1::XOnlyPublicKey);
 
 impl PublicKey {
     /// Render into a hexadecimal string
     ///
     /// Consider converting `.into()` a `PublicKeyHex` which is a wrapped type rather than a naked `String`
     pub fn as_hex_string(&self) -> String {
-        hex::encode(self.0.to_bytes())
+        hex::encode(self.0.serialize())
     }
 
     /// Create from a hexadecimal string
@@ -30,7 +29,7 @@ impl PublicKey {
         if vec.len() != 32 {
             Err(Error::InvalidPublicKey)
         } else {
-            Ok(PublicKey(VerifyingKey::from_bytes(&vec)?))
+            Ok(PublicKey(secp256k1::XOnlyPublicKey::from_slice(&vec)?))
         }
     }
 
@@ -38,7 +37,7 @@ impl PublicKey {
     pub fn as_bech32_string(&self) -> String {
         bech32::encode(
             "npub",
-            self.0.to_bytes().to_vec().to_base32(),
+            self.0.serialize().as_slice().to_base32(),
             bech32::Variant::Bech32,
         )
         .unwrap()
@@ -54,7 +53,7 @@ impl PublicKey {
             if decoded.len() != 32 {
                 Err(Error::InvalidPublicKey)
             } else {
-                Ok(PublicKey(VerifyingKey::from_bytes(&decoded)?))
+                Ok(PublicKey(secp256k1::XOnlyPublicKey::from_slice(&decoded)?))
             }
         }
     }
@@ -64,18 +63,20 @@ impl PublicKey {
         if bytes.len() != 32 {
             Err(Error::InvalidPublicKey)
         } else {
-            Ok(PublicKey(VerifyingKey::from_bytes(bytes)?))
+            Ok(PublicKey(secp256k1::XOnlyPublicKey::from_slice(bytes)?))
         }
     }
 
     /// Export as raw bytes
     pub fn as_bytes(&self) -> Vec<u8> {
-        self.0.to_bytes().to_vec()
+        self.0.serialize().as_slice().to_vec()
     }
 
     /// Verify a signed message
-    pub fn verify(&self, message: &[u8], signature: Signature) -> Result<(), Error> {
-        Ok(self.0.verify(message, &signature.0)?)
+    pub fn verify(&self, message: &[u8], signature: &Signature) -> Result<(), Error> {
+        use secp256k1::hashes::sha256;
+        let message = secp256k1::Message::from_hashed_data::<sha256::Hash>(message);
+        Ok(SECP256K1.verify_schnorr(&signature.0, &message, self)?)
     }
 
     // Mock data for testing
@@ -93,51 +94,6 @@ impl PublicKey {
     }
 }
 
-impl Serialize for PublicKey {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&format!("{:x}", self.0.to_bytes()))
-    }
-}
-
-impl<'de> Deserialize<'de> for PublicKey {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_str(PublicKeyVisitor)
-    }
-}
-
-struct PublicKeyVisitor;
-
-impl Visitor<'_> for PublicKeyVisitor {
-    type Value = PublicKey;
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a lowercase hexadecimal string representing 32 bytes")
-    }
-
-    fn visit_str<E>(self, v: &str) -> Result<PublicKey, E>
-    where
-        E: serde::de::Error,
-    {
-        let vec: Vec<u8> = hex::decode(v).map_err(|e| serde::de::Error::custom(format!("{e}")))?;
-
-        // If we don't catch this ourselves, the below from_bytes will panic when it
-        // gets into an assertion within generic-array
-        if vec.len() != 32 {
-            return Err(serde::de::Error::custom("Public key is not 32 bytes long"));
-        }
-
-        Ok(PublicKey(
-            VerifyingKey::from_bytes(&vec).map_err(|e| serde::de::Error::custom(format!("{e}")))?,
-        ))
-    }
-}
-
 impl Hash for PublicKey {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.as_hex_string().hash(state);
@@ -149,7 +105,7 @@ impl<'a, C: Context> Readable<'a, C> for PublicKey {
     #[inline]
     fn read_from<R: Reader<'a, C>>(reader: &mut R) -> Result<Self, C::Error> {
         let bytes: Vec<u8> = reader.read_vec(32)?;
-        let vk = VerifyingKey::from_bytes(&bytes).map_err(|e| speedy::Error::custom(e))?;
+        let vk = secp256k1::XOnlyPublicKey::from_slice(&bytes).map_err(|e| speedy::Error::custom(e))?;
         Ok(PublicKey(vk))
     }
 
@@ -163,7 +119,7 @@ impl<'a, C: Context> Readable<'a, C> for PublicKey {
 impl<C: Context> Writable<C> for PublicKey {
     #[inline]
     fn write_to<T: ?Sized + Writer<C>>(&self, writer: &mut T) -> Result<(), C::Error> {
-        let field_bytes = self.0.to_bytes();
+        let field_bytes = self.0.serialize();
         assert_eq!(field_bytes.as_slice().len(), 32);
         writer.write_bytes(field_bytes.as_slice())
     }

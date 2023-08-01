@@ -25,7 +25,7 @@ impl Profile {
         // Push Public Key
         tlv.push(0); // the special value, in this case the public key
         tlv.push(32); // the length of the value (always 32 for public key)
-        tlv.extend(self.pubkey.0.to_bytes());
+        tlv.extend(self.pubkey.0.serialize());
 
         // Push relays
         for relay in &self.relays {

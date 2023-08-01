@@ -1,28 +1,23 @@
 use crate::{Error, Event};
 use derive_more::{AsMut, AsRef, Deref, Display, From, FromStr, Into};
-use k256::schnorr::Signature as KSignature;
-use serde::de::Error as DeserializeError;
-use serde::de::{Deserialize as De, Deserializer, Visitor};
-use serde::ser::{Serialize as Se, Serializer};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "speedy")]
 use speedy::{Context, Readable, Reader, Writable, Writer};
-use std::fmt;
 
 /// A Schnorr signature that signs an Event, taken on the Event Id field
-#[derive(AsMut, AsRef, Clone, Copy, Debug, Deref, Eq, From, Into, PartialEq)]
-pub struct Signature(pub KSignature);
+#[derive(AsMut, AsRef, Clone, Copy, Debug, Deref, Eq, From, Into, PartialEq, Serialize, Deserialize)]
+pub struct Signature(pub secp256k1::schnorr::Signature);
 
 impl Signature {
     /// Render into a hexadecimal string
     pub fn as_hex_string(&self) -> String {
-        hex::encode(self.0.to_bytes())
+        hex::encode(self.0.as_ref())
     }
 
     /// Create from a hexadecimal string
     pub fn try_from_hex_string(v: &str) -> Result<Signature, Error> {
         let vec: Vec<u8> = hex::decode(v)?;
-        Ok(Signature(KSignature::try_from(&*vec)?))
+        Ok(Signature(secp256k1::schnorr::Signature::from_slice(&vec)?))
     }
 
     // Mock data for testing
@@ -33,58 +28,12 @@ impl Signature {
     }
 }
 
-impl Se for Signature {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&hex::encode(self.to_bytes()))
-    }
-}
-
-impl<'de> De<'de> for Signature {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_str(SignatureVisitor)
-    }
-}
-
-struct SignatureVisitor;
-
-impl Visitor<'_> for SignatureVisitor {
-    type Value = Signature;
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a hexadecimal string representing 64 bytes")
-    }
-
-    fn visit_str<E>(self, v: &str) -> Result<Signature, E>
-    where
-        E: serde::de::Error,
-    {
-        let vec: Vec<u8> = hex::decode(v).map_err(|e| serde::de::Error::custom(format!("{e}")))?;
-
-        // If we don't catch this ourselves, the below from_bytes will panic when it
-        // gets into an assertion within generic-array
-        if vec.len() != 64 {
-            return Err(serde::de::Error::custom("Signature is not 64 bytes long"));
-        }
-
-        let ksig: KSignature =
-            KSignature::try_from(&*vec).map_err(|e| DeserializeError::custom(format!("{e}")))?;
-
-        Ok(Signature(ksig))
-    }
-}
-
 #[cfg(feature = "speedy")]
 impl<'a, C: Context> Readable<'a, C> for Signature {
     #[inline]
     fn read_from<R: Reader<'a, C>>(reader: &mut R) -> Result<Self, C::Error> {
         let bytes: Vec<u8> = reader.read_vec(64)?;
-        let sig = KSignature::try_from(&bytes[..]).map_err(|e| speedy::Error::custom(e))?;
+        let sig = secp256k1::schnorr::Signature::from_slice(&bytes[..]).map_err(|e| speedy::Error::custom(e))?;
         Ok(Signature(sig))
     }
 
@@ -98,7 +47,7 @@ impl<'a, C: Context> Readable<'a, C> for Signature {
 impl<C: Context> Writable<C> for Signature {
     #[inline]
     fn write_to<T: ?Sized + Writer<C>>(&self, writer: &mut T) -> Result<(), C::Error> {
-        let bytes = self.0.to_bytes();
+        let bytes = self.0.as_ref();
         assert_eq!(bytes.as_slice().len(), 64);
         writer.write_bytes(bytes.as_slice())
     }

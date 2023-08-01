@@ -120,7 +120,7 @@ impl DelegationConditions {
         &self,
         pubkey_delegater: &PublicKey,
         pubkey_delegatee: &PublicKey,
-        signature: Signature,
+        signature: &Signature,
     ) -> Result<(), Error> {
         let input = format!(
             "nostr:delegation:{}:{}",
@@ -198,7 +198,7 @@ mod test {
 
         // signature is changing, validate by verify method
         let sig = Signature::try_from(signature).unwrap();
-        let verify_result = dc.verify_signature(&delegator_public_key, &delegatee_public_key, sig);
+        let verify_result = dc.verify_signature(&delegator_public_key, &delegatee_public_key, &sig);
         assert!(verify_result.is_ok());
     }
 
@@ -226,7 +226,7 @@ mod test {
             let verify_result = conditions.verify_signature(
                 &PublicKey::try_from_hex_string(pubkey.as_str()).unwrap(),
                 &delegatee_public_key,
-                Signature::try_from(sig).unwrap(),
+                &Signature::try_from(sig).unwrap(),
             );
             assert!(verify_result.is_ok());
         } else {
@@ -259,7 +259,7 @@ mod test {
             let verify_result = conditions.verify_signature(
                 &PublicKey::try_from_hex_string(pubkey.as_str()).unwrap(),
                 &delegatee_public_key,
-                Signature::try_from(sig).unwrap(),
+                &Signature::try_from(sig).unwrap(),
             );
             assert!(verify_result.is_ok());
         } else {

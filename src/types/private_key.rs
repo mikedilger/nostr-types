@@ -8,10 +8,6 @@ use chacha20poly1305::{
 };
 use derive_more::Display;
 use hmac::Hmac;
-use k256::ecdh::SharedSecret;
-use k256::ecdsa::signature::Signer;
-use k256::schnorr::signature::hazmat::PrehashSigner;
-use k256::schnorr::SigningKey;
 use pbkdf2::pbkdf2;
 use rand_core::{OsRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -133,18 +129,19 @@ impl TryFrom<u8> for KeySecurity {
 
 /// This is a private key which is to be kept secret and is used to prove identity
 #[allow(missing_debug_implementations)]
-pub struct PrivateKey(SigningKey, KeySecurity);
+pub struct PrivateKey(secp256k1::SecretKey, KeySecurity);
 
 impl PrivateKey {
     /// Generate a new `PrivateKey` (which can be used to get the `PublicKey`)
     pub fn generate() -> PrivateKey {
-        let signing_key = SigningKey::random(&mut OsRng);
-        PrivateKey(signing_key, KeySecurity::Medium)
+        let secret_key = secp256k1::SecretKey::new(&mut OsRng);
+        PrivateKey(secret_key, KeySecurity::Medium)
     }
 
     /// Get the PublicKey matching this PrivateKey
     pub fn public_key(&self) -> PublicKey {
-        PublicKey(self.0.verifying_key().to_owned())
+        let (pk, _parity) = self.0.x_only_public_key(secp256k1::SECP256K1);
+        PublicKey(pk)
     }
 
     /// Get the security level of the private key
@@ -158,7 +155,7 @@ impl PrivateKey {
     /// with `KeySecurity::Weak` if you execute this.
     pub fn as_hex_string(&mut self) -> String {
         self.1 = KeySecurity::Weak;
-        hex::encode(self.0.to_bytes())
+        hex::encode(self.0.secret_bytes())
     }
 
     /// Create from a hexadecimal string
@@ -167,7 +164,7 @@ impl PrivateKey {
     /// `import_encrypted()` for `KeySecurity::Medium`
     pub fn try_from_hex_string(v: &str) -> Result<PrivateKey, Error> {
         let vec: Vec<u8> = hex::decode(v)?;
-        Ok(PrivateKey(SigningKey::from_bytes(&vec)?, KeySecurity::Weak))
+        Ok(PrivateKey(secp256k1::SecretKey::from_slice(&vec)?, KeySecurity::Weak))
     }
 
     /// Export as a bech32 encoded string
@@ -178,7 +175,7 @@ impl PrivateKey {
         self.1 = KeySecurity::Weak;
         bech32::encode(
             "nsec",
-            self.0.to_bytes().to_vec().to_base32(),
+            self.0.secret_bytes().as_slice().to_base32(),
             bech32::Variant::Bech32,
         )
         .unwrap()
@@ -195,7 +192,7 @@ impl PrivateKey {
         } else {
             let decoded = Vec::<u8>::from_base32(&data.1)?;
             Ok(PrivateKey(
-                SigningKey::from_bytes(&decoded)?,
+                secp256k1::SecretKey::from_slice(&decoded)?,
                 KeySecurity::Weak,
             ))
         }
@@ -203,19 +200,36 @@ impl PrivateKey {
 
     /// Sign a 32-bit hash
     pub fn sign_id(&self, id: Id) -> Result<Signature, Error> {
-        let signature = self.0.sign_prehash(&id.0)?;
-        Ok(Signature(signature))
+        let keypair = secp256k1::KeyPair::from_secret_key(secp256k1::SECP256K1, &self.0);
+        let message = secp256k1::Message::from_slice(id.0.as_slice())?;
+        Ok(Signature(keypair.sign_schnorr(message)))
     }
 
     /// Sign a message (this hashes with SHA-256 first internally)
     pub fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
-        let signature = self.0.try_sign(message)?;
-        Ok(Signature(signature))
+        use secp256k1::hashes::sha256;
+        let keypair = secp256k1::KeyPair::from_secret_key(secp256k1::SECP256K1, &self.0);
+        let message = secp256k1::Message::from_hashed_data::<sha256::Hash>(message);
+        Ok(Signature(keypair.sign_schnorr(message)))
     }
 
     // Generate a shared secret with someone elses public key
-    fn shared_secret(&self, other: &PublicKey) -> SharedSecret {
-        k256::ecdh::diffie_hellman(self.0.as_nonzero_scalar(), other.0.as_affine())
+    fn shared_secret(&self, other: &PublicKey) -> [u8; 32] {
+
+        // Build the whole PublicKey from the XOnlyPublicKey
+        let pubkey = secp256k1::PublicKey::from_x_only_public_key(
+            other.0,
+            secp256k1::Parity::Even
+        );
+
+        // Get the shared secret point without hashing
+        let shared_secret_point: [u8; 64] = secp256k1::ecdh::shared_secret_point(&pubkey, &self.0);
+
+        // Take the first 32 bytes
+        let mut shared_key: [u8; 32] = [0; 32];
+        shared_key.copy_from_slice(&shared_secret_point[..32]);
+
+        shared_key
     }
 
     /// Encrypt content via a shared secret according to NIP-04. Returns (IV, Ciphertext) pair.
@@ -225,13 +239,12 @@ impl PrivateKey {
         plaintext: &[u8],
     ) -> Result<([u8; 16], Vec<u8>), Error> {
         let shared_secret = self.shared_secret(other);
-        let raw_shared_secret_bytes = shared_secret.raw_secret_bytes();
         let iv = {
             let mut iv: [u8; 16] = [0; 16];
             OsRng.fill_bytes(&mut iv);
             iv
         };
-        let ciphertext = cbc::Encryptor::<aes::Aes256>::new(raw_shared_secret_bytes, &iv.into())
+        let ciphertext = cbc::Encryptor::<aes::Aes256>::new(&shared_secret.into(), &iv.into())
             .encrypt_padded_vec_mut::<Pkcs7>(plaintext);
         Ok((iv, ciphertext))
     }
@@ -244,9 +257,8 @@ impl PrivateKey {
         iv: [u8; 16],
     ) -> Result<Vec<u8>, Error> {
         let shared_secret = self.shared_secret(other);
-        let raw_shared_secret_bytes = shared_secret.raw_secret_bytes();
         Ok(
-            cbc::Decryptor::<aes::Aes256>::new(raw_shared_secret_bytes, &iv.into())
+            cbc::Decryptor::<aes::Aes256>::new(&shared_secret.into(), &iv.into())
                 .decrypt_padded_vec_mut::<Pkcs7>(ciphertext)?,
         )
     }
@@ -290,7 +302,7 @@ impl PrivateKey {
             };
 
             // The inner secret. We don't have to drop this because we are encrypting-in-place
-            let mut inner_secret: Vec<u8> = self.0.to_bytes().to_vec();
+            let mut inner_secret: Vec<u8> = self.0.secret_bytes().to_vec();
 
             let payload = Payload {
                 msg: &inner_secret,
@@ -401,7 +413,7 @@ impl PrivateKey {
             _ => return Err(Error::InvalidEncryptedPrivateKey),
         };
 
-        let signing_key = SigningKey::from_bytes(&inner_secret)?;
+        let signing_key = secp256k1::SecretKey::from_slice(&inner_secret)?;
         inner_secret.zeroize();
 
         Ok(PrivateKey(signing_key, key_security))
@@ -432,9 +444,6 @@ impl PrivateKey {
         let key = Self::password_to_key_v1(password, &salt, V1_HMAC_ROUNDS)?;
 
         // AES-256-CBC decrypt
-        // SECURITY NOTICE: SigningKey has a Drop trait that zeroizes.  But here
-        //    we are decrypting the the secret bytes. The variable `plaintext`
-        //    needs to be zeroized
         let mut plaintext = cbc::Decryptor::<aes::Aes256>::new(&key.into(), &iv.into())
             .decrypt_padded_vec_mut::<Pkcs7>(ciphertext)?; // 44 bytes
         if plaintext.len() != 44 {
@@ -450,7 +459,7 @@ impl PrivateKey {
         // Get the key security
         let ks = KeySecurity::try_from(plaintext[plaintext.len() - 1])?;
         let output = PrivateKey(
-            SigningKey::from_bytes(&plaintext[..plaintext.len() - 12])?,
+            secp256k1::SecretKey::from_slice(&plaintext[..plaintext.len() - 12])?,
             ks,
         );
 
@@ -477,9 +486,6 @@ impl PrivateKey {
         let ciphertext = &iv_plus_ciphertext[16..]; // 64 bytes
 
         // AES-256-CBC decrypt
-        // SECURITY NOTICE: SigningKey has a Drop trait that zeroizes.  But here
-        //    we are decrypting the the secret bytes. The variabler `pt`
-        //    needs to be zeroized
         let mut pt = cbc::Decryptor::<aes::Aes256>::new(&key.into(), &iv.into())
             .decrypt_padded_vec_mut::<Pkcs7>(ciphertext)?; // 48 bytes
 
@@ -490,7 +496,7 @@ impl PrivateKey {
 
         // Get the key security
         let ks = KeySecurity::try_from(pt[pt.len() - 1])?;
-        let output = PrivateKey(SigningKey::from_bytes(&pt[..pt.len() - 12])?, ks);
+        let output = PrivateKey(secp256k1::SecretKey::from_slice(&pt[..pt.len() - 12])?, ks);
 
         // Here we zeroize pt:
         pt.zeroize();
@@ -525,6 +531,13 @@ impl PrivateKey {
         PrivateKey::generate()
     }
 }
+
+impl Drop for PrivateKey {
+    fn drop(&mut self) {
+        self.0.non_secure_erase();
+    }
+}
+
 
 #[cfg(test)]
 mod test {
@@ -603,7 +616,7 @@ mod test {
 
         let decoded = PrivateKey::try_from_bech32_string(&encoded).unwrap();
 
-        assert_eq!(pk.0.to_bytes(), decoded.0.to_bytes());
+        assert_eq!(pk.0.secret_bytes(), decoded.0.secret_bytes());
         assert_eq!(decoded.1, KeySecurity::Weak);
     }
 

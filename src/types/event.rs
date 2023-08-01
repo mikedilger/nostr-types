@@ -4,7 +4,6 @@ use super::{
 };
 use crate::Error;
 use base64::Engine;
-use k256::sha2::{Digest, Sha256};
 use lightning_invoice::Invoice;
 #[cfg(feature = "speedy")]
 use regex::Regex;
@@ -135,6 +134,8 @@ pub struct ZapData {
 
 impl Event {
     fn hash(input: &PreEvent) -> Result<Id, Error> {
+        use secp256k1::hashes::Hash;
+
         let serialized: String = serialize_inner_event!(
             &input.pubkey,
             &input.created_at,
@@ -144,10 +145,8 @@ impl Event {
         );
 
         // Hash
-        let mut hasher = Sha256::new();
-        hasher.update(serialized.as_bytes());
-        let id = hasher.finalize();
-        let id: [u8; 32] = id.into();
+        let hash = secp256k1::hashes::sha256::Hash::hash(serialized.as_bytes());
+        let id: [u8; 32] = hash.to_byte_array();
         Ok(Id(id))
     }
 
@@ -284,7 +283,7 @@ impl Event {
     /// from the network. If you create an event using new() it should already be
     /// trustworthy.
     pub fn verify(&self, maxtime: Option<Unixtime>) -> Result<(), Error> {
-        use k256::schnorr::signature::Verifier;
+        use secp256k1::hashes::Hash;
 
         let serialized: String = serialize_inner_event!(
             &self.pubkey,
@@ -295,14 +294,13 @@ impl Event {
         );
 
         // Verify the signature
-        self.pubkey.0.verify(serialized.as_bytes(), &self.sig.0)?;
+        self.pubkey.verify(serialized.as_bytes(), &self.sig)?;
 
         // Also verify the ID is the SHA256
         // (the above verify function also does it internally,
         //  so there is room for improvement here)
-        let mut hasher = Sha256::new();
-        hasher.update(serialized.as_bytes());
-        let id = hasher.finalize();
+        let hash = secp256k1::hashes::sha256::Hash::hash(serialized.as_bytes());
+        let id: [u8; 32] = hash.to_byte_array();
 
         // Optional verify that the message was in the past
         if let Some(mt) = maxtime {
@@ -311,7 +309,7 @@ impl Event {
             }
         }
 
-        if *id != self.id.0 {
+        if id != self.id.0 {
             Err(Error::HashMismatch)
         } else {
             Ok(())
@@ -983,7 +981,7 @@ impl Event {
                 };
 
                 // Verify the delegation tag
-                match conditions.verify_signature(&delegator_pubkey, &self.pubkey, signature) {
+                match conditions.verify_signature(&delegator_pubkey, &self.pubkey, &signature) {
                     Ok(_) => {
                         // Check conditions
                         if let Some(kind) = conditions.kind {
