@@ -76,11 +76,11 @@ impl NostrBech32 {
                 return Some(NostrBech32::Id(id));
             }
         } else if s.get(..9) == Some("nprofile1") {
-            if let Ok(p) = Profile::try_from_bech32_string(s) {
+            if let Ok(p) = Profile::try_from_bech32_string(s, true) {
                 return Some(NostrBech32::Profile(p));
             }
         } else if s.get(..5) == Some("npub1") {
-            if let Ok(pk) = PublicKey::try_from_bech32_string(s) {
+            if let Ok(pk) = PublicKey::try_from_bech32_string(s, true) {
                 return Some(NostrBech32::Pubkey(pk));
             }
         } else if s.get(..7) == Some("nrelay1") {

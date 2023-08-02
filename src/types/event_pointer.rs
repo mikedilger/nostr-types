@@ -106,7 +106,7 @@ impl EventPointer {
                     }
                     2 => {
                         // author
-                        author = Some(PublicKey::from_bytes(raw)?);
+                        author = Some(PublicKey::from_bytes(raw, true)?);
                     }
                     3 => {
                         // kind
@@ -217,6 +217,7 @@ mod test {
             author: Some(
                 PublicKey::try_from_hex_string(
                     "000000000332c7831d9c5a99f183afc2813a6f69a16edda7f6fc0ed8110566e6",
+                    true,
                 )
                 .unwrap(),
             ),

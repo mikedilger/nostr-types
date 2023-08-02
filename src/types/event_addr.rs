@@ -93,7 +93,7 @@ impl EventAddr {
                     }
                     2 => {
                         // author
-                        maybe_author = Some(PublicKey::from_bytes(raw)?);
+                        maybe_author = Some(PublicKey::from_bytes(raw, true)?);
                     }
                     3 => {
                         // kind

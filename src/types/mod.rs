@@ -57,7 +57,7 @@ mod profile;
 pub use profile::Profile;
 
 mod public_key;
-pub use public_key::{PublicKey, PublicKeyHex, PublicKeyHexPrefix};
+pub use public_key::{PublicKey, PublicKeyHex, PublicKeyHexPrefix, XOnlyPublicKey};
 
 mod relay_message;
 pub use relay_message::RelayMessage;

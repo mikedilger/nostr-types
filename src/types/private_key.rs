@@ -140,8 +140,8 @@ impl PrivateKey {
 
     /// Get the PublicKey matching this PrivateKey
     pub fn public_key(&self) -> PublicKey {
-        let (pk, _parity) = self.0.x_only_public_key(secp256k1::SECP256K1);
-        PublicKey(pk)
+        let (xopk, _parity) = self.0.x_only_public_key(secp256k1::SECP256K1);
+        PublicKey::from_bytes(&xopk.serialize(), false).unwrap()
     }
 
     /// Get the security level of the private key
@@ -164,7 +164,10 @@ impl PrivateKey {
     /// `import_encrypted()` for `KeySecurity::Medium`
     pub fn try_from_hex_string(v: &str) -> Result<PrivateKey, Error> {
         let vec: Vec<u8> = hex::decode(v)?;
-        Ok(PrivateKey(secp256k1::SecretKey::from_slice(&vec)?, KeySecurity::Weak))
+        Ok(PrivateKey(
+            secp256k1::SecretKey::from_slice(&vec)?,
+            KeySecurity::Weak,
+        ))
     }
 
     /// Export as a bech32 encoded string
@@ -215,11 +218,10 @@ impl PrivateKey {
 
     // Generate a shared secret with someone elses public key
     fn shared_secret(&self, other: &PublicKey) -> [u8; 32] {
-
         // Build the whole PublicKey from the XOnlyPublicKey
         let pubkey = secp256k1::PublicKey::from_x_only_public_key(
-            other.0,
-            secp256k1::Parity::Even
+            other.as_xonly_public_key(),
+            secp256k1::Parity::Even,
         );
 
         // Get the shared secret point without hashing
@@ -537,7 +539,6 @@ impl Drop for PrivateKey {
         self.0.non_secure_erase();
     }
 }
-
 
 #[cfg(test)]
 mod test {

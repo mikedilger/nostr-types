@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 use speedy::{Context, Readable, Reader, Writable, Writer};
 
 /// A Schnorr signature that signs an Event, taken on the Event Id field
-#[derive(AsMut, AsRef, Clone, Copy, Debug, Deref, Eq, From, Into, PartialEq, Serialize, Deserialize)]
+#[derive(
+    AsMut, AsRef, Clone, Copy, Debug, Deref, Eq, From, Into, PartialEq, Serialize, Deserialize,
+)]
 pub struct Signature(pub secp256k1::schnorr::Signature);
 
 impl Signature {
@@ -33,7 +35,8 @@ impl<'a, C: Context> Readable<'a, C> for Signature {
     #[inline]
     fn read_from<R: Reader<'a, C>>(reader: &mut R) -> Result<Self, C::Error> {
         let bytes: Vec<u8> = reader.read_vec(64)?;
-        let sig = secp256k1::schnorr::Signature::from_slice(&bytes[..]).map_err(|e| speedy::Error::custom(e))?;
+        let sig = secp256k1::schnorr::Signature::from_slice(&bytes[..])
+            .map_err(|e| speedy::Error::custom(e))?;
         Ok(Signature(sig))
     }
 

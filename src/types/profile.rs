@@ -25,7 +25,7 @@ impl Profile {
         // Push Public Key
         tlv.push(0); // the special value, in this case the public key
         tlv.push(32); // the length of the value (always 32 for public key)
-        tlv.extend(self.pubkey.0.serialize());
+        tlv.extend(self.pubkey.as_slice());
 
         // Push relays
         for relay in &self.relays {
@@ -38,7 +38,10 @@ impl Profile {
     }
 
     /// Import from a bech32 encoded string ("nprofile")
-    pub fn try_from_bech32_string(s: &str) -> Result<Profile, Error> {
+    ///
+    /// If verify is true, will verify that it works as a secp256k1::XOnlyPublicKey. This
+    /// has a performance cost.
+    pub fn try_from_bech32_string(s: &str, verify: bool) -> Result<Profile, Error> {
         let data = bech32::decode(s)?;
         if data.0 != "nprofile" {
             Err(Error::WrongBech32("nprofile".to_string(), data.0))
@@ -64,7 +67,7 @@ impl Profile {
                         if len != 32 {
                             return Err(Error::InvalidProfile);
                         }
-                        pubkey = Some(PublicKey::from_bytes(&tlv[pos..pos + len])?);
+                        pubkey = Some(PublicKey::from_bytes(&tlv[pos..pos + len], verify)?);
                     }
                     1 => {
                         // relay
@@ -90,6 +93,7 @@ impl Profile {
     pub(crate) fn mock() -> Profile {
         let pubkey = PublicKey::try_from_hex_string(
             "b0635d6a9851d3aed0cd6c495b282167acf761729078d975fc341b22650b07b9",
+            true,
         )
         .unwrap();
 
@@ -115,7 +119,7 @@ mod test {
         println!("{bech32}");
         assert_eq!(
             Profile::mock(),
-            Profile::try_from_bech32_string(&bech32).unwrap()
+            Profile::try_from_bech32_string(&bech32, true).unwrap()
         );
     }
 
@@ -124,6 +128,7 @@ mod test {
         let profile = Profile {
             pubkey: PublicKey::try_from_hex_string(
                 "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d",
+                true,
             )
             .unwrap(),
             relays: vec![
@@ -138,6 +143,9 @@ mod test {
         assert_eq!(profile.as_bech32_string(), bech32);
 
         // Try converting bech32 to profile
-        assert_eq!(profile, Profile::try_from_bech32_string(bech32).unwrap());
+        assert_eq!(
+            profile,
+            Profile::try_from_bech32_string(bech32, true).unwrap()
+        );
     }
 }

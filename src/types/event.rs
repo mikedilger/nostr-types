@@ -815,7 +815,7 @@ impl Event {
                 };
                 let (xonlypk, _) = secpk.x_only_public_key();
                 let pubkeybytes = xonlypk.serialize();
-                let pubkey = match PublicKey::from_bytes(&pubkeybytes) {
+                let pubkey = match PublicKey::from_bytes(&pubkeybytes, false) {
                     Ok(pubkey) => pubkey,
                     Err(e) => {
                         return Err(Error::ZapReceipt(format!("payee public key error: {}", e)))
@@ -975,7 +975,7 @@ impl Event {
                     Ok(sig) => sig,
                     Err(e) => return EventDelegation::InvalidDelegation(format!("{e}")),
                 };
-                let delegator_pubkey = match PublicKey::try_from_hex_string(pubkey) {
+                let delegator_pubkey = match PublicKey::try_from_hex_string(pubkey, true) {
                     Ok(pk) => pk,
                     Err(e) => return EventDelegation::InvalidDelegation(format!("{e}")),
                 };
@@ -1047,10 +1047,8 @@ impl Event {
     pub fn get_pubkey_from_speedy_bytes(bytes: &[u8]) -> Option<PublicKey> {
         if bytes.len() < 64 {
             None
-        } else if let Ok(vk) = secp256k1::XOnlyPublicKey::from_slice(&bytes[32..64]) {
-            Some(PublicKey(vk))
         } else {
-            None
+            PublicKey::from_bytes(&bytes[32..64], false).ok()
         }
     }
 
@@ -1410,7 +1408,7 @@ mod test {
         //   cargo test --features=speedy test_speedy_encoded_direct_field_access -- --nocapture
         println!("EVENT BYTES: {:?}", bytes);
         println!("ID: {:?}", event.id.0);
-        println!("PUBKEY: {:?}", event.pubkey.0.serialize());
+        println!("PUBKEY: {:?}", event.pubkey.as_slice());
         println!("CREATED AT: {:?}", event.created_at.0.to_ne_bytes());
         let kind32: u32 = event.kind.into();
         println!("KIND: {:?}", kind32.to_ne_bytes());

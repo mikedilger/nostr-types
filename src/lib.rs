@@ -38,5 +38,5 @@ pub use types::{
     PublicKey, PublicKeyHex, PublicKeyHexPrefix, RelayFees, RelayInformationDocument,
     RelayLimitation, RelayMessage, RelayRetention, RelayUrl, ShatteredContent, Signature,
     SignatureHex, SimpleRelayList, SimpleRelayUsage, Span, SubscriptionId, Tag, UncheckedUrl,
-    Unixtime, Url, ZapData,
+    Unixtime, Url, XOnlyPublicKey, ZapData,
 };
