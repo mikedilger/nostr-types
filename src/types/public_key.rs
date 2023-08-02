@@ -25,7 +25,7 @@ impl PublicKey {
     /// Create from a hexadecimal string
     pub fn try_from_hex_string(v: &str) -> Result<PublicKey, Error> {
         let vec: Vec<u8> = hex::decode(v)?;
-        // if it's not 32 bytes, dont even try because k256 code has panics in it
+        // if it's not 32 bytes, dont even try
         if vec.len() != 32 {
             Err(Error::InvalidPublicKey)
         } else {

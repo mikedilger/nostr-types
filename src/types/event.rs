@@ -1045,10 +1045,9 @@ impl Event {
     /// Note this function is fragile, if the Event structure is reordered,
     /// or if speedy code changes, this will break.  Neither should happen.
     pub fn get_pubkey_from_speedy_bytes(bytes: &[u8]) -> Option<PublicKey> {
-        use k256::schnorr::VerifyingKey;
         if bytes.len() < 64 {
             None
-        } else if let Ok(vk) = VerifyingKey::from_bytes(&bytes[32..64]) {
+        } else if let Ok(vk) = secp256k1::XOnlyPublicKey::from_slice(&bytes[32..64]) {
             Some(PublicKey(vk))
         } else {
             None
@@ -1411,11 +1410,11 @@ mod test {
         //   cargo test --features=speedy test_speedy_encoded_direct_field_access -- --nocapture
         println!("EVENT BYTES: {:?}", bytes);
         println!("ID: {:?}", event.id.0);
-        println!("PUBKEY: {:?}", event.pubkey.0.to_bytes());
+        println!("PUBKEY: {:?}", event.pubkey.0.serialize());
         println!("CREATED AT: {:?}", event.created_at.0.to_ne_bytes());
         let kind32: u32 = event.kind.into();
         println!("KIND: {:?}", kind32.to_ne_bytes());
-        println!("SIG: {:?}", event.sig.0.to_bytes());
+        println!("SIG: {:?}", event.sig.0.as_ref());
         if let Some(ots) = event.ots {
             println!("OTS: [1, then] {:?}", ots.as_bytes());
         } else {
