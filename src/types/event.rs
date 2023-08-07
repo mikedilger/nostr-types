@@ -1016,6 +1016,18 @@ impl Event {
 
         EventDelegation::NotDelegated
     }
+
+    /// If the event came through a proxy, get the (Protocol, Id)
+    pub fn proxy(&self) -> Option<(&str, &str)> {
+        for t in self.tags.iter() {
+            if let Tag::Other { tag, data } = t {
+                if tag == "proxy" && data.len() >= 2 {
+                    return Some((&data[1], &data[0]));
+                }
+            }
+        }
+        None
+    }
 }
 
 // Direct access into speedy-serialized bytes, to avoid alloc-deserialize just to peek
