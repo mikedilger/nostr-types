@@ -154,6 +154,16 @@ impl fmt::Display for RelayUrl {
 impl RelayUrl {
     /// Create a new RelayUrl from a Url
     pub fn try_from_url(u: &Url) -> Result<RelayUrl, Error> {
+        // Verify we aren't looking at a comma-separated-list of URLs
+        // (technically they might be valid URLs but just about 100% of the time
+        // it's somebody else's bad data)
+        if u.0.contains(",wss://") || u.0.contains(",ws://") {
+            return Err(Error::Url(format!(
+                "URL appears to be a list of multiple URLs: {}",
+                u.0
+            )));
+        }
+
         let url = url::Url::parse(&u.0)?;
 
         // Verify the scheme is websockets
