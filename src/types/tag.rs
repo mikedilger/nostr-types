@@ -156,7 +156,8 @@ pub enum Tag {
         trailing: Vec<String>,
     },
 
-    /// Parameter of a parameterized replaceable event
+    /// There is no known nostr tag like this. This was a mistake, but we can't remove it
+    /// or deserialization of data serialized with this in mind will break.
     Parameter {
         /// Parameter
         param: String,

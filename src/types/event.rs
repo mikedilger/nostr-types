@@ -894,8 +894,8 @@ impl Event {
     pub fn parameter(&self) -> Option<String> {
         if self.kind.is_parameterized_replaceable() {
             for tag in self.tags.iter() {
-                if let Tag::Parameter { param, .. } = tag {
-                    return Some(param.to_owned());
+                if let Tag::Identifier { d, .. } = tag {
+                    return Some(d.to_owned());
                 }
             }
             Some("".to_owned()) // implicit
