@@ -1,5 +1,5 @@
 use super::{EventKind, EventKindOrRange, PublicKeyHexPrefix, Url};
-use serde::de::Error as DeError;
+//use serde::de::Error as DeError;
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
@@ -558,7 +558,7 @@ impl<'de> Visitor<'de> for RidVisitor {
         if let Some(Value::String(s)) = map.remove("pubkey") {
             rid.pubkey = match PublicKeyHexPrefix::try_from_string(s) {
                 Ok(pkh) => Some(pkh),
-                Err(e) => return Err(DeError::custom(format!("{e}"))),
+                Err(_) => None,
             };
         }
         if let Some(Value::String(s)) = map.remove("contact") {
@@ -582,49 +582,49 @@ impl<'de> Visitor<'de> for RidVisitor {
         if let Some(v) = map.remove("limitation") {
             rid.limitation = match serde_json::from_value::<Option<RelayLimitation>>(v) {
                 Ok(x) => x,
-                Err(e) => return Err(DeError::custom(format!("{e}"))),
+                Err(_) => None,
             }
         }
         if let Some(v) = map.remove("retention") {
             rid.retention = match serde_json::from_value::<Vec<RelayRetention>>(v) {
                 Ok(x) => x,
-                Err(e) => return Err(DeError::custom(format!("{e}"))),
+                Err(_) => vec![],
             };
         }
         if let Some(v) = map.remove("relay_countries") {
             rid.relay_countries = match serde_json::from_value::<Vec<String>>(v) {
                 Ok(x) => x,
-                Err(e) => return Err(DeError::custom(format!("{e}"))),
+                Err(_) => vec![],
             }
         }
         if let Some(v) = map.remove("language_tags") {
             rid.language_tags = match serde_json::from_value::<Vec<String>>(v) {
                 Ok(x) => x,
-                Err(e) => return Err(DeError::custom(format!("{e}"))),
+                Err(_) => vec![],
             }
         }
         if let Some(v) = map.remove("tags") {
             rid.tags = match serde_json::from_value::<Vec<String>>(v) {
                 Ok(x) => x,
-                Err(e) => return Err(DeError::custom(format!("{e}"))),
+                Err(_) => vec![],
             }
         }
         if let Some(v) = map.remove("posting_policy") {
             rid.posting_policy = match serde_json::from_value::<Option<Url>>(v) {
                 Ok(x) => x,
-                Err(e) => return Err(DeError::custom(format!("{e}"))),
+                Err(_) => None,
             }
         }
         if let Some(v) = map.remove("payments_url") {
             rid.payments_url = match serde_json::from_value::<Option<Url>>(v) {
                 Ok(x) => x,
-                Err(e) => return Err(DeError::custom(format!("{e}"))),
+                Err(_) => None,
             }
         }
         if let Some(v) = map.remove("fees") {
             rid.fees = match serde_json::from_value::<Option<RelayFees>>(v) {
                 Ok(x) => x,
-                Err(e) => return Err(DeError::custom(format!("{e}"))),
+                Err(_) => None,
             }
         }
 
