@@ -103,6 +103,10 @@ pub enum Error {
     #[error("Missing URL Authority")]
     InvalidUrlMissingAuthority,
 
+    /// Out of Range
+    #[error("Out of Range")]
+    OutOfRange(usize),
+
     /// Pad error
     #[error("Encryption/Decryption padding error")]
     Pad(#[from] inout::PadError),
@@ -139,6 +143,10 @@ pub enum Error {
     /// Unknown Key Security
     #[error("Unknown key security = {0}")]
     UnknownKeySecurity(u8),
+
+    /// Unknown Cipher Version
+    #[error("Unknown cipher version = {0}")]
+    UnknownCipherVersion(u8),
 
     /// Unpad error
     #[error("Decryption error: {0}")]
