@@ -30,6 +30,10 @@ pub enum EventKind {
     Reaction = 7,
     /// Badge Award (NIP-58)
     BadgeAward = 8,
+    /// Seal (NIP-59 PR 716)
+    Seal = 13,
+    /// Chat Message / DM (NIP-24 PR 686)
+    DmChat = 14,
     /// Generic Repost (NIP-18)
     GenericRepost = 16,
     /// Event creates a public channel (NIP-28)
@@ -52,6 +56,8 @@ pub enum EventKind {
     PublicChatReserved48 = 48,
     /// Reserved for future public channel usage
     PublicChatReserved49 = 49,
+    /// Gift Wrap (NIP-59 PR 716)
+    GiftWrap = 1059,
     /// File Metadata (NIP-94)
     FileMetadata = 1063,
     /// Live Chat Message (NIP-53)
@@ -204,12 +210,15 @@ static WELL_KNOWN_KINDS: &[EventKind] = &[
     Repost,
     Reaction,
     BadgeAward,
+    Seal,
+    DmChat,
     GenericRepost,
     ChannelCreation,
     ChannelMetadata,
     ChannelMessage,
     ChannelHideMessage,
     ChannelMuteUser,
+    GiftWrap,
     FileMetadata,
     LiveChatMessage,
     Reporting,
@@ -283,6 +292,8 @@ impl From<u32> for EventKind {
             6 => Repost,
             7 => Reaction,
             8 => BadgeAward,
+            13 => Seal,
+            14 => DmChat,
             16 => GenericRepost,
             40 => ChannelCreation,
             41 => ChannelMetadata,
@@ -294,6 +305,7 @@ impl From<u32> for EventKind {
             47 => PublicChatReserved47,
             48 => PublicChatReserved48,
             49 => PublicChatReserved49,
+            1059 => GiftWrap,
             1063 => FileMetadata,
             1311 => LiveChatMessage,
             1984 => Reporting,
@@ -348,6 +360,8 @@ impl From<EventKind> for u32 {
             Repost => 6,
             Reaction => 7,
             BadgeAward => 8,
+            Seal => 13,
+            DmChat => 14,
             GenericRepost => 16,
             ChannelCreation => 40,
             ChannelMetadata => 41,
@@ -359,6 +373,7 @@ impl From<EventKind> for u32 {
             PublicChatReserved47 => 47,
             PublicChatReserved48 => 48,
             PublicChatReserved49 => 49,
+            GiftWrap => 1059,
             FileMetadata => 1063,
             LiveChatMessage => 1311,
             Reporting => 1984,
