@@ -353,7 +353,7 @@ impl RelayInformationDocument {
                 },
                 RelayRetention {
                     kinds: vec![EventKindOrRange::Range(vec![
-                        EventKind::Other(30000),
+                        EventKind::CategorizedPeopleList,
                         EventKind::Other(39999),
                     ])],
                     time: None,

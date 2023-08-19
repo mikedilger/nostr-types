@@ -11,32 +11,36 @@ use std::fmt;
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(u32)]
 pub enum EventKind {
-    /// Event sets the metadata associated with a public key
+    /// Event sets the metadata associated with a public key (NIP-01)
     Metadata = 0,
-    /// Event is a text note
+    /// Event is a text note (NIP-01)
     TextNote = 1,
     /// Event contains a relay URL which the author recommends
     RecommendRelay = 2,
     /// Event contains tags which represent the authors contacts including the
-    /// authors pet names for them
+    /// authors pet names for them (NIP-02)
     ContactList = 3,
-    /// Event is an encrypted direct message
+    /// Event is an encrypted direct message (NIP-04)
     EncryptedDirectMessage = 4,
-    /// Event is an authors request to delete previous events
+    /// Event is an authors request to delete previous events (NIP-09)
     EventDeletion = 5,
-    /// Repost
+    /// Repost (NIP-18)
     Repost = 6,
-    /// Event is a reaction to a `TextNote` event
+    /// Event is a reaction to a `TextNote` event (NIP-25)
     Reaction = 7,
-    /// Event creates a public channel
+    /// Badge Award (NIP-58)
+    BadgeAward = 8,
+    /// Generic Repost (NIP-18)
+    GenericRepost = 16,
+    /// Event creates a public channel (NIP-28)
     ChannelCreation = 40,
-    /// Event sets metadata on a public channel
+    /// Event sets metadata on a public channel (NIP-28)
     ChannelMetadata = 41,
-    /// Event creates a message on a public channel
+    /// Event creates a message on a public channel (NIP-28)
     ChannelMessage = 42,
-    /// Event hides a message on a public channel
+    /// Event hides a message on a public channel (NIP-28)
     ChannelHideMessage = 43,
-    /// Event mutes a user on a public channel
+    /// Event mutes a user on a public channel (NIP-28)
     ChannelMuteUser = 44,
     /// Reserved for future public channel usage
     PublicChatReserved45 = 45,
@@ -48,20 +52,76 @@ pub enum EventKind {
     PublicChatReserved48 = 48,
     /// Reserved for future public channel usage
     PublicChatReserved49 = 49,
+    /// File Metadata (NIP-94)
+    FileMetadata = 1063,
+    /// Live Chat Message (NIP-53)
+    LiveChatMessage = 1311,
+    /// Reporting (NIP-56)
+    Reporting = 1984,
+    /// Label (NIP-32)
+    Label = 1985,
+    /// Community Post Approval (NIP-72)
+    CommunityPostApproval = 4550,
     /// Zap Request
     ZapRequest = 9734,
     /// Zap
     Zap = 9735,
-    /// Relays List (NIP-23)
-    RelaysListNip23 = 10001,
+    /// Mute List (NIP-51)
+    MuteList = 10000,
+    /// PinList (NIP-51)
+    PinList = 10001,
     /// Relays List (NIP-65)
     RelayList = 10002,
-    /// Authentication
+    /// Wallet Info (NIP-47)
+    WalletInfo = 13194,
+    /// Client Authentication (NIP-42)
     Auth = 22242,
-    /// Long-form Content
+    /// Wallet Request (NIP-47)
+    WalletRequest = 23194,
+    /// Wallet Response (NIP-47)
+    WalletResponse = 23195,
+    /// Nostr Connect (NIP-46)
+    NostrConnect = 24133,
+    /// HTTP Auth (NIP-98)
+    HttpAuth = 27235,
+    /// Categorized People List (NIP-51)
+    CategorizedPeopleList = 30000,
+    /// Categorized Bookmark List (NIP-51)
+    CategorizedBookmarkList = 30001,
+    /// Profile Badges (NIP-58)
+    ProfileBadges = 30008,
+    /// Badge Definition (NIP-58)
+    BadgeDefinition = 30009,
+    /// Create or update a stall (NIP-15)
+    CreateUpdateStall = 30017,
+    /// Create or update a product (NIP-15)
+    CreateUpdateProduct = 30018,
+    /// Long-form Content (NIP-23)
     LongFormContent = 30023,
-    /// Client Settings
-    ClientSettings = 31111,
+    /// Draft Long-form Content (NIP-23)
+    DraftLongFormContent = 30024,
+    /// Application Specific Data, (NIP-78)
+    AppSpecificData = 30078,
+    /// Live Event (NIP-53)
+    LiveEvent = 30311,
+    /// Classified Listing (NIP-99)
+    ClassifiedListing = 30402,
+    /// Draft Classified Listing (NIP-99)
+    DraftClassifiedListing = 30403,
+    /// Date-Based Calendar Event (NIP-52)
+    DateBasedCalendarEvent = 31922,
+    /// Time-Based Calendar Event (NIP-52)
+    TimeBasedCalendarEvent = 31923,
+    /// Calendar (NIP-52)
+    Calendar = 31924,
+    /// Calendar Event RSVP (NIP-52)
+    CalendarEventRsvp = 31925,
+    /// Handler Recommendation (NIP-89)
+    HandlerRecommendation = 31989,
+    /// Handler Information (NIP-89)
+    HandlerInformation = 31990,
+    /// Community Definition (NIP-72)
+    CommunityDefinition = 34550,
     /// Relay-specific replaceable event
     Replaceable(u32),
     /// Ephemeral event, sent to all clients with matching filters and should not be stored
@@ -143,23 +203,48 @@ static WELL_KNOWN_KINDS: &[EventKind] = &[
     EventDeletion,
     Repost,
     Reaction,
+    BadgeAward,
+    GenericRepost,
     ChannelCreation,
     ChannelMetadata,
     ChannelMessage,
     ChannelHideMessage,
     ChannelMuteUser,
-    PublicChatReserved45,
-    PublicChatReserved46,
-    PublicChatReserved47,
-    PublicChatReserved48,
-    PublicChatReserved49,
+    FileMetadata,
+    LiveChatMessage,
+    Reporting,
+    Label,
+    CommunityPostApproval,
     ZapRequest,
     Zap,
-    RelaysListNip23,
+    MuteList,
+    PinList,
     RelayList,
+    WalletInfo,
     Auth,
+    WalletRequest,
+    WalletResponse,
+    NostrConnect,
+    HttpAuth,
+    CategorizedPeopleList,
+    CategorizedBookmarkList,
+    ProfileBadges,
+    BadgeDefinition,
+    CreateUpdateStall,
+    CreateUpdateProduct,
     LongFormContent,
-    ClientSettings,
+    DraftLongFormContent,
+    AppSpecificData,
+    LiveEvent,
+    ClassifiedListing,
+    DraftClassifiedListing,
+    DateBasedCalendarEvent,
+    TimeBasedCalendarEvent,
+    Calendar,
+    CalendarEventRsvp,
+    HandlerRecommendation,
+    HandlerInformation,
+    CommunityDefinition,
 ];
 
 impl EventKindIterator {
@@ -197,6 +282,8 @@ impl From<u32> for EventKind {
             5 => EventDeletion,
             6 => Repost,
             7 => Reaction,
+            8 => BadgeAward,
+            16 => GenericRepost,
             40 => ChannelCreation,
             41 => ChannelMetadata,
             42 => ChannelMessage,
@@ -207,13 +294,41 @@ impl From<u32> for EventKind {
             47 => PublicChatReserved47,
             48 => PublicChatReserved48,
             49 => PublicChatReserved49,
+            1063 => FileMetadata,
+            1311 => LiveChatMessage,
+            1984 => Reporting,
+            1985 => Label,
+            4550 => CommunityPostApproval,
             9734 => ZapRequest,
             9735 => Zap,
-            10001 => RelaysListNip23,
+            10000 => MuteList,
+            10001 => PinList,
             10002 => RelayList,
+            13194 => WalletInfo,
             22242 => Auth,
+            23194 => WalletRequest,
+            23195 => WalletResponse,
+            24133 => NostrConnect,
+            27235 => HttpAuth,
+            30000 => CategorizedPeopleList,
+            30001 => CategorizedBookmarkList,
+            30008 => ProfileBadges,
+            30009 => BadgeDefinition,
+            30017 => CreateUpdateStall,
+            30018 => CreateUpdateProduct,
             30023 => LongFormContent,
-            31111 => ClientSettings,
+            30024 => DraftLongFormContent,
+            30078 => AppSpecificData,
+            30311 => LiveEvent,
+            30402 => ClassifiedListing,
+            30403 => DraftClassifiedListing,
+            31922 => DateBasedCalendarEvent,
+            31923 => TimeBasedCalendarEvent,
+            31924 => Calendar,
+            31925 => CalendarEventRsvp,
+            31989 => HandlerRecommendation,
+            31990 => HandlerInformation,
+            34550 => CommunityDefinition,
             x if (10_000..20_000).contains(&x) => Replaceable(x),
             x if (20_000..30_000).contains(&x) => Ephemeral(x),
             x => Other(x),
@@ -232,6 +347,8 @@ impl From<EventKind> for u32 {
             EventDeletion => 5,
             Repost => 6,
             Reaction => 7,
+            BadgeAward => 8,
+            GenericRepost => 16,
             ChannelCreation => 40,
             ChannelMetadata => 41,
             ChannelMessage => 42,
@@ -242,13 +359,41 @@ impl From<EventKind> for u32 {
             PublicChatReserved47 => 47,
             PublicChatReserved48 => 48,
             PublicChatReserved49 => 49,
+            FileMetadata => 1063,
+            LiveChatMessage => 1311,
+            Reporting => 1984,
+            Label => 1985,
+            CommunityPostApproval => 4550,
             ZapRequest => 9734,
             Zap => 9735,
-            RelaysListNip23 => 10001,
+            MuteList => 10000,
+            PinList => 10001,
             RelayList => 10002,
+            WalletInfo => 13194,
             Auth => 22242,
+            WalletRequest => 23194,
+            WalletResponse => 23195,
+            NostrConnect => 24133,
+            HttpAuth => 27235,
+            CategorizedPeopleList => 30000,
+            CategorizedBookmarkList => 30001,
+            ProfileBadges => 30008,
+            BadgeDefinition => 30009,
+            CreateUpdateStall => 30017,
+            CreateUpdateProduct => 30018,
             LongFormContent => 30023,
-            ClientSettings => 31111,
+            DraftLongFormContent => 30024,
+            AppSpecificData => 30078,
+            LiveEvent => 30311,
+            ClassifiedListing => 30402,
+            DraftClassifiedListing => 30403,
+            DateBasedCalendarEvent => 31922,
+            TimeBasedCalendarEvent => 31923,
+            Calendar => 31924,
+            CalendarEventRsvp => 31925,
+            HandlerRecommendation => 31989,
+            HandlerInformation => 31990,
+            CommunityDefinition => 34550,
             Replaceable(u) => u,
             Ephemeral(u) => u,
             Other(u) => u,
