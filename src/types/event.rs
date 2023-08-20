@@ -5,6 +5,8 @@ use super::{
 use crate::Error;
 use base64::Engine;
 use lightning_invoice::Invoice;
+use rand_core::OsRng;
+use rand::Rng;
 #[cfg(feature = "speedy")]
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -66,7 +68,8 @@ macro_rules! serialize_inner_event {
 }
 
 /// Data used to construct an event
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct PreEvent {
     /// The public key of the actor who is creating the event
     pub pubkey: PublicKey,
@@ -83,6 +86,24 @@ pub struct PreEvent {
 }
 
 impl PreEvent {
+    /// Generate an ID from this PreEvent for use in an Event or a Rumor
+    pub fn hash(&self) -> Result<Id, Error> {
+        use secp256k1::hashes::Hash;
+
+        let serialized: String = serialize_inner_event!(
+            &self.pubkey,
+            &self.created_at,
+            &self.kind,
+            &self.tags,
+            &self.content
+        );
+
+        // Hash
+        let hash = secp256k1::hashes::sha256::Hash::hash(serialized.as_bytes());
+        let id: [u8; 32] = hash.to_byte_array();
+        Ok(Id(id))
+    }
+
     /// Create a NIP-04 EncryptedDirectMessage PreEvent.
     ///
     /// Note that this creates the 'p' tag, but does not add a recommended_relay_url to it,
@@ -114,6 +135,113 @@ impl PreEvent {
             ots: None,
         })
     }
+
+    /// Create a rumor, wrapped in a seal, shrouded in a giftwrap
+    /// The input.pubkey must match the privkey
+    /// See NIP-59
+    pub fn into_gift_wrap(self, privkey: &PrivateKey, pubkey: &PublicKey, pad: bool)
+                     -> Result<Event, Error>
+    {
+        let sender_pubkey = self.pubkey;
+
+        if privkey.public_key() != sender_pubkey {
+            return Err(Error::InvalidPrivateKey);
+        }
+
+        let seal_backdate = Unixtime(
+            self.created_at.0 - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 7))
+        );
+        let giftwrap_backdate = Unixtime (
+            self.created_at.0 - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 7))
+        );
+
+        let seal = {
+            let rumor = Rumor::new(self)?;
+            let rumor_json = serde_json::to_string(&rumor)?;
+            let encrypted_rumor_json = privkey.nip44_encrypt(pubkey, rumor_json.as_bytes(), pad, None);
+
+            let pre_seal = PreEvent {
+                pubkey: sender_pubkey,
+                created_at: seal_backdate,
+                kind: EventKind::Seal,
+                ots: None,
+                content: encrypted_rumor_json,
+                tags: vec![],
+            };
+
+            Event::new(pre_seal, privkey)?
+        };
+
+        // Generate a random keypair for the gift wrap
+        let random_private_key = PrivateKey::generate();
+
+        let seal_json = serde_json::to_string(&seal)?;
+        let encrypted_seal_json = random_private_key.nip44_encrypt(pubkey, seal_json.as_bytes(), pad, None);
+
+        let pre_giftwrap = PreEvent {
+            pubkey: random_private_key.public_key(),
+            created_at: giftwrap_backdate,
+            kind: EventKind::GiftWrap,
+            ots: None,
+            content: encrypted_seal_json,
+            tags: vec![
+                Tag::Pubkey {
+                    pubkey: (*pubkey).into(),
+                    recommended_relay_url: None,
+                    petname: None,
+                    trailing: vec![],
+                }
+            ]
+        };
+
+        Event::new(pre_giftwrap, &random_private_key)
+    }
+}
+
+/// A Rumor is an Event without a signature
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
+pub struct Rumor {
+    /// The Id of the event, generated as a SHA256 of the inner event data
+    pub id: Id,
+
+    /// The public key of the actor who created the event
+    pub pubkey: PublicKey,
+
+    /// The (unverified) time at which the event was created
+    pub created_at: Unixtime,
+
+    /// The kind of event
+    pub kind: EventKind,
+
+    /// An optional verified time for the event (using OpenTimestamp)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub ots: Option<String>,
+
+    /// The content of the event
+    pub content: String,
+
+    /// A set of tags that apply to the event
+    pub tags: Vec<Tag>,
+}
+
+impl Rumor {
+    /// Create a new rumor
+    pub fn new(input: PreEvent) -> Result<Rumor, Error> {
+        // Generate Id
+        let id = input.hash()?;
+
+        Ok(Rumor {
+            id,
+            pubkey: input.pubkey,
+            created_at: input.created_at,
+            kind: input.kind,
+            tags: input.tags,
+            content: input.content,
+            ots: input.ots,
+        })
+    }
 }
 
 /// Data about a Zap
@@ -133,27 +261,10 @@ pub struct ZapData {
 }
 
 impl Event {
-    fn hash(input: &PreEvent) -> Result<Id, Error> {
-        use secp256k1::hashes::Hash;
-
-        let serialized: String = serialize_inner_event!(
-            &input.pubkey,
-            &input.created_at,
-            &input.kind,
-            &input.tags,
-            &input.content
-        );
-
-        // Hash
-        let hash = secp256k1::hashes::sha256::Hash::hash(serialized.as_bytes());
-        let id: [u8; 32] = hash.to_byte_array();
-        Ok(Id(id))
-    }
-
     /// Create a new event
     pub fn new(input: PreEvent, privkey: &PrivateKey) -> Result<Event, Error> {
         // Generate Id
-        let id = Self::hash(&input)?;
+        let id = input.hash()?;
 
         // Generate Signature
         let signature = privkey.sign_id(id)?;
@@ -227,7 +338,7 @@ impl Event {
                         trailing: Vec::new(),
                     };
 
-                    let Id(id) = Self::hash(&input).unwrap();
+                    let Id(id) = input.hash().unwrap();
 
                     let leading_zeroes = get_leading_zero_bits(&id);
                     if leading_zeroes >= zero_bits {
@@ -262,7 +373,7 @@ impl Event {
             target,
             trailing: Vec::new(),
         };
-        let id = Self::hash(&input).unwrap();
+        let id = input.hash().unwrap();
 
         // Signature
         let signature = privkey.sign_id(id)?;
@@ -1028,6 +1139,60 @@ impl Event {
         }
         None
     }
+
+    /// If a gift wrap event, unwrap and return the inner Rumor
+    pub fn giftwrap_unwrap(&self, privkey: &PrivateKey, pad: bool) -> Result<Rumor, Error> {
+        if self.kind != EventKind::GiftWrap {
+            return Err(Error::WrongEventKind);
+        }
+
+        // Verify you are tagged
+        let pkhex: PublicKeyHex = privkey.public_key().into();
+        let mut tagged = false;
+        for t in self.tags.iter() {
+            if let Tag::Pubkey { pubkey, .. } = t {
+                if *pubkey == pkhex {
+                    tagged = true;
+                }
+            }
+        }
+        if ! tagged {
+            return Err(Error::InvalidRecipient);
+        }
+
+        // Decrypt the content
+        let content = privkey.nip44_decrypt(&self.pubkey, &self.content, pad)?;
+        let content = String::from_utf8(content)?;
+
+        // Translate into a seal Event
+        let seal: Event = serde_json::from_str(&content)?;
+
+        // Verify it is a Seal
+        if seal.kind != EventKind::Seal {
+            return Err(Error::WrongEventKind);
+        }
+
+        // Note the author
+        let author = seal.pubkey;
+
+        // Decrypt the content
+        println!("CHECKPOINT PRE-BETA");
+        println!("{}", seal.content);
+        let content = privkey.nip44_decrypt(&seal.pubkey, &seal.content, pad)?;
+        println!("CHECKPOINT BETA");
+        let content = String::from_utf8(content)?;
+
+        // Translate into a Rumor
+        let rumor: Rumor = serde_json::from_str(&content)?;
+
+        // Compare the author
+        if rumor.pubkey != author {
+            return Err(Error::InvalidPublicKey);
+        }
+
+        // Return the Rumor
+        Ok(rumor)
+    }
 }
 
 // Direct access into speedy-serialized bytes, to avoid alloc-deserialize just to peek
@@ -1204,6 +1369,40 @@ impl Event {
         }
 
         Ok(false)
+    }
+}
+
+impl From<Event> for Rumor {
+    fn from(e: Event) -> Rumor {
+        Rumor {
+            id: e.id,
+            pubkey: e.pubkey,
+            created_at: e.created_at,
+            kind: e.kind,
+            ots: e.ots,
+            content: e.content,
+            tags: e.tags
+        }
+    }
+}
+
+impl From<Rumor> for PreEvent {
+    fn from(r: Rumor) -> PreEvent {
+        PreEvent {
+            pubkey: r.pubkey,
+            created_at: r.created_at,
+            kind: r.kind,
+            ots: r.ots,
+            content: r.content,
+            tags: r.tags
+        }
+    }
+}
+
+impl TryFrom<PreEvent> for Rumor {
+    type Error = Error;
+    fn try_from(e: PreEvent) -> Result<Rumor, Error> {
+        Rumor::new(e)
     }
 }
 
@@ -1447,4 +1646,34 @@ mod test {
         //       0, 0, 0, 0 -- trailing Vec<String> is empty
         //  ...
     }
+
+    #[test]
+    fn test_event_gift_wrap() {
+
+        let sec1 = PrivateKey::try_from_hex_string(
+            "0000000000000000000000000000000000000000000000000000000000000001"
+        ).unwrap();
+
+        let sec2 = PrivateKey::try_from_hex_string(
+            "0000000000000000000000000000000000000000000000000000000000000002"
+        ).unwrap();
+
+
+        let pre = PreEvent {
+            pubkey: sec1.public_key(),
+            created_at: Unixtime(1692_000_000),
+            kind: EventKind::TextNote,
+            ots: None,
+            content: "Hey man, this rocks! Please reply for a test.".to_string(),
+            tags: vec![],
+        };
+
+        let gift_wrap = pre.clone().into_gift_wrap(&sec1, &sec2.public_key(), true).unwrap();
+
+        let rumor = gift_wrap.giftwrap_unwrap(&sec2, true).unwrap();
+        let output_pre: PreEvent = rumor.into();
+
+        assert_eq!(pre, output_pre);
+    }
+
 }

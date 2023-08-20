@@ -23,6 +23,10 @@ pub enum Error {
     #[error("Encryption/Decryption Error")]
     Encryption,
 
+    /// From utf8 Error
+    #[error("From UTF-8 Error")]
+    FromUtf8(#[from] std::string::FromUtf8Error),
+
     /// Bech32 error
     #[error("Wrong Bech32 Kind: Expected {0} found {0}")]
     WrongBech32(String, String),
@@ -71,6 +75,10 @@ pub enum Error {
     #[error("Invalid digest length")]
     InvalidLength(#[from] hmac::digest::InvalidLength),
 
+    /// Invalid Private Key
+    #[error("Invalid Private Key")]
+    InvalidPrivateKey,
+
     /// Invalid Profile
     #[error("Invalid Profile")]
     InvalidProfile,
@@ -82,6 +90,10 @@ pub enum Error {
     /// Invalid public key prefix
     #[error("Invalid Public Key Prefix")]
     InvalidPublicKeyPrefix,
+
+    /// Invalid recipient
+    #[error("Invalid Recipient")]
+    InvalidRecipient,
 
     /// Invalid URL
     #[error("Invalid URL: \"{0}\"")]

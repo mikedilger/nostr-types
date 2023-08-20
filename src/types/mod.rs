@@ -21,7 +21,7 @@ mod delegation;
 pub use delegation::{DelegationConditions, EventDelegation};
 
 mod event;
-pub use event::{Event, PreEvent, ZapData};
+pub use event::{Event, Rumor, PreEvent, ZapData};
 
 mod event_kind;
 pub use event_kind::{EventKind, EventKindIterator, EventKindOrRange};

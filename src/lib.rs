@@ -36,7 +36,7 @@ pub use types::{
     EventKindOrRange, EventPointer, Fee, Filter, Id, IdHex, IdHexPrefix, KeySecurity, Metadata,
     MilliSatoshi, Nip05, NostrBech32, NostrUrl, PayRequestData, PreEvent, PrivateKey, Profile,
     PublicKey, PublicKeyHex, PublicKeyHexPrefix, RelayFees, RelayInformationDocument,
-    RelayLimitation, RelayMessage, RelayRetention, RelayUrl, ShatteredContent, Signature,
+    RelayLimitation, RelayMessage, RelayRetention, RelayUrl, Rumor, ShatteredContent, Signature,
     SignatureHex, SimpleRelayList, SimpleRelayUsage, Span, SubscriptionId, Tag, UncheckedUrl,
     Unixtime, Url, XOnlyPublicKey, ZapData,
 };
