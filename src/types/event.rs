@@ -242,6 +242,20 @@ impl Rumor {
             ots: input.ots,
         })
     }
+
+    /// Turn into an Event (the signature will be all zeroes)
+    pub fn into_event_with_bad_signature(self) -> Event {
+        Event {
+            id: self.id,
+            pubkey: self.pubkey,
+            created_at: self.created_at,
+            kind: self.kind,
+            sig: Signature::zeroes(),
+            ots: self.ots,
+            content: self.content,
+            tags: self.tags,
+        }
+    }
 }
 
 /// Data about a Zap

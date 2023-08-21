@@ -22,6 +22,13 @@ impl Signature {
         Ok(Signature(secp256k1::schnorr::Signature::from_slice(&vec)?))
     }
 
+    /// A dummy signature of all zeroes
+    pub fn zeroes() -> Signature {
+        Signature(secp256k1::schnorr::Signature::from_slice(
+            &[0; 64]
+        ).unwrap())
+    }
+
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> Signature {
