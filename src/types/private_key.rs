@@ -343,8 +343,7 @@ impl PrivateKey {
             let end_random_padding = end_forced_padding + random_padding;
 
             // Make space
-            new_plaintext = Vec::with_capacity(end_random_padding);
-            new_plaintext.resize(end_random_padding, 0);
+            new_plaintext = vec![0; end_random_padding];
 
             new_plaintext[0..4].copy_from_slice((plaintext.len() as u32).to_be_bytes().as_slice());
             new_plaintext[4..end_plaintext].copy_from_slice(plaintext);
@@ -360,7 +359,12 @@ impl PrivateKey {
 
     /// Decrypt content via a shared secret according to NIP-44
     /// Only version 1 is currently supported.
-    pub fn nip44_decrypt(&self, other: &PublicKey, ciphertext: &str, padded: bool) -> Result<Vec<u8>, Error> {
+    pub fn nip44_decrypt(
+        &self,
+        other: &PublicKey,
+        ciphertext: &str,
+        padded: bool,
+    ) -> Result<Vec<u8>, Error> {
         use chacha20::cipher::StreamCipher;
         let mut shared_secret = self.shared_secret_nip44(other);
         let bytes = base64::engine::general_purpose::STANDARD.decode(ciphertext)?;
@@ -379,7 +383,7 @@ impl PrivateKey {
             if 4 + len as usize > output.len() {
                 return Err(Error::OutOfRange(len as usize));
             }
-            Ok(output[4..4+len as usize].to_owned())
+            Ok(output[4..4 + len as usize].to_owned())
         } else {
             Ok(output)
         }
@@ -972,21 +976,24 @@ mod test {
 
     #[test]
     fn test_privkey_nip44_pad() {
-
         let sec1 = PrivateKey::try_from_hex_string(
-            "0000000000000000000000000000000000000000000000000000000000000001"
-        ).unwrap();
+            "0000000000000000000000000000000000000000000000000000000000000001",
+        )
+        .unwrap();
 
         let sec2 = PrivateKey::try_from_hex_string(
-            "0000000000000000000000000000000000000000000000000000000000000002"
-        ).unwrap();
+            "0000000000000000000000000000000000000000000000000000000000000002",
+        )
+        .unwrap();
 
         let plaintext = "yes".as_bytes();
 
         let ciphertext = sec1.nip44_encrypt(&sec2.public_key(), plaintext, true, None);
         assert!(ciphertext.len() >= 32);
 
-        let plaintext2 = sec2.nip44_decrypt(&sec1.public_key(), &ciphertext, true).unwrap();
+        let plaintext2 = sec2
+            .nip44_decrypt(&sec1.public_key(), &ciphertext, true)
+            .unwrap();
         assert_eq!(plaintext, plaintext2);
     }
 }

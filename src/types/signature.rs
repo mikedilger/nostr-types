@@ -24,9 +24,7 @@ impl Signature {
 
     /// A dummy signature of all zeroes
     pub fn zeroes() -> Signature {
-        Signature(secp256k1::schnorr::Signature::from_slice(
-            &[0; 64]
-        ).unwrap())
+        Signature(secp256k1::schnorr::Signature::from_slice(&[0; 64]).unwrap())
     }
 
     // Mock data for testing

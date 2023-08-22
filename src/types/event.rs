@@ -5,8 +5,8 @@ use super::{
 use crate::Error;
 use base64::Engine;
 use lightning_invoice::Invoice;
-use rand_core::OsRng;
 use rand::Rng;
+use rand_core::OsRng;
 #[cfg(feature = "speedy")]
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -139,9 +139,12 @@ impl PreEvent {
     /// Create a rumor, wrapped in a seal, shrouded in a giftwrap
     /// The input.pubkey must match the privkey
     /// See NIP-59
-    pub fn into_gift_wrap(self, privkey: &PrivateKey, pubkey: &PublicKey, pad: bool)
-                     -> Result<Event, Error>
-    {
+    pub fn into_gift_wrap(
+        self,
+        privkey: &PrivateKey,
+        pubkey: &PublicKey,
+        pad: bool,
+    ) -> Result<Event, Error> {
         let sender_pubkey = self.pubkey;
 
         if privkey.public_key() != sender_pubkey {
@@ -149,16 +152,19 @@ impl PreEvent {
         }
 
         let seal_backdate = Unixtime(
-            self.created_at.0 - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 7))
+            self.created_at.0
+                - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 7)),
         );
-        let giftwrap_backdate = Unixtime (
-            self.created_at.0 - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 7))
+        let giftwrap_backdate = Unixtime(
+            self.created_at.0
+                - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 7)),
         );
 
         let seal = {
             let rumor = Rumor::new(self)?;
             let rumor_json = serde_json::to_string(&rumor)?;
-            let encrypted_rumor_json = privkey.nip44_encrypt(pubkey, rumor_json.as_bytes(), pad, None);
+            let encrypted_rumor_json =
+                privkey.nip44_encrypt(pubkey, rumor_json.as_bytes(), pad, None);
 
             let pre_seal = PreEvent {
                 pubkey: sender_pubkey,
@@ -176,7 +182,8 @@ impl PreEvent {
         let random_private_key = PrivateKey::generate();
 
         let seal_json = serde_json::to_string(&seal)?;
-        let encrypted_seal_json = random_private_key.nip44_encrypt(pubkey, seal_json.as_bytes(), pad, None);
+        let encrypted_seal_json =
+            random_private_key.nip44_encrypt(pubkey, seal_json.as_bytes(), pad, None);
 
         let pre_giftwrap = PreEvent {
             pubkey: random_private_key.public_key(),
@@ -184,14 +191,12 @@ impl PreEvent {
             kind: EventKind::GiftWrap,
             ots: None,
             content: encrypted_seal_json,
-            tags: vec![
-                Tag::Pubkey {
-                    pubkey: (*pubkey).into(),
-                    recommended_relay_url: None,
-                    petname: None,
-                    trailing: vec![],
-                }
-            ]
+            tags: vec![Tag::Pubkey {
+                pubkey: (*pubkey).into(),
+                recommended_relay_url: None,
+                petname: None,
+                trailing: vec![],
+            }],
         };
 
         Event::new(pre_giftwrap, &random_private_key)
@@ -1170,7 +1175,7 @@ impl Event {
                 }
             }
         }
-        if ! tagged {
+        if !tagged {
             return Err(Error::InvalidRecipient);
         }
 
@@ -1393,7 +1398,7 @@ impl From<Event> for Rumor {
             kind: e.kind,
             ots: e.ots,
             content: e.content,
-            tags: e.tags
+            tags: e.tags,
         }
     }
 }
@@ -1406,7 +1411,7 @@ impl From<Rumor> for PreEvent {
             kind: r.kind,
             ots: r.ots,
             content: r.content,
-            tags: r.tags
+            tags: r.tags,
         }
     }
 }
@@ -1661,15 +1666,15 @@ mod test {
 
     #[test]
     fn test_event_gift_wrap() {
-
         let sec1 = PrivateKey::try_from_hex_string(
-            "0000000000000000000000000000000000000000000000000000000000000001"
-        ).unwrap();
+            "0000000000000000000000000000000000000000000000000000000000000001",
+        )
+        .unwrap();
 
         let sec2 = PrivateKey::try_from_hex_string(
-            "0000000000000000000000000000000000000000000000000000000000000002"
-        ).unwrap();
-
+            "0000000000000000000000000000000000000000000000000000000000000002",
+        )
+        .unwrap();
 
         let pre = PreEvent {
             pubkey: sec1.public_key(),
@@ -1680,12 +1685,14 @@ mod test {
             tags: vec![],
         };
 
-        let gift_wrap = pre.clone().into_gift_wrap(&sec1, &sec2.public_key(), true).unwrap();
+        let gift_wrap = pre
+            .clone()
+            .into_gift_wrap(&sec1, &sec2.public_key(), true)
+            .unwrap();
 
         let rumor = gift_wrap.giftwrap_unwrap(&sec2, true).unwrap();
         let output_pre: PreEvent = rumor.into();
 
         assert_eq!(pre, output_pre);
     }
-
 }
