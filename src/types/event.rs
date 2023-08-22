@@ -1190,10 +1190,8 @@ impl Event {
         let author = seal.pubkey;
 
         // Decrypt the content
-        println!("CHECKPOINT PRE-BETA");
         println!("{}", seal.content);
         let content = privkey.nip44_decrypt(&seal.pubkey, &seal.content, pad)?;
-        println!("CHECKPOINT BETA");
         let content = String::from_utf8(content)?;
 
         // Translate into a Rumor
