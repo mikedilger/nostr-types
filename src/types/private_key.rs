@@ -437,7 +437,7 @@ impl PrivateKey {
 
             let ciphertext = match cipher.encrypt(&nonce, payload) {
                 Ok(c) => c,
-                Err(_) => return Err(Error::Encryption),
+                Err(_) => return Err(Error::PrivateKeyEncryption),
             };
 
             inner_secret.zeroize();
@@ -527,7 +527,7 @@ impl PrivateKey {
 
         let mut inner_secret = match cipher.decrypt(nonce.into(), payload) {
             Ok(is) => is,
-            Err(_) => return Err(Error::Encryption),
+            Err(_) => return Err(Error::PrivateKeyEncryption),
         };
 
         if associated_data.is_empty() {

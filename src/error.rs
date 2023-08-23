@@ -20,8 +20,8 @@ pub enum Error {
     Bech32(#[from] bech32::Error),
 
     /// Encryption/Decryption Error
-    #[error("Encryption/Decryption Error")]
-    Encryption,
+    #[error("Private Key Encryption/Decryption Error")]
+    PrivateKeyEncryption,
 
     /// From utf8 Error
     #[error("From UTF-8 Error")]
