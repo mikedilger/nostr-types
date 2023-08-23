@@ -179,7 +179,7 @@ impl EventKind {
     pub fn is_feed_displayable(&self) -> bool {
         matches!(
             *self,
-            TextNote | EncryptedDirectMessage | Repost | LongFormContent
+            TextNote | EncryptedDirectMessage | Repost | DmChat | GenericRepost | LongFormContent
         )
     }
 
