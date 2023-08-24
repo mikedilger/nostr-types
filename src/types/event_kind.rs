@@ -108,6 +108,8 @@ pub enum EventKind {
     DraftLongFormContent = 30024,
     /// Application Specific Data, (NIP-78)
     AppSpecificData = 30078,
+    /// User Status (NIP-315 PR 737)
+    UserStatus = 30315,
     /// Live Event (NIP-53)
     LiveEvent = 30311,
     /// Classified Listing (NIP-99)
@@ -244,6 +246,7 @@ static WELL_KNOWN_KINDS: &[EventKind] = &[
     LongFormContent,
     DraftLongFormContent,
     AppSpecificData,
+    UserStatus,
     LiveEvent,
     ClassifiedListing,
     DraftClassifiedListing,
@@ -331,6 +334,7 @@ impl From<u32> for EventKind {
             30023 => LongFormContent,
             30024 => DraftLongFormContent,
             30078 => AppSpecificData,
+            30315 => UserStatus,
             30311 => LiveEvent,
             30402 => ClassifiedListing,
             30403 => DraftClassifiedListing,
@@ -399,6 +403,7 @@ impl From<EventKind> for u32 {
             LongFormContent => 30023,
             DraftLongFormContent => 30024,
             AppSpecificData => 30078,
+            UserStatus => 30315,
             LiveEvent => 30311,
             ClassifiedListing => 30402,
             DraftClassifiedListing => 30403,
