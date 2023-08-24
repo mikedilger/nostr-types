@@ -1195,7 +1195,6 @@ impl Event {
         let author = seal.pubkey;
 
         // Decrypt the content
-        println!("{}", seal.content);
         let content = privkey.nip44_decrypt(&seal.pubkey, &seal.content, pad)?;
         let content = String::from_utf8(content)?;
 
