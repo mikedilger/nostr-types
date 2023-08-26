@@ -12,7 +12,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 
 /// This is a public key, which identifies an actor (usually a person) and is shared.
-#[derive(AsMut, AsRef, Copy, Clone, Debug, Deref, Eq, From, Into, PartialEq)]
+#[derive(AsMut, AsRef, Copy, Clone, Debug, Deref, Eq, From, Into, PartialEq, PartialOrd, Ord)]
 pub struct PublicKey([u8; 32]);
 
 impl PublicKey {
