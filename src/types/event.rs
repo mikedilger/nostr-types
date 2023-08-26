@@ -564,6 +564,21 @@ impl Event {
         output
     }
 
+    /// If the pubkey is tagged in the event
+    pub fn is_tagged(&self, pubkey: &PublicKey) -> bool {
+        let pkh: PublicKeyHex = pubkey.into();
+
+        for tag in self.tags.iter() {
+            if let Tag::Pubkey { pubkey, .. } = tag {
+                if *pubkey == pkh {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
     /// If the event refers to people within the contents, get all the PublicKeys it refers
     /// to within the contents.
     pub fn people_referenced_in_content(&self) -> Vec<PublicKey> {

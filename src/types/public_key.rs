@@ -215,7 +215,7 @@ impl PublicKeyHex {
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock_deterministic() -> PublicKeyHex {
-        From::from(PublicKey::mock_deterministic())
+        PublicKey::mock_deterministic().into()
     }
 
     /// Export as a bech32 encoded string
@@ -268,9 +268,23 @@ impl TryFrom<&str> for PublicKeyHex {
     }
 }
 
+impl From<&PublicKey> for PublicKeyHex {
+    fn from(pk: &PublicKey) -> PublicKeyHex {
+        PublicKeyHex(pk.as_hex_string())
+    }
+}
+
 impl From<PublicKey> for PublicKeyHex {
     fn from(pk: PublicKey) -> PublicKeyHex {
         PublicKeyHex(pk.as_hex_string())
+    }
+}
+
+impl TryFrom<&PublicKeyHex> for PublicKey {
+    type Error = Error;
+
+    fn try_from(pkh: &PublicKeyHex) -> Result<PublicKey, Error> {
+        PublicKey::try_from_hex_string(&pkh.0, true)
     }
 }
 
