@@ -533,7 +533,20 @@ impl Event {
         let iv_vec: Vec<u8> = base64::engine::general_purpose::STANDARD.decode(parts[1])?;
         let iv: [u8; 16] = iv_vec.try_into().unwrap();
 
-        let decrypted_bytes = private_key.nip04_decrypt(&self.pubkey, &ciphertext, iv)?;
+        let pubkey = if self.pubkey == private_key.public_key() {
+            // If you are the author, get the pubkey from the tags
+            self.people()
+                .iter()
+                .filter_map(|(pkh, _, _)| PublicKey::try_from(pkh).ok())
+                .filter(|pk| *pk != self.pubkey)
+                .nth(0)
+                .ok_or(Error::InvalidEncryptedEvent)?
+        } else {
+            self.pubkey
+        };
+
+        let decrypted_bytes = private_key.nip04_decrypt(&pubkey, &ciphertext, iv)?;
+
         let s: String = String::from_utf8_lossy(&decrypted_bytes).into();
         Ok(s)
     }
