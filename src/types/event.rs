@@ -540,7 +540,7 @@ impl Event {
                 .filter_map(|(pkh, _, _)| PublicKey::try_from(pkh).ok())
                 .filter(|pk| *pk != self.pubkey)
                 .nth(0)
-                .ok_or(Error::InvalidEncryptedEvent)?
+                .unwrap_or(self.pubkey) // in case you sent it to yourself.
         } else {
             self.pubkey
         };
