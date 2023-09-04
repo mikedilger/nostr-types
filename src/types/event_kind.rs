@@ -187,10 +187,7 @@ impl EventKind {
 
     /// Is direct message related
     pub fn is_direct_message_related(&self) -> bool {
-        matches!(
-            *self,
-            EncryptedDirectMessage | DmChat | GiftWrap
-        )
+        matches!(*self, EncryptedDirectMessage | DmChat | GiftWrap)
     }
 
     /// If this event kind augments a feed related event
