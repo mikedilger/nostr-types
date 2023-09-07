@@ -132,6 +132,11 @@ impl Url {
         &self.0
     }
 
+    /// As url crate Url
+    pub fn as_url_crate_url(&self) -> url::Url {
+        url::Url::parse(&self.0).unwrap()
+    }
+
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> Url {
@@ -171,6 +176,11 @@ impl RelayUrl {
             return Err(Error::InvalidUrlScheme(url.scheme().to_owned()));
         }
 
+        // Verify domain is some
+        if url.domain().is_none() {
+            return Err(Error::Url(format!("URL has no domain: {}", u.0)));
+        }
+
         Ok(RelayUrl(url.as_str().to_owned()))
     }
 
@@ -186,8 +196,14 @@ impl RelayUrl {
     }
 
     /// Convert into a Url
+    // fixme should be 'as_url'
     pub fn to_url(&self) -> Url {
         Url(self.0.clone())
+    }
+
+    /// As url crate Url
+    pub fn as_url_crate_url(&self) -> url::Url {
+        url::Url::parse(&self.0).unwrap()
     }
 
     /// As nrelay
@@ -203,6 +219,11 @@ impl RelayUrl {
     /// Convert into a UncheckedUrl
     pub fn to_unchecked_url(&self) -> UncheckedUrl {
         UncheckedUrl(self.0.clone())
+    }
+
+    /// Domain
+    pub fn domain(&self) -> String {
+        self.as_url_crate_url().domain().unwrap().to_owned()
     }
 
     /// As &str
