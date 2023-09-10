@@ -257,7 +257,7 @@ impl From<UncheckedUrl> for NostrUrl {
 
 impl From<RelayUrl> for NostrUrl {
     fn from(u: RelayUrl) -> NostrUrl {
-        NostrUrl(NostrBech32::Relay(UncheckedUrl(u.0)))
+        NostrUrl(NostrBech32::Relay(UncheckedUrl(u.into_string())))
     }
 }
 

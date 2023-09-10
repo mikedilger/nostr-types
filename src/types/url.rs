@@ -70,7 +70,7 @@ impl UncheckedUrl {
 /// We don't serialize/deserialize these directly, see `UncheckedUrl` for that
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
-pub struct Url(pub String);
+pub struct Url(String);
 
 impl fmt::Display for Url {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -132,6 +132,11 @@ impl Url {
         &self.0
     }
 
+    /// Into String
+    pub fn into_string(self) -> String {
+        self.0
+    }
+
     /// As url crate Url
     pub fn as_url_crate_url(&self) -> url::Url {
         url::Url::parse(&self.0).unwrap()
@@ -148,7 +153,7 @@ impl Url {
 /// We don't serialize/deserialize these directly, see `UncheckedUrl` for that
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
-pub struct RelayUrl(pub String);
+pub struct RelayUrl(String);
 
 impl fmt::Display for RelayUrl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -176,9 +181,9 @@ impl RelayUrl {
             return Err(Error::InvalidUrlScheme(url.scheme().to_owned()));
         }
 
-        // Verify domain is some
-        if url.domain().is_none() {
-            return Err(Error::Url(format!("URL has no domain: {}", u.0)));
+        // Verify host is some
+        if !url.has_host() {
+            return Err(Error::Url(format!("URL has no host: {}", u.0)));
         }
 
         Ok(RelayUrl(url.as_str().to_owned()))
@@ -221,14 +226,19 @@ impl RelayUrl {
         UncheckedUrl(self.0.clone())
     }
 
-    /// Domain
-    pub fn domain(&self) -> String {
-        self.as_url_crate_url().domain().unwrap().to_owned()
+    /// Host
+    pub fn host(&self) -> String {
+        self.as_url_crate_url().host_str().unwrap().to_owned()
     }
 
     /// As &str
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    /// Into String
+    pub fn into_string(self) -> String {
+        self.0
     }
 
     // Mock data for testing
