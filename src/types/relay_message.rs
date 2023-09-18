@@ -1,6 +1,6 @@
 use super::{Event, Id, SubscriptionId};
 use serde::de::Error as DeError;
-use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
+use serde::de::{Deserialize, Deserializer, IgnoredAny, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
 #[cfg(feature = "speedy")]
 use speedy::{Readable, Writable};
@@ -102,6 +102,7 @@ impl<'de> Visitor<'de> for RelayMessageVisitor {
         let word: &str = seq
             .next_element()?
             .ok_or_else(|| DeError::custom("Message missing initial string field"))?;
+        let mut output: Option<RelayMessage> = None;
         if word == "EVENT" {
             let id: SubscriptionId = seq
                 .next_element()?
@@ -109,17 +110,17 @@ impl<'de> Visitor<'de> for RelayMessageVisitor {
             let event: Event = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing event field"))?;
-            Ok(RelayMessage::Event(id, Box::new(event)))
+            output = Some(RelayMessage::Event(id, Box::new(event)));
         } else if word == "NOTICE" {
             let s: String = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing string field"))?;
-            Ok(RelayMessage::Notice(s))
+            output = Some(RelayMessage::Notice(s));
         } else if word == "EOSE" {
             let id: SubscriptionId = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing id field"))?;
-            Ok(RelayMessage::Eose(id))
+            output = Some(RelayMessage::Eose(id))
         } else if word == "OK" {
             let id: Id = seq
                 .next_element()?
@@ -130,14 +131,20 @@ impl<'de> Visitor<'de> for RelayMessageVisitor {
             let message: String = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing string field"))?;
-            Ok(RelayMessage::Ok(id, ok, message))
+            output = Some(RelayMessage::Ok(id, ok, message));
         } else if word == "AUTH" {
             let challenge: String = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing challenge field"))?;
-            Ok(RelayMessage::Auth(challenge))
-        } else {
-            Err(DeError::custom(format!("Unknown Message: {word}")))
+            output = Some(RelayMessage::Auth(challenge));
+        }
+
+        // Consume any trailing fields
+        while let Some(_ignored) = seq.next_element::<IgnoredAny>()? {}
+
+        match output {
+            Some(rm) => Ok(rm),
+            None => Err(DeError::custom(format!("Unknown Message: {word}"))),
         }
     }
 }

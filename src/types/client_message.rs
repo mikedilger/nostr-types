@@ -1,6 +1,6 @@
 use super::{Event, Filter, SubscriptionId};
 use serde::de::Error as DeError;
-use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
+use serde::de::{Deserialize, Deserializer, IgnoredAny, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
 #[cfg(feature = "speedy")]
 use speedy::{Readable, Writable};
@@ -93,11 +93,12 @@ impl<'de> Visitor<'de> for ClientMessageVisitor {
         let word: &str = seq
             .next_element()?
             .ok_or_else(|| DeError::custom("Message missing initial string field"))?;
+        let mut output: Option<ClientMessage> = None;
         if word == "EVENT" {
             let event: Event = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing event field"))?;
-            Ok(ClientMessage::Event(Box::new(event)))
+            output = Some(ClientMessage::Event(Box::new(event)))
         } else if word == "REQ" {
             let id: SubscriptionId = seq
                 .next_element()?
@@ -110,19 +111,25 @@ impl<'de> Visitor<'de> for ClientMessageVisitor {
                     Some(fil) => filters.push(fil),
                 }
             }
-            Ok(ClientMessage::Req(id, filters))
+            output = Some(ClientMessage::Req(id, filters))
         } else if word == "CLOSE" {
             let id: SubscriptionId = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing id field"))?;
-            Ok(ClientMessage::Close(id))
+            output = Some(ClientMessage::Close(id))
         } else if word == "AUTH" {
             let event: Event = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing event field"))?;
-            Ok(ClientMessage::Auth(Box::new(event)))
-        } else {
-            Err(DeError::custom(format!("Unknown Message: {word}")))
+            output = Some(ClientMessage::Auth(Box::new(event)))
+        }
+
+        // Consume any trailing fields
+        while let Some(_ignored) = seq.next_element::<IgnoredAny>()? {}
+
+        match output {
+            Some(cm) => Ok(cm),
+            None => Err(DeError::custom(format!("Unknown Message: {word}"))),
         }
     }
 }
