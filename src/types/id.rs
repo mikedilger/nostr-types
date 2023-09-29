@@ -107,7 +107,22 @@ impl Visitor<'_> for IdVisitor {
 /// An event identifier, constructed as a SHA256 hash of the event fields according to NIP-01, as a hex string
 ///
 /// You can convert from an `Id` into this with `From`/`Into`.  You can convert this back to an `Id` with `TryFrom`/`TryInto`.
-#[derive(AsMut, AsRef, Clone, Debug, Deref, Display, Eq, From, FromStr, Hash, Into, PartialEq)]
+#[derive(
+    AsMut,
+    AsRef,
+    Clone,
+    Debug,
+    Deref,
+    Display,
+    Eq,
+    From,
+    FromStr,
+    Hash,
+    Into,
+    Ord,
+    PartialEq,
+    PartialOrd,
+)]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct IdHex(String);
 

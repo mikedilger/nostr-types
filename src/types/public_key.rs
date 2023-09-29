@@ -201,7 +201,22 @@ impl<C: Context> Writable<C> for PublicKey {
 /// This is a public key, which identifies an actor (usually a person) and is shared, as a hex string
 ///
 /// You can convert from a `PublicKey` into this with `From`/`Into`.  You can convert this back to a `PublicKey` with `TryFrom`/`TryInto`.
-#[derive(AsMut, AsRef, Clone, Debug, Deref, Display, Eq, From, FromStr, Hash, Into, PartialEq)]
+#[derive(
+    AsMut,
+    AsRef,
+    Clone,
+    Debug,
+    Deref,
+    Display,
+    Eq,
+    From,
+    FromStr,
+    Hash,
+    Into,
+    PartialEq,
+    PartialOrd,
+    Ord,
+)]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct PublicKeyHex(String);
 
