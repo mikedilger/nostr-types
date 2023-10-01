@@ -41,7 +41,7 @@ pub struct Event {
     /// the rest of the event data.
     pub sig: Signature,
 
-    /// An optional verified time for the event (using OpenTimestamp)
+    /// DEPRECATED (please set to Null): An optional verified time for the event (using OpenTimestamp)
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
     pub ots: Option<String>,
@@ -81,8 +81,6 @@ pub struct PreEvent {
     pub tags: Vec<Tag>,
     /// The content of the event
     pub content: String,
-    /// An optional verified time for the event (using OpenTimestamp)
-    pub ots: Option<String>,
 }
 
 impl PreEvent {
@@ -132,7 +130,6 @@ impl PreEvent {
                 trailing: Vec::new(),
             }],
             content,
-            ots: None,
         })
     }
 
@@ -170,7 +167,6 @@ impl PreEvent {
                 pubkey: sender_pubkey,
                 created_at: seal_backdate,
                 kind: EventKind::Seal,
-                ots: None,
                 content: encrypted_rumor_json,
                 tags: vec![],
             };
@@ -189,7 +185,6 @@ impl PreEvent {
             pubkey: random_private_key.public_key(),
             created_at: giftwrap_backdate,
             kind: EventKind::GiftWrap,
-            ots: None,
             content: encrypted_seal_json,
             tags: vec![Tag::Pubkey {
                 pubkey: (*pubkey).into(),
@@ -219,11 +214,6 @@ pub struct Rumor {
     /// The kind of event
     pub kind: EventKind,
 
-    /// An optional verified time for the event (using OpenTimestamp)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
-    pub ots: Option<String>,
-
     /// The content of the event
     pub content: String,
 
@@ -244,7 +234,6 @@ impl Rumor {
             kind: input.kind,
             tags: input.tags,
             content: input.content,
-            ots: input.ots,
         })
     }
 
@@ -256,7 +245,7 @@ impl Rumor {
             created_at: self.created_at,
             kind: self.kind,
             sig: Signature::zeroes(),
-            ots: self.ots,
+            ots: None,
             content: self.content,
             tags: self.tags,
         }
@@ -295,7 +284,7 @@ impl Event {
             kind: input.kind,
             tags: input.tags,
             content: input.content,
-            ots: input.ots,
+            ots: None,
             sig: signature,
         })
     }
@@ -404,7 +393,7 @@ impl Event {
             kind: input.kind,
             tags: input.tags,
             content: input.content,
-            ots: input.ots,
+            ots: None,
             sig: signature,
         })
     }
@@ -457,7 +446,6 @@ impl Event {
             kind: EventKind::mock(),
             tags: vec![Tag::mock(), Tag::mock()],
             content: "This is a test".to_string(),
-            ots: None,
         };
         Event::new(pre, &private_key).unwrap()
     }
@@ -504,7 +492,6 @@ impl Event {
                 },
             ],
             content,
-            ots: None,
         };
 
         if let Some(ze) = zapped_event {
@@ -1423,7 +1410,6 @@ impl From<Event> for Rumor {
             pubkey: e.pubkey,
             created_at: e.created_at,
             kind: e.kind,
-            ots: e.ots,
             content: e.content,
             tags: e.tags,
         }
@@ -1436,7 +1422,6 @@ impl From<Rumor> for PreEvent {
             pubkey: r.pubkey,
             created_at: r.created_at,
             kind: r.kind,
-            ots: r.ots,
             content: r.content,
             tags: r.tags,
         }
@@ -1485,7 +1470,6 @@ mod test {
                 trailing: Vec::new(),
             }],
             content: "Hello World!".to_string(),
-            ots: None,
         };
         let mut event = Event::new(preevent, &privkey).unwrap();
         assert!(event.verify(None).is_ok());
@@ -1544,7 +1528,6 @@ mod test {
                 },
             ],
             content: "Hello World!".to_string(),
-            ots: None,
         };
         Event::new(preevent, &privkey).unwrap()
     }
@@ -1631,7 +1614,6 @@ mod test {
                 },
             ],
             content: "Hello World!".to_string(),
-            ots: None,
         };
         let event = Event::new(preevent, &privkey).unwrap();
         let bytes = event.write_to_vec().unwrap();
@@ -1707,7 +1689,6 @@ mod test {
             pubkey: sec1.public_key(),
             created_at: Unixtime(1692_000_000),
             kind: EventKind::TextNote,
-            ots: None,
             content: "Hey man, this rocks! Please reply for a test.".to_string(),
             tags: vec![],
         };
