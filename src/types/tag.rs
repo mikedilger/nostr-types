@@ -207,7 +207,7 @@ impl Tag {
             Tag::Parameter { .. } => "parameter".to_string(),
             Tag::Title { .. } => "title".to_string(),
             Tag::Other { tag, .. } => tag.clone(),
-            Tag::Empty => panic!("empty tags have no tagname"),
+            Tag::Empty => "".to_string(),
         }
     }
 
