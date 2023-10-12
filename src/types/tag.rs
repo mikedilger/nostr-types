@@ -9,6 +9,7 @@ use std::fmt;
 
 /// A tag on an Event
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub enum Tag {
     /// Address 'a' tag to a parameterized replaceable event
@@ -27,7 +28,7 @@ pub enum Tag {
 
         /// Trailing
         trailing: Vec<String>,
-    },
+    } = 0,
 
     /// Content Warning to alert client to hide content until user approves
     ContentWarning {
@@ -36,7 +37,7 @@ pub enum Tag {
 
         /// Trailing
         trailing: Vec<String>,
-    },
+    } = 1,
 
     /// Delegation (Delegated Event Signing)
     Delegation {
@@ -51,7 +52,7 @@ pub enum Tag {
 
         /// Trailing
         trailing: Vec<String>,
-    },
+    } = 2,
 
     /// This is a reference to an event, where the first string is the event Id.
     /// The second string is defined in NIP-01 as an optional URL, but subsequent
@@ -68,7 +69,7 @@ pub enum Tag {
 
         /// Trailing
         trailing: Vec<String>,
-    },
+    } = 3,
 
     /// A time when the event should be considered expired
     Expiration {
@@ -77,7 +78,7 @@ pub enum Tag {
 
         /// Trailing
         trailing: Vec<String>,
-    },
+    } = 4,
 
     /// 'p' This is a reference to a user by public key, where the first string is
     /// the PublicKey. The second string is defined in NIP-01 as an optional URL,
@@ -94,7 +95,7 @@ pub enum Tag {
 
         /// Trailing
         trailing: Vec<String>,
-    },
+    } = 5,
 
     /// 't' A hashtag
     Hashtag {
@@ -103,7 +104,7 @@ pub enum Tag {
 
         /// Trailing
         trailing: Vec<String>,
-    },
+    } = 6,
 
     /// 'r' A reference to a URL
     Reference {
@@ -115,7 +116,7 @@ pub enum Tag {
 
         /// Trailing
         trailing: Vec<String>,
-    },
+    } = 7,
 
     /// 'g' A geohash
     Geohash {
@@ -124,7 +125,7 @@ pub enum Tag {
 
         /// Trailing
         trailing: Vec<String>,
-    },
+    } = 8,
 
     /// 'd' Identifier tag
     Identifier {
@@ -133,7 +134,7 @@ pub enum Tag {
 
         /// Trailing
         trailing: Vec<String>,
-    },
+    } = 9,
 
     /// A subject. The first string is the subject. Should only be in TextNote events.
     Subject {
@@ -142,7 +143,7 @@ pub enum Tag {
 
         /// Trailing
         trailing: Vec<String>,
-    },
+    } = 10,
 
     /// A nonce tag for Proof of Work
     Nonce {
@@ -154,7 +155,7 @@ pub enum Tag {
 
         /// Trailing
         trailing: Vec<String>,
-    },
+    } = 11,
 
     /// There is no known nostr tag like this. This was a mistake, but we can't remove it
     /// or deserialization of data serialized with this in mind will break.
@@ -164,7 +165,7 @@ pub enum Tag {
 
         /// Trailing
         trailing: Vec<String>,
-    },
+    } = 12,
 
     /// Title (30023 long form)
     Title {
@@ -173,7 +174,7 @@ pub enum Tag {
 
         /// Trailing
         trailing: Vec<String>,
-    },
+    } = 13,
 
     /// Any other tag
     Other {
@@ -182,10 +183,22 @@ pub enum Tag {
 
         /// The subsequent fields
         data: Vec<String>,
-    },
+    } = 14,
 
     /// An empty array (kept so signature remains valid across ser/de)
-    Empty,
+    Empty = 15,
+
+    /// Direct parent of an event, 'E' tag
+    EventParent {
+        /// The id of some other event that is the direct parent to this event
+        id: Id,
+
+        /// A recommended relay URL to find that other event
+        recommended_relay_url: Option<UncheckedUrl>,
+
+        /// Trailing
+        trailing: Vec<String>,
+    } = 16,
 }
 
 impl Tag {
@@ -196,6 +209,7 @@ impl Tag {
             Tag::ContentWarning { .. } => "content-warning".to_string(),
             Tag::Delegation { .. } => "delegation".to_string(),
             Tag::Event { .. } => "e".to_string(),
+            Tag::EventParent { .. } => "E".to_string(),
             Tag::Expiration { .. } => "expiration".to_string(),
             Tag::Pubkey { .. } => "p".to_string(),
             Tag::Hashtag { .. } => "t".to_string(),
@@ -312,6 +326,24 @@ impl Serialize for Tag {
                 }
                 if let Some(m) = marker {
                     seq.serialize_element(m)?;
+                } else if !trailing.is_empty() {
+                    seq.serialize_element("")?;
+                }
+                for s in trailing {
+                    seq.serialize_element(s)?;
+                }
+                seq.end()
+            }
+            Tag::EventParent {
+                id,
+                recommended_relay_url,
+                trailing,
+            } => {
+                let mut seq = serializer.serialize_seq(None)?;
+                seq.serialize_element("E")?;
+                seq.serialize_element(id)?;
+                if let Some(rru) = recommended_relay_url {
+                    seq.serialize_element(rru)?;
                 } else if !trailing.is_empty() {
                     seq.serialize_element("")?;
                 }
@@ -612,6 +644,26 @@ impl<'de> Visitor<'de> for TagVisitor {
                 id,
                 recommended_relay_url,
                 marker,
+                trailing,
+            })
+        } else if tagname == "E" {
+            let id: Id = match seq.next_element()? {
+                Some(id) => id,
+                None => {
+                    return Ok(Tag::Other {
+                        tag: tagname.to_string(),
+                        data: vec![],
+                    });
+                }
+            };
+            let recommended_relay_url: Option<UncheckedUrl> = seq.next_element()?;
+            let mut trailing: Vec<String> = Vec::new();
+            while let Some(s) = seq.next_element()? {
+                trailing.push(s);
+            }
+            Ok(Tag::EventParent {
+                id,
+                recommended_relay_url,
                 trailing,
             })
         } else if tagname == "expiration" {

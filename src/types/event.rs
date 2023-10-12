@@ -622,6 +622,23 @@ impl Event {
             return None;
         }
 
+        // look for an 'E' tag (EventParent)
+        for tag in self.tags.iter() {
+            if let Tag::EventParent {
+                id,
+                recommended_relay_url,
+                ..
+            } = tag
+            {
+                return Some((
+                    *id,
+                    recommended_relay_url
+                        .as_ref()
+                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                ));
+            }
+        }
+
         // If there are no 'e' tags, then none
         let num_e_tags = self
             .tags
@@ -754,7 +771,7 @@ impl Event {
     pub fn referred_events(&self) -> Vec<(Id, Option<RelayUrl>, Option<String>)> {
         let mut output: Vec<(Id, Option<RelayUrl>, Option<String>)> = Vec::new();
 
-        // Collect every 'e' tag
+        // Collect every 'e' tag and 'E' tag
         for tag in self.tags.iter() {
             if let Tag::Event {
                 id,
@@ -769,6 +786,19 @@ impl Event {
                         .as_ref()
                         .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
                     marker.clone(),
+                ));
+            } else if let Tag::EventParent {
+                id,
+                recommended_relay_url,
+                ..
+            } = tag
+            {
+                output.push((
+                    *id,
+                    recommended_relay_url
+                        .as_ref()
+                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                    None,
                 ));
             }
         }
