@@ -506,6 +506,17 @@ impl Event {
         Event::new(pre_event, privkey)
     }
 
+    /// Get the effective event kind for events which have 'k' tags
+    pub fn effective_kind(&self) -> EventKind {
+        for tag in self.tags.iter() {
+            if let Tag::Kind { kind, .. } = tag {
+                return (*kind).into();
+            }
+        }
+
+        self.kind
+    }
+
     /// If an event is an EncryptedDirectMessage, decrypt it's contents
     pub fn decrypted_contents(&self, private_key: &PrivateKey) -> Result<String, Error> {
         if self.kind != EventKind::EncryptedDirectMessage {
@@ -1732,5 +1743,14 @@ mod test {
         let output_pre: PreEvent = rumor.into();
 
         assert_eq!(pre, output_pre);
+    }
+
+    #[test]
+    fn test_effective_event_kind() {
+        let raw = r#"{"id":"47074e65e6056d487dce92a12a58385b0bb73ae8de405f5f6b196bb0b89132c4","pubkey":"fa984bd7dbb282f07e16e7ae87b26a2a7b9b90b7246a44771f0cf5ae58018f52","created_at":1697312520,"kind":16,"sig":"d33eb210a32ca07252549ab582f1b2b4e02b67949884f9b29d3625914debd2b5abe819a4cdbf410e2a51c75f82e95d7e876f625620f35b998e8ed2bc4207c425","content":"","tags":[["a","30023:6389be6491e7b693e9f368ece88fcd145f07c068d2c1bbae4247b9b5ef439d32:283946"],["p","6389be6491e7b693e9f368ece88fcd145f07c068d2c1bbae4247b9b5ef439d32"],["k","30023"]]}"#;
+        let e: Event = serde_json::from_str(&raw).unwrap();
+
+        assert_ne!(e.kind, e.effective_kind());
+        assert_eq!(e.effective_kind(), EventKind::LongFormContent);
     }
 }
