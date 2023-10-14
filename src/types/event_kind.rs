@@ -66,6 +66,8 @@ pub enum EventKind {
     Reporting = 1984,
     /// Label (NIP-32)
     Label = 1985,
+    /// Community (exclusive) Post (NIP-72 pr 753)
+    CommunityPost = 4549,
     /// Community Post Approval (NIP-72)
     CommunityPostApproval = 4550,
     /// Zap Request
@@ -181,7 +183,16 @@ impl EventKind {
     pub fn is_feed_displayable(&self) -> bool {
         matches!(
             *self,
-            TextNote | EncryptedDirectMessage | Repost | DmChat | GenericRepost | LongFormContent
+            TextNote
+                | EncryptedDirectMessage
+                | Repost
+                | DmChat
+                | GenericRepost
+                | ChannelMessage
+                | LiveChatMessage
+                | CommunityPost
+                | LongFormContent
+                | DraftLongFormContent
         )
     }
 
@@ -230,6 +241,7 @@ static WELL_KNOWN_KINDS: &[EventKind] = &[
     LiveChatMessage,
     Reporting,
     Label,
+    CommunityPost,
     CommunityPostApproval,
     ZapRequest,
     Zap,
@@ -318,6 +330,7 @@ impl From<u32> for EventKind {
             1311 => LiveChatMessage,
             1984 => Reporting,
             1985 => Label,
+            4549 => CommunityPost,
             4550 => CommunityPostApproval,
             9734 => ZapRequest,
             9735 => Zap,
@@ -387,6 +400,7 @@ impl From<EventKind> for u32 {
             LiveChatMessage => 1311,
             Reporting => 1984,
             Label => 1985,
+            CommunityPost => 4549,
             CommunityPostApproval => 4550,
             ZapRequest => 9734,
             Zap => 9735,
