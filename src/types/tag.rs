@@ -199,6 +199,15 @@ pub enum Tag {
         /// Trailing
         trailing: Vec<String>,
     } = 16,
+
+    /// Kind number 'k'
+    Kind {
+        /// Event kind
+        kind: EventKind,
+
+        /// Trailing
+        trailing: Vec<String>,
+    } = 17,
 }
 
 impl Tag {
@@ -211,6 +220,7 @@ impl Tag {
             Tag::Event { .. } => "e".to_string(),
             Tag::EventParent { .. } => "E".to_string(),
             Tag::Expiration { .. } => "expiration".to_string(),
+            Tag::Kind { .. } => "k".to_string(),
             Tag::Pubkey { .. } => "p".to_string(),
             Tag::Hashtag { .. } => "t".to_string(),
             Tag::Reference { .. } => "r".to_string(),
@@ -356,6 +366,18 @@ impl Serialize for Tag {
                 let mut seq = serializer.serialize_seq(None)?;
                 seq.serialize_element("expiration")?;
                 seq.serialize_element(time)?;
+                for s in trailing {
+                    seq.serialize_element(s)?;
+                }
+                seq.end()
+            }
+            Tag::Kind { kind, trailing } => {
+                let mut seq = serializer.serialize_seq(None)?;
+                seq.serialize_element("k")?;
+                // in tags, we must use string types only
+                let k: u32 = From::from(*kind);
+                let s = format!("{}", k);
+                seq.serialize_element(&s)?;
                 for s in trailing {
                     seq.serialize_element(s)?;
                 }
@@ -775,6 +797,31 @@ impl<'de> Visitor<'de> for TagVisitor {
                 trailing.push(s);
             }
             Ok(Tag::Identifier { d: id, trailing })
+        } else if tagname == "k" {
+            let mut parts: Vec<String> = Vec::new();
+            while let Some(s) = seq.next_element()? {
+                parts.push(s);
+            }
+            if parts.len() < 1 {
+                return Ok(Tag::Other {
+                    tag: tagname.to_string(),
+                    data: parts,
+                });
+            }
+            let kindnum: u32 = match parts[0].parse::<u32>() {
+                Ok(u) => u,
+                Err(_) => {
+                    return Ok(Tag::Other {
+                        tag: tagname.to_string(),
+                        data: parts,
+                    })
+                }
+            };
+            let kind: EventKind = From::from(kindnum);
+            Ok(Tag::Kind {
+                kind,
+                trailing: parts[1..].to_owned(),
+            })
         } else if tagname == "subject" {
             let sub = match seq.next_element()? {
                 Some(s) => s,
