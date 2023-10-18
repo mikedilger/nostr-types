@@ -189,6 +189,7 @@ impl EventKind {
                 | DmChat
                 | GenericRepost
                 | ChannelMessage
+                | FileMetadata
                 | LiveChatMessage
                 | CommunityPost
                 | LongFormContent

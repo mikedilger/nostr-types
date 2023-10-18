@@ -5,6 +5,7 @@ macro_rules! test_serde {
         fn $fnname() {
             let a = <$t>::mock();
             let x = serde_json::to_string(&a).unwrap();
+            println!("{}", x);
             let b = serde_json::from_str(&x).unwrap();
             assert_eq!(a, b);
         }
@@ -36,7 +37,7 @@ mod filter;
 pub use filter::Filter;
 
 mod id;
-pub use id::{Id, IdHex, IdHexPrefix};
+pub use id::{Id, IdHex};
 
 mod metadata;
 pub use metadata::Metadata;
@@ -57,7 +58,7 @@ mod profile;
 pub use profile::Profile;
 
 mod public_key;
-pub use public_key::{PublicKey, PublicKeyHex, PublicKeyHexPrefix, XOnlyPublicKey};
+pub use public_key::{PublicKey, PublicKeyHex, XOnlyPublicKey};
 
 mod relay_message;
 pub use relay_message::RelayMessage;

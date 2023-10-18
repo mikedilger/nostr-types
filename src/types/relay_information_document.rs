@@ -1,4 +1,4 @@
-use super::{EventKind, EventKindOrRange, PublicKeyHexPrefix, Url};
+use super::{EventKind, EventKindOrRange, PublicKeyHex, Url};
 //use serde::de::Error as DeError;
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
@@ -36,11 +36,6 @@ pub struct RelayLimitation {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
     pub max_subid_length: Option<usize>,
-
-    /// min prefix
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
-    pub min_prefix: Option<usize>,
 
     /// max event tags
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -85,9 +80,6 @@ impl fmt::Display for RelayLimitation {
         }
         if let Some(msil) = &self.max_subid_length {
             write!(f, " MaxSubidLength=\"{msil}\"")?;
-        }
-        if let Some(mp) = &self.min_prefix {
-            write!(f, " MinPrefix=\"{mp}\"")?;
         }
         if let Some(met) = &self.max_event_tags {
             write!(f, " MaxEventTags=\"{met}\"")?;
@@ -223,7 +215,7 @@ pub struct RelayInformationDocument {
     pub description: Option<String>,
 
     /// Public key of an administrative contact of the relay
-    pub pubkey: Option<PublicKeyHexPrefix>,
+    pub pubkey: Option<PublicKeyHex>,
 
     /// An administrative contact for the relay. Should be a URI.
     pub contact: Option<String>,
@@ -308,7 +300,7 @@ impl RelayInformationDocument {
         RelayInformationDocument {
             name: Some("Crazy Horse".to_string()),
             description: Some("A really wild horse".to_string()),
-            pubkey: Some(PublicKeyHexPrefix::mock()),
+            pubkey: Some(PublicKeyHex::mock()),
             contact: None,
             supported_nips: vec![11, 12, 13, 14],
             software: None,
@@ -319,7 +311,6 @@ impl RelayInformationDocument {
                 max_filters: Some(100),
                 max_limit: Some(5000),
                 max_subid_length: Some(100),
-                min_prefix: Some(4),
                 max_event_tags: Some(100),
                 max_content_length: Some(8196),
                 min_pow_difficulty: Some(30),
@@ -556,7 +547,7 @@ impl<'de> Visitor<'de> for RidVisitor {
             rid.description = Some(s);
         }
         if let Some(Value::String(s)) = map.remove("pubkey") {
-            rid.pubkey = match PublicKeyHexPrefix::try_from_string(s) {
+            rid.pubkey = match PublicKeyHex::try_from_string(s) {
                 Ok(pkh) => Some(pkh),
                 Err(_) => None,
             };
