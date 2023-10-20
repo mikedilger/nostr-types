@@ -802,7 +802,7 @@ impl<'de> Visitor<'de> for TagVisitor {
             while let Some(s) = seq.next_element()? {
                 parts.push(s);
             }
-            if parts.len() < 1 {
+            if parts.is_empty() {
                 return Ok(Tag::Other {
                     tag: tagname.to_string(),
                     data: parts,

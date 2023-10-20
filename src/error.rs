@@ -19,6 +19,10 @@ pub enum Error {
     #[error("Bech32 Error: {0}")]
     Bech32(#[from] bech32::Error),
 
+    /// Crypto error
+    #[error("Crypto Error: {0}")]
+    Crypto(#[from] nip44::Error),
+
     /// Encryption/Decryption Error
     #[error("Private Key Encryption/Decryption Error")]
     PrivateKeyEncryption,

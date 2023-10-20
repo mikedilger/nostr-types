@@ -1,9 +1,8 @@
 use super::{
-    EventDelegation, EventKind, Id, Metadata, MilliSatoshi, NostrBech32, NostrUrl, PrivateKey,
-    PublicKey, PublicKeyHex, RelayUrl, Signature, Tag, Unixtime,
+    ContentEncryptionAlgorithm, EventDelegation, EventKind, Id, Metadata, MilliSatoshi,
+    NostrBech32, NostrUrl, PrivateKey, PublicKey, PublicKeyHex, RelayUrl, Signature, Tag, Unixtime,
 };
 use crate::Error;
-use base64::Engine;
 use lightning_invoice::Invoice;
 use rand::Rng;
 use rand_core::OsRng;
@@ -102,46 +101,10 @@ impl PreEvent {
         Ok(Id(id))
     }
 
-    /// Create a NIP-04 EncryptedDirectMessage PreEvent.
-    ///
-    /// Note that this creates the 'p' tag, but does not add a recommended_relay_url to it,
-    /// so the caller should handle that.
-    pub fn new_nip04(
-        private_key: &PrivateKey,
-        recipient_public_key: PublicKey,
-        message: &str,
-    ) -> Result<PreEvent, Error> {
-        let input: &[u8] = message.as_bytes();
-        let (iv, ciphertext) = private_key.nip04_encrypt(&recipient_public_key, input)?;
-        let content = format!(
-            "{}?iv={}",
-            base64::engine::general_purpose::STANDARD.encode(ciphertext),
-            base64::engine::general_purpose::STANDARD.encode(iv)
-        );
-
-        Ok(PreEvent {
-            pubkey: private_key.public_key(),
-            created_at: Unixtime::now().unwrap(),
-            kind: EventKind::EncryptedDirectMessage,
-            tags: vec![Tag::Pubkey {
-                pubkey: recipient_public_key.into(),
-                recommended_relay_url: None, // FIXME,
-                petname: None,
-                trailing: Vec::new(),
-            }],
-            content,
-        })
-    }
-
     /// Create a rumor, wrapped in a seal, shrouded in a giftwrap
     /// The input.pubkey must match the privkey
     /// See NIP-59
-    pub fn into_gift_wrap(
-        self,
-        privkey: &PrivateKey,
-        pubkey: &PublicKey,
-        pad: bool,
-    ) -> Result<Event, Error> {
+    pub fn into_gift_wrap(self, privkey: &PrivateKey, pubkey: &PublicKey) -> Result<Event, Error> {
         let sender_pubkey = self.pubkey;
 
         if privkey.public_key() != sender_pubkey {
@@ -161,7 +124,7 @@ impl PreEvent {
             let rumor = Rumor::new(self)?;
             let rumor_json = serde_json::to_string(&rumor)?;
             let encrypted_rumor_json =
-                privkey.nip44_encrypt(pubkey, rumor_json.as_bytes(), pad, None);
+                privkey.encrypt(pubkey, &rumor_json, ContentEncryptionAlgorithm::Nip44v2)?;
 
             let pre_seal = PreEvent {
                 pubkey: sender_pubkey,
@@ -179,7 +142,7 @@ impl PreEvent {
 
         let seal_json = serde_json::to_string(&seal)?;
         let encrypted_seal_json =
-            random_private_key.nip44_encrypt(pubkey, seal_json.as_bytes(), pad, None);
+            random_private_key.encrypt(pubkey, &seal_json, ContentEncryptionAlgorithm::Nip44v2)?;
 
         let pre_giftwrap = PreEvent {
             pubkey: random_private_key.public_key(),
@@ -510,7 +473,7 @@ impl Event {
     pub fn effective_kind(&self) -> EventKind {
         for tag in self.tags.iter() {
             if let Tag::Kind { kind, .. } = tag {
-                return (*kind).into();
+                return *kind;
             }
         }
 
@@ -522,14 +485,6 @@ impl Event {
         if self.kind != EventKind::EncryptedDirectMessage {
             return Err(Error::WrongEventKind);
         }
-        let parts: Vec<&str> = self.content.split("?iv=").collect();
-        if parts.len() != 2 {
-            return Err(Error::BadEncryptedMessage);
-        }
-
-        let ciphertext: Vec<u8> = base64::engine::general_purpose::STANDARD.decode(parts[0])?;
-        let iv_vec: Vec<u8> = base64::engine::general_purpose::STANDARD.decode(parts[1])?;
-        let iv: [u8; 16] = iv_vec.try_into().unwrap();
 
         let pubkey = if self.pubkey == private_key.public_key() {
             // If you are the author, get the pubkey from the tags
@@ -543,7 +498,7 @@ impl Event {
             self.pubkey
         };
 
-        let decrypted_bytes = private_key.nip04_decrypt(&pubkey, &ciphertext, iv)?;
+        let decrypted_bytes = private_key.decrypt_nip04(&pubkey, &self.content)?;
 
         let s: String = String::from_utf8_lossy(&decrypted_bytes).into();
         Ok(s)
@@ -1216,7 +1171,7 @@ impl Event {
     }
 
     /// If a gift wrap event, unwrap and return the inner Rumor
-    pub fn giftwrap_unwrap(&self, privkey: &PrivateKey, pad: bool) -> Result<Rumor, Error> {
+    pub fn giftwrap_unwrap(&self, privkey: &PrivateKey) -> Result<Rumor, Error> {
         if self.kind != EventKind::GiftWrap {
             return Err(Error::WrongEventKind);
         }
@@ -1236,8 +1191,7 @@ impl Event {
         }
 
         // Decrypt the content
-        let content = privkey.nip44_decrypt(&self.pubkey, &self.content, pad)?;
-        let content = String::from_utf8(content)?;
+        let content = privkey.decrypt_nip44(&self.pubkey, &self.content)?;
 
         // Translate into a seal Event
         let seal: Event = serde_json::from_str(&content)?;
@@ -1251,13 +1205,12 @@ impl Event {
         let author = seal.pubkey;
 
         // Decrypt the content
-        let content = privkey.nip44_decrypt(&seal.pubkey, &seal.content, pad)?;
-        let content = String::from_utf8(content)?;
+        let content = privkey.decrypt_nip44(&seal.pubkey, &seal.content)?;
 
         // Translate into a Rumor
         let rumor: Rumor = serde_json::from_str(&content)?;
 
-        // Compare the author
+        // Compae the author
         if rumor.pubkey != author {
             return Err(Error::InvalidPublicKey);
         }
@@ -1736,10 +1689,10 @@ mod test {
 
         let gift_wrap = pre
             .clone()
-            .into_gift_wrap(&sec1, &sec2.public_key(), true)
+            .into_gift_wrap(&sec1, &sec2.public_key())
             .unwrap();
 
-        let rumor = gift_wrap.giftwrap_unwrap(&sec2, true).unwrap();
+        let rumor = gift_wrap.giftwrap_unwrap(&sec2).unwrap();
         let output_pre: PreEvent = rumor.into();
 
         assert_eq!(pre, output_pre);

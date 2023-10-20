@@ -52,7 +52,7 @@ mod pay_request_data;
 pub use pay_request_data::PayRequestData;
 
 mod private_key;
-pub use private_key::{EncryptedPrivateKey, KeySecurity, PrivateKey};
+pub use private_key::{ContentEncryptionAlgorithm, EncryptedPrivateKey, KeySecurity, PrivateKey};
 
 mod profile;
 pub use profile::Profile;

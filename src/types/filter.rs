@@ -95,7 +95,7 @@ impl Filter {
 
     /// Delete an Id from the filter
     pub fn del_id(&mut self, id_hex: &IdHex) {
-        if let Some(index) = self.ids.iter().position(|id| *id==*id_hex) {
+        if let Some(index) = self.ids.iter().position(|id| *id == *id_hex) {
             let _ = self.ids.swap_remove(index);
         }
     }
@@ -109,7 +109,7 @@ impl Filter {
 
     /// Delete a PublicKey from the filter
     pub fn del_author(&mut self, public_key_hex: &PublicKeyHex) {
-        if let Some(index) = self.authors.iter().position(|pk| *pk==*public_key_hex) {
+        if let Some(index) = self.authors.iter().position(|pk| *pk == *public_key_hex) {
             let _ = self.authors.swap_remove(index);
         }
     }
@@ -163,7 +163,10 @@ impl Filter {
     #[allow(dead_code)]
     pub(crate) fn mock() -> Filter {
         Filter {
-            ids: vec![IdHex::try_from_str("3ab7b776cb547707a7497f209be799710ce7eb0801e13fd3c4e7b9261ac29084").unwrap()],
+            ids: vec![IdHex::try_from_str(
+                "3ab7b776cb547707a7497f209be799710ce7eb0801e13fd3c4e7b9261ac29084",
+            )
+            .unwrap()],
             authors: vec![],
             kinds: vec![EventKind::TextNote, EventKind::Metadata],
             e: vec![IdHex::mock()],
