@@ -286,10 +286,8 @@ impl Event {
             let mut attempt: u64 = core as u64 * (u64::MAX / cores as u64);
             let mut input = input.clone();
             let target = target.clone();
-            let index = index;
             let quitting = quitting.clone();
             let nonce = nonce.clone();
-            let zero_bits = zero_bits;
             let best_work = best_work.clone();
             let work_sender = work_sender.clone();
             let join_handle = thread::spawn(move || {
