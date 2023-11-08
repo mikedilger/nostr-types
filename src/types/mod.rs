@@ -24,14 +24,17 @@ pub use delegation::{DelegationConditions, EventDelegation};
 mod event;
 pub use event::{Event, PreEvent, Rumor, ZapData};
 
+mod event_addr;
+pub use event_addr::EventAddr;
+
 mod event_kind;
 pub use event_kind::{EventKind, EventKindIterator, EventKindOrRange};
 
 mod event_pointer;
 pub use event_pointer::EventPointer;
 
-mod event_addr;
-pub use event_addr::EventAddr;
+mod event_reference;
+pub use event_reference::EventReference;
 
 mod filter;
 pub use filter::Filter;
