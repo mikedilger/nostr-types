@@ -583,8 +583,8 @@ impl Event {
             return None;
         }
 
-        // Kind=6 'e' tags are always considered mentions, not replies.
-        if self.kind == EventKind::Repost {
+        // Repost 'e' tags are always considered mentions, not replies.
+        if self.kind == EventKind::Repost || self.kind == EventKind::GenericRepost {
             return None;
         }
 
@@ -781,8 +781,8 @@ impl Event {
 
         let mut output: Vec<(Id, Option<RelayUrl>)> = Vec::new();
 
-        // For kind=6, all 'e' tags are mentions
-        if self.kind == EventKind::Repost {
+        // For kind=6 and kind=16, all 'e' tags are mentions
+        if self.kind == EventKind::Repost || self.kind == EventKind::GenericRepost {
             for tag in self.tags.iter() {
                 if let Tag::Event {
                     id,
