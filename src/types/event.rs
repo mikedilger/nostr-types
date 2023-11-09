@@ -1017,6 +1017,32 @@ impl Event {
         None
     }
 
+    /// If this event specifies a title, return that title string
+    pub fn title(&self) -> Option<String> {
+        for tag in self.tags.iter() {
+            if let Tag::Title { title, .. } = tag {
+                return Some(title.clone());
+            }
+        }
+
+        None
+    }
+
+    /// If this event specifies a summary, return that summary string
+    pub fn summary(&self) -> Option<String> {
+        for tag in self.tags.iter() {
+            if let Tag::Other { tag, data } = tag {
+                if &*tag == "summary" {
+                    if !data.is_empty() {
+                        return Some(data[0].clone());
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
     /// If this event specifies a content warning, return that subject string
     pub fn content_warning(&self) -> Option<String> {
         for tag in self.tags.iter() {
