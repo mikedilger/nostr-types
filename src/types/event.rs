@@ -1,6 +1,7 @@
 use super::{
-    ContentEncryptionAlgorithm, EventDelegation, EventKind, Id, Metadata, MilliSatoshi,
-    NostrBech32, NostrUrl, PrivateKey, PublicKey, PublicKeyHex, RelayUrl, Signature, Tag, Unixtime,
+    ContentEncryptionAlgorithm, EventAddr, EventDelegation, EventKind, EventReference, Id,
+    Metadata, MilliSatoshi, NostrBech32, NostrUrl, PrivateKey, PublicKey, PublicKeyHex, RelayUrl,
+    Signature, Tag, Unixtime,
 };
 use crate::Error;
 use lightning_invoice::Invoice;
@@ -557,35 +558,29 @@ impl Event {
         output
     }
 
-    /// Is the event a reply?
-    #[deprecated(since = "0.2.0", note = "please use `replies_to` instead")]
-    pub fn is_reply(&self) -> bool {
-        if !self.kind.is_feed_displayable() {
-            return false;
-        }
+    // Responds to.
+    // can only be one other event.
+    // this is only for feed-displayable events.
+    // reply and mention are not distinguished.
+    // 'root' is distinguished. When there are multiple referred to events, there are rules
+    // by which we pick the single event that is being responded to.
+    // The old replies_to() and mentions() will be deprecated/removed
 
-        for tag in self.tags.iter() {
-            if let Tag::Event { .. } = tag {
-                return true;
-            }
-        }
-
-        false
-    }
-
-    /// If this event replies to another, get that other event's Id along with
-    /// an optional recommended_relay_url
-    pub fn replies_to(&self) -> Option<(Id, Option<RelayUrl>)> {
+    /// Get a reference to another event that this event replies to.
+    /// An event can only reply to one other event via 'e' or 'a' tag from a feed-displayable
+    /// event that is not a Repost.
+    pub fn replies_to(&self) -> Option<EventReference> {
         if !self.kind.is_feed_displayable() {
             return None;
         }
 
-        // Repost 'e' tags are always considered mentions, not replies.
+        // Repost 'e' and 'a' tags are always considered mentions, not replies.
         if self.kind == EventKind::Repost || self.kind == EventKind::GenericRepost {
             return None;
         }
 
-        // look for an 'E' tag (EventParent)
+        // Deprecated code: look for an 'E' tag (EventParent)
+        /*
         for tag in self.tags.iter() {
             if let Tag::EventParent {
                 id,
@@ -593,7 +588,7 @@ impl Event {
                 ..
             } = tag
             {
-                return Some((
+                return Some(EventReference::Id(
                     *id,
                     recommended_relay_url
                         .as_ref()
@@ -601,14 +596,15 @@ impl Event {
                 ));
             }
         }
+        */
 
-        // If there are no 'e' tags, then none
-        let num_e_tags = self
+        // If there are no 'e' tags nor 'a' tags, then none
+        let num_event_ref_tags = self
             .tags
             .iter()
-            .filter(|e| matches!(e, Tag::Event { .. }))
+            .filter(|e| matches!(e, Tag::Event { .. }) || matches!(e, Tag::Address { .. }))
             .count();
-        if num_e_tags == 0 {
+        if num_event_ref_tags == 0 {
             return None;
         }
 
@@ -622,11 +618,12 @@ impl Event {
             } = tag
             {
                 if marker.is_some() && marker.as_deref().unwrap() == "reply" {
-                    return Some((
+                    return Some(EventReference::Id(
                         *id,
                         recommended_relay_url
                             .as_ref()
                             .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                        Some("reply".to_owned()),
                     ));
                 }
             }
@@ -642,47 +639,62 @@ impl Event {
             } = tag
             {
                 if marker.is_some() && marker.as_deref().unwrap() == "root" {
-                    return Some((
+                    return Some(EventReference::Id(
                         *id,
                         recommended_relay_url
                             .as_ref()
                             .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                        Some("root".to_owned()),
                     ));
                 }
             }
         }
 
-        // Use the last 'e' tag if unmarked
-        if let Some(Tag::Event {
-            id,
-            recommended_relay_url,
-            marker,
-            ..
-        }) = self
-            .tags
-            .iter()
-            .rev()
-            .find(|t| matches!(t, Tag::Event { .. }))
-        {
-            if marker.is_none() {
-                return Some((
+        // Use the last unmarked 'e' tag or any 'a' tag
+        if let Some(tag) = self.tags.iter().rev().find(|t| {
+            matches!(t, Tag::Event { marker: None, .. }) || matches!(t, Tag::Address { .. })
+        }) {
+            if let Tag::Event {
+                id,
+                recommended_relay_url,
+                marker,
+                ..
+            } = tag
+            {
+                return Some(EventReference::Id(
                     *id,
                     recommended_relay_url
                         .as_ref()
                         .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                    marker.to_owned(),
                 ));
+            } else if let Tag::Address {
+                kind,
+                pubkey,
+                d,
+                relay_url,
+                ..
+            } = tag
+            {
+                if let Some(rurl) = relay_url {
+                    if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
+                        return Some(EventReference::Addr(EventAddr {
+                            d: d.to_string(),
+                            relays: vec![rurl.clone()],
+                            kind: *kind,
+                            author: pk,
+                        }));
+                    }
+                }
             }
         }
-
-        // Otherwise there are 'e' tags but they have unrecognized markings
-        // so we will not consider them as replies.
 
         None
     }
 
     /// If this event replies to a thread, get that threads root event Id if
     /// available, along with an optional recommended_relay_url
-    pub fn replies_to_root(&self) -> Option<(Id, Option<RelayUrl>)> {
+    pub fn replies_to_root(&self) -> Option<EventReference> {
         if !self.kind.is_feed_displayable() {
             return None;
         }
@@ -697,32 +709,54 @@ impl Event {
             } = tag
             {
                 if marker.is_some() && marker.as_deref().unwrap() == "root" {
-                    return Some((
+                    return Some(EventReference::Id(
                         *id,
                         recommended_relay_url
                             .as_ref()
                             .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                        marker.to_owned(),
                     ));
                 }
             }
         }
 
-        // otherwise use the first 'e' tag if unmarked
-        // (even if there is only 1 'e' tag which means it is both root and reply)
-        if let Some(Tag::Event {
-            id,
-            recommended_relay_url,
-            marker,
-            ..
-        }) = self.tags.iter().find(|t| matches!(t, Tag::Event { .. }))
-        {
-            if marker.is_none() {
-                return Some((
+        // otherwise use the first unmarked 'e' tag or first 'a' tag
+        // (even if there is only 1 'e' or 'a' tag which means it is both root and reply)
+        if let Some(tag) = self.tags.iter().find(|t| {
+            matches!(t, Tag::Event { marker: None, .. }) || matches!(t, Tag::Address { .. })
+        }) {
+            if let Tag::Event {
+                id,
+                recommended_relay_url,
+                marker,
+                ..
+            } = tag
+            {
+                return Some(EventReference::Id(
                     *id,
                     recommended_relay_url
                         .as_ref()
                         .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                    marker.to_owned(),
                 ));
+            } else if let Tag::Address {
+                kind,
+                pubkey,
+                d,
+                relay_url,
+                ..
+            } = tag
+            {
+                if let Some(rurl) = relay_url {
+                    if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
+                        return Some(EventReference::Addr(EventAddr {
+                            d: d.to_string(),
+                            relays: vec![rurl.clone()],
+                            kind: *kind,
+                            author: pk,
+                        }));
+                    }
+                }
             }
         }
 
@@ -731,10 +765,10 @@ impl Event {
 
     /// All events IDs that this event refers to, whether root, reply, mention, or otherwise
     /// along with optional recommended relay URLs
-    pub fn referred_events(&self) -> Vec<(Id, Option<RelayUrl>, Option<String>)> {
-        let mut output: Vec<(Id, Option<RelayUrl>, Option<String>)> = Vec::new();
+    pub fn referred_events(&self) -> Vec<EventReference> {
+        let mut output: Vec<EventReference> = Vec::new();
 
-        // Collect every 'e' tag and 'E' tag
+        // Collect every 'e' tag and 'a' tag
         for tag in self.tags.iter() {
             if let Tag::Event {
                 id,
@@ -743,14 +777,16 @@ impl Event {
                 ..
             } = tag
             {
-                output.push((
+                output.push(EventReference::Id(
                     *id,
                     recommended_relay_url
                         .as_ref()
                         .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
                     marker.clone(),
                 ));
-            } else if let Tag::EventParent {
+            }
+            /* deprecated code
+            else if let Tag::EventParent {
                 id,
                 recommended_relay_url,
                 ..
@@ -764,6 +800,26 @@ impl Event {
                     None,
                 ));
             }
+            */
+            else if let Tag::Address {
+                kind,
+                pubkey,
+                d,
+                relay_url,
+                ..
+            } = tag
+            {
+                if let Some(rurl) = relay_url {
+                    if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
+                        output.push(EventReference::Addr(EventAddr {
+                            d: d.to_string(),
+                            relays: vec![rurl.clone()],
+                            kind: *kind,
+                            author: pk,
+                        }));
+                    }
+                }
+            }
         }
 
         output
@@ -771,28 +827,48 @@ impl Event {
 
     /// If this event mentions others, get those other event Ids
     /// and optional recommended relay Urls
-    pub fn mentions(&self) -> Vec<(Id, Option<RelayUrl>)> {
+    pub fn mentions(&self) -> Vec<EventReference> {
         if !self.kind.is_feed_displayable() {
             return vec![];
         }
 
-        let mut output: Vec<(Id, Option<RelayUrl>)> = Vec::new();
+        let mut output: Vec<EventReference> = Vec::new();
 
-        // For kind=6 and kind=16, all 'e' tags are mentions
+        // For kind=6 and kind=16, all 'e' and 'a' tags are mentions
         if self.kind == EventKind::Repost || self.kind == EventKind::GenericRepost {
             for tag in self.tags.iter() {
                 if let Tag::Event {
                     id,
                     recommended_relay_url,
+                    marker,
                     ..
                 } = tag
                 {
-                    output.push((
+                    output.push(EventReference::Id(
                         *id,
                         recommended_relay_url
                             .as_ref()
                             .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                        marker.to_owned(),
                     ));
+                } else if let Tag::Address {
+                    kind,
+                    pubkey,
+                    d,
+                    relay_url,
+                    trailing: _,
+                } = tag
+                {
+                    if let Some(rurl) = relay_url {
+                        if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
+                            output.push(EventReference::Addr(EventAddr {
+                                d: d.to_string(),
+                                relays: vec![rurl.clone()],
+                                kind: *kind,
+                                author: pk,
+                            }));
+                        }
+                    }
                 }
             }
 
@@ -811,21 +887,24 @@ impl Event {
             } = tag
             {
                 if marker.is_some() && marker.as_deref().unwrap() == "mention" {
-                    output.push((
+                    output.push(EventReference::Id(
                         *id,
                         recommended_relay_url
                             .as_ref()
                             .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                        Some("mention".to_owned()),
                     ));
                 }
             }
         }
 
-        // Collect every unmarked 'e' tag that is not the first or last
+        // Collect every unmarked 'e' or 'a' tag that is not the first or last
         let e_tags: Vec<&Tag> = self
             .tags
             .iter()
-            .filter(|e| matches!(e, Tag::Event { .. }))
+            .filter(|e| {
+                matches!(e, Tag::Event { marker: None, .. }) || matches!(e, Tag::Address { .. })
+            })
             .collect();
         if e_tags.len() > 2 {
             // mentions are everything other than first and last
@@ -837,13 +916,30 @@ impl Event {
                     ..
                 } = tag
                 {
-                    if marker.is_none() {
-                        output.push((
-                            *id,
-                            recommended_relay_url
-                                .as_ref()
-                                .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                        ));
+                    output.push(EventReference::Id(
+                        *id,
+                        recommended_relay_url
+                            .as_ref()
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                        marker.to_owned(),
+                    ));
+                } else if let Tag::Address {
+                    kind,
+                    pubkey,
+                    d,
+                    relay_url,
+                    ..
+                } = tag
+                {
+                    if let Some(rurl) = relay_url {
+                        if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
+                            output.push(EventReference::Addr(EventAddr {
+                                d: d.to_string(),
+                                relays: vec![rurl.clone()],
+                                kind: *kind,
+                                author: pk,
+                            }));
+                        }
                     }
                 }
             }

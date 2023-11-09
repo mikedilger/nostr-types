@@ -5,11 +5,11 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "speedy")]
 use speedy::{Readable, Writable};
 
-/// An 'naddr': data to address a parameterized replaceable event (d-tag, kind, author, and relays)
+/// An 'naddr': data to address a possibly parameterized replaceable event (d-tag, kind, author, and relays)
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct EventAddr {
-    /// the 'd' tag of the Event
+    /// the 'd' tag of the Event, or an empty string if the kind is not parameterized
     pub d: String,
 
     /// Some of the relays where this could be found
