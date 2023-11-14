@@ -150,14 +150,14 @@ impl EventKind {
     }
 
     /// If this event kind is a replaceable event
-    /// NOTE: this does NOT count parameterized replaceable events
+    /// NOTE: this INCLUDES parameterized replaceable events
     pub fn is_replaceable(&self) -> bool {
         match *self {
             Metadata => true,
             ContactList => true,
             _ => {
                 let u: u32 = From::from(*self);
-                (10000..=19999).contains(&u)
+                (10000..=19999).contains(&u) || (30000..=39999).contains(&u)
             }
         }
     }
@@ -537,7 +537,7 @@ mod test {
         assert!(Metadata.is_replaceable());
         assert!(!TextNote.is_replaceable());
         assert!(!Zap.is_replaceable());
-        assert!(!LongFormContent.is_replaceable());
+        assert!(LongFormContent.is_replaceable());
 
         assert!(!TextNote.is_ephemeral());
         assert!(Auth.is_ephemeral());
