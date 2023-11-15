@@ -558,13 +558,50 @@ impl Event {
         output
     }
 
-    // Responds to.
-    // can only be one other event.
-    // this is only for feed-displayable events.
-    // reply and mention are not distinguished.
-    // 'root' is distinguished. When there are multiple referred to events, there are rules
-    // by which we pick the single event that is being responded to.
-    // The old replies_to() and mentions() will be deprecated/removed
+    /// All events IDs that this event refers to, whether root, reply, mention, or otherwise
+    /// along with optional recommended relay URLs
+    pub fn referred_events(&self) -> Vec<EventReference> {
+        let mut output: Vec<EventReference> = Vec::new();
+
+        // Collect every 'e' tag and 'a' tag
+        for tag in self.tags.iter() {
+            if let Tag::Event {
+                id,
+                recommended_relay_url,
+                marker,
+                ..
+            } = tag
+            {
+                output.push(EventReference::Id(
+                    *id,
+                    recommended_relay_url
+                        .as_ref()
+                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
+                    marker.clone(),
+                ));
+            } else if let Tag::Address {
+                kind,
+                pubkey,
+                d,
+                relay_url,
+                ..
+            } = tag
+            {
+                if let Some(rurl) = relay_url {
+                    if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
+                        output.push(EventReference::Addr(EventAddr {
+                            d: d.to_string(),
+                            relays: vec![rurl.clone()],
+                            kind: *kind,
+                            author: pk,
+                        }));
+                    }
+                }
+            }
+        }
+
+        output
+    }
 
     /// Get a reference to another event that this event replies to.
     /// An event can only reply to one other event via 'e' or 'a' tag from a feed-displayable
@@ -578,25 +615,6 @@ impl Event {
         if self.kind == EventKind::Repost || self.kind == EventKind::GenericRepost {
             return None;
         }
-
-        // Deprecated code: look for an 'E' tag (EventParent)
-        /*
-        for tag in self.tags.iter() {
-            if let Tag::EventParent {
-                id,
-                recommended_relay_url,
-                ..
-            } = tag
-            {
-                return Some(EventReference::Id(
-                    *id,
-                    recommended_relay_url
-                        .as_ref()
-                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                ));
-            }
-        }
-        */
 
         // If there are no 'e' tags nor 'a' tags, then none
         let num_event_ref_tags = self
@@ -763,68 +781,6 @@ impl Event {
         None
     }
 
-    /// All events IDs that this event refers to, whether root, reply, mention, or otherwise
-    /// along with optional recommended relay URLs
-    pub fn referred_events(&self) -> Vec<EventReference> {
-        let mut output: Vec<EventReference> = Vec::new();
-
-        // Collect every 'e' tag and 'a' tag
-        for tag in self.tags.iter() {
-            if let Tag::Event {
-                id,
-                recommended_relay_url,
-                marker,
-                ..
-            } = tag
-            {
-                output.push(EventReference::Id(
-                    *id,
-                    recommended_relay_url
-                        .as_ref()
-                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                    marker.clone(),
-                ));
-            }
-            /* deprecated code
-            else if let Tag::EventParent {
-                id,
-                recommended_relay_url,
-                ..
-            } = tag
-            {
-                output.push((
-                    *id,
-                    recommended_relay_url
-                        .as_ref()
-                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                    None,
-                ));
-            }
-            */
-            else if let Tag::Address {
-                kind,
-                pubkey,
-                d,
-                relay_url,
-                ..
-            } = tag
-            {
-                if let Some(rurl) = relay_url {
-                    if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
-                        output.push(EventReference::Addr(EventAddr {
-                            d: d.to_string(),
-                            relays: vec![rurl.clone()],
-                            kind: *kind,
-                            author: pk,
-                        }));
-                    }
-                }
-            }
-        }
-
-        output
-    }
-
     /// If this event mentions others, get those other event Ids
     /// and optional recommended relay Urls
     pub fn mentions(&self) -> Vec<EventReference> {
@@ -898,7 +854,7 @@ impl Event {
             }
         }
 
-        // Collect every unmarked 'e' or 'a' tag that is not the first or last
+        // Collect every unmarked 'e' or 'a' tag that is not the first (root) or the last (reply)
         let e_tags: Vec<&Tag> = self
             .tags
             .iter()
