@@ -32,8 +32,6 @@ Dont version right now
 Definitely need to version
   Tag (due to changing fields in enum values)
   RelayMessage
-  SimpleRelayUsage
-  SimpleRelayList
   Profile
   NostrBech32
   NostrUrl
@@ -53,3 +51,5 @@ Versioned:
   Fee
   RelayFees
   RelayInformationDocument
+  SimpleRelayUsage
+  SimpleRelayList
