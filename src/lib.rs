@@ -29,6 +29,20 @@
 mod error;
 pub use error::Error;
 
+#[cfg(test)]
+macro_rules! test_serde {
+    ($t:ty, $fnname:ident) => {
+        #[test]
+        fn $fnname() {
+            let a = <$t>::mock();
+            let x = serde_json::to_string(&a).unwrap();
+            println!("{}", x);
+            let b = serde_json::from_str(&x).unwrap();
+            assert_eq!(a, b);
+        }
+    };
+}
+
 mod types;
 pub use types::{
     find_nostr_bech32_pos, find_nostr_url_pos, ClientMessage, ContentEncryptionAlgorithm,
@@ -42,3 +56,6 @@ pub use types::{
 };
 
 mod versioned;
+pub use versioned::{
+   FeeV1, RelayFeesV1, RelayInformationDocumentV1, RelayLimitationV1, RelayRetentionV1
+};

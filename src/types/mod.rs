@@ -1,17 +1,3 @@
-#[cfg(test)]
-macro_rules! test_serde {
-    ($t:ty, $fnname:ident) => {
-        #[test]
-        fn $fnname() {
-            let a = <$t>::mock();
-            let x = serde_json::to_string(&a).unwrap();
-            println!("{}", x);
-            let b = serde_json::from_str(&x).unwrap();
-            assert_eq!(a, b);
-        }
-    };
-}
-
 mod client_message;
 pub use client_message::ClientMessage;
 

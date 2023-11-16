@@ -21,6 +21,7 @@ Never serialized
   EventDelegation
   ZapData
   PayRequestData
+  EventKindOrRange
 
 Dont version right now
   Filter (defined structure that only uses types that aren't versioned)
@@ -33,11 +34,6 @@ Definitely need to version
   RelayMessage
   SimpleRelayUsage
   SimpleRelayList
-  RelayLimitation
-  RelayRetention
-  Fee
-  RelayFees
-  RelayInformationDocument
   Profile
   NostrBech32
   NostrUrl
@@ -49,3 +45,11 @@ Definitely need to version
   DelegationConditions
   ClientMessage
 
+---------
+
+Versioned:
+  RelayLimitation
+  RelayRetention
+  Fee
+  RelayFees
+  RelayInformationDocument
