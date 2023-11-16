@@ -15,5 +15,8 @@ pub use relay_information_document::{
 pub(crate) mod relay_list;
 pub use relay_list::{SimpleRelayListV1, SimpleRelayUsageV1};
 
+pub(crate) mod relay_message;
+pub use relay_message::RelayMessageV1;
+
 pub(crate) mod tag;
 pub use tag::TagV1;

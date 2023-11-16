@@ -58,5 +58,6 @@ pub use types::{
 mod versioned;
 pub use versioned::{
     EventV1, FeeV1, MetadataV1, Nip05V1, PreEventV1, RelayFeesV1, RelayInformationDocumentV1,
-    RelayLimitationV1, RelayRetentionV1, RumorV1, SimpleRelayListV1, SimpleRelayUsageV1, TagV1
+    RelayLimitationV1, RelayMessageV1, RelayRetentionV1, RumorV1, SimpleRelayListV1,
+    SimpleRelayUsageV1, TagV1
 };

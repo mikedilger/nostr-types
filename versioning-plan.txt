@@ -34,7 +34,6 @@ Dont version right now
   DelegationConditions
 
 Definitely need to version
-  RelayMessage
   ClientMessage
 
 ---------
@@ -53,3 +52,4 @@ Versioned:
   Rumor (due to Tag)- might not be serialized, but has speedy
   PreEvent (due to Tag)- might not be serialized, but has speedy
   Event (due to Tag)
+  RelayMessage
