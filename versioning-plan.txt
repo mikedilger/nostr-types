@@ -28,17 +28,16 @@ Dont version right now
   EventAddr
   EventReference
   EventPointer
-
-Definitely need to version
-  Tag (due to changing fields in enum values)
-  RelayMessage
   Profile
   NostrBech32
   NostrUrl
-  Event (due to Tag)
-  PreEvent (due to Tag)- might not be serialized, but has speedy
-  Rumor (due to Tag)- might not be serialized, but has speedy
   DelegationConditions
+
+Definitely need to version
+  Rumor (due to Tag)- might not be serialized, but has speedy
+  PreEvent (due to Tag)- might not be serialized, but has speedy
+  Event (due to Tag)
+  RelayMessage
   ClientMessage
 
 ---------
@@ -53,3 +52,4 @@ Versioned:
   SimpleRelayList
   Nip05
   Metadata
+  Tag (due to changing fields in enum values)
