@@ -5,3 +5,6 @@ pub use relay_information_document::{
 
 pub(crate) mod relay_list;
 pub use relay_list::{SimpleRelayListV1, SimpleRelayUsageV1};
+
+pub(crate) mod metadata;
+pub use metadata::MetadataV1;
