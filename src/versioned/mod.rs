@@ -1,3 +1,6 @@
+pub(crate) mod event;
+pub use event::{EventV1, PreEventV1, RumorV1};
+
 pub(crate) mod metadata;
 pub use metadata::MetadataV1;
 

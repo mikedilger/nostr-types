@@ -34,9 +34,6 @@ Dont version right now
   DelegationConditions
 
 Definitely need to version
-  Rumor (due to Tag)- might not be serialized, but has speedy
-  PreEvent (due to Tag)- might not be serialized, but has speedy
-  Event (due to Tag)
   RelayMessage
   ClientMessage
 
@@ -53,3 +50,6 @@ Versioned:
   Nip05
   Metadata
   Tag (due to changing fields in enum values)
+  Rumor (due to Tag)- might not be serialized, but has speedy
+  PreEvent (due to Tag)- might not be serialized, but has speedy
+  Event (due to Tag)
