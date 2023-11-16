@@ -1,0 +1,51 @@
+So simple they will never change
+  UncheckedUrl
+  Url
+  RelayUrl
+  Unixtime
+  SubscriptionId
+  MilliSatoshi
+
+Very unlikely to need versioning due to being fixed by the protocol
+  Signature (uses a type that is the raw sequence of bytes)
+  PublicKey (is the raw bytes)
+  PublicKeyHex
+  Id (bytes)
+  IdHex
+  EventKind (just a u32)
+
+Never serialized
+  Span
+  ContentSegment
+  ShatteredContent
+  EventDelegation
+  ZapData
+  PayRequestData
+
+Dont version right now
+  Filter (defined structure that only uses types that aren't versioned)
+  EventAddr
+  EventReference
+  EventPointer
+
+Definitely need to version
+  Tag (due to changing fields in enum values)
+  RelayMessage
+  SimpleRelayUsage
+  SimpleRelayList
+  RelayLimitation
+  RelayRetention
+  Fee
+  RelayFees
+  RelayInformationDocument
+  Profile
+  NostrBech32
+  NostrUrl
+  Nip05
+  Metadata
+  Event (due to Tag)
+  PreEvent (due to Tag)- might not be serialized, but has speedy
+  Rumor (due to Tag)- might not be serialized, but has speedy
+  DelegationConditions
+  ClientMessage
+

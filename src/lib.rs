@@ -40,3 +40,5 @@ pub use types::{
     SignatureHex, SimpleRelayList, SimpleRelayUsage, Span, SubscriptionId, Tag, UncheckedUrl,
     Unixtime, Url, XOnlyPublicKey, ZapData,
 };
+
+mod versioned;
