@@ -1,3 +1,6 @@
+pub(crate) mod client_message;
+pub use client_message::ClientMessageV1;
+
 pub(crate) mod event;
 pub use event::{EventV1, PreEventV1, RumorV1};
 

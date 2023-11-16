@@ -33,11 +33,6 @@ Dont version right now
   NostrUrl
   DelegationConditions
 
-Definitely need to version
-  ClientMessage
-
----------
-
 Versioned:
   RelayLimitation
   RelayRetention
@@ -53,3 +48,4 @@ Versioned:
   PreEvent (due to Tag)- might not be serialized, but has speedy
   Event (due to Tag)
   RelayMessage
+  ClientMessage
