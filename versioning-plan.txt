@@ -35,7 +35,6 @@ Definitely need to version
   Profile
   NostrBech32
   NostrUrl
-  Nip05
   Event (due to Tag)
   PreEvent (due to Tag)- might not be serialized, but has speedy
   Rumor (due to Tag)- might not be serialized, but has speedy
@@ -52,4 +51,5 @@ Versioned:
   RelayInformationDocument
   SimpleRelayUsage
   SimpleRelayList
+  Nip05
   Metadata
