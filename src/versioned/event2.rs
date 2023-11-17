@@ -1069,10 +1069,8 @@ impl EventV2 {
     pub fn summary(&self) -> Option<String> {
         for tag in self.tags.iter() {
             if let TagV2::Other { tag, data } = tag {
-                if &*tag == "summary" {
-                    if !data.is_empty() {
-                        return Some(data[0].clone());
-                    }
+                if &*tag == "summary" && !data.is_empty() {
+                    return Some(data[0].clone());
                 }
             }
         }

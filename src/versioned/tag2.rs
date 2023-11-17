@@ -576,22 +576,22 @@ impl<'de> Visitor<'de> for TagVisitor {
             // Parse the main value
             let parts: Vec<&str> = a.split(':').collect();
             if parts.len() < 3 {
-                return Ok(a_parse_fail()?);
+                return a_parse_fail();
             }
             let kindnum: u32 = match parts[0].parse::<u32>() {
                 Ok(u) => u,
-                Err(_) => return Ok(a_parse_fail()?),
+                Err(_) => return a_parse_fail(),
             };
             let kind: EventKind = From::from(kindnum);
             let pubkey: PublicKeyHex = match PublicKeyHex::try_from_str(parts[1]) {
                 Ok(pk) => pk,
-                Err(_) => return Ok(a_parse_fail()?),
+                Err(_) => return a_parse_fail(),
             };
 
             let relay_url_string: Option<&str> = seq.next_element()?;
             let relay_url: Option<UncheckedUrl> = match relay_url_string {
                 Some(s) => {
-                    if s == "" {
+                    if s.is_empty() {
                         None
                     } else {
                         Some(UncheckedUrl(s.to_string()))
