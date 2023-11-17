@@ -21,5 +21,8 @@ pub use relay_list::{SimpleRelayListV1, SimpleRelayUsageV1};
 pub(crate) mod relay_message;
 pub use relay_message::RelayMessageV1;
 
-pub(crate) mod tag;
-pub use tag::TagV1;
+pub(crate) mod tag1;
+pub use tag1::TagV1;
+
+pub(crate) mod tag2;
+pub use tag2::TagV2;
