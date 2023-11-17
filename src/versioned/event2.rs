@@ -42,11 +42,6 @@ pub struct EventV2 {
     /// the rest of the event data.
     pub sig: Signature,
 
-    /// DEPRECATED (please set to Null): An optional verified time for the event (using OpenTimestamp)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
-    pub ots: Option<String>,
-
     /// The content of the event
     pub content: String,
 
@@ -210,7 +205,6 @@ impl RumorV2 {
             created_at: self.created_at,
             kind: self.kind,
             sig: Signature::zeroes(),
-            ots: None,
             content: self.content,
             tags: self.tags,
         }
@@ -233,7 +227,6 @@ impl EventV2 {
             kind: input.kind,
             tags: input.tags,
             content: input.content,
-            ots: None,
             sig: signature,
         })
     }
@@ -340,7 +333,6 @@ impl EventV2 {
             kind: input.kind,
             tags: input.tags,
             content: input.content,
-            ots: None,
             sig: signature,
         })
     }
@@ -1348,49 +1340,17 @@ impl EventV2 {
     // Read the sig of the event from a speedy encoding without decoding
     // (offset would be 76..140
 
-    /// Read the ots of the event from a speedy encoding without decoding
-    /// (zero allocation)
-    ///
-    /// Note this function is fragile, if the Event structure is reordered,
-    /// or if speedy code changes, this will break.  Neither should happen.
-    pub fn get_ots_from_speedy_bytes<'a>(bytes: &'a [u8]) -> Option<&'a str> {
-        if bytes.len() < 140 {
-            None
-        } else if bytes[140] == 0 {
-            None
-        } else if bytes.len() < 145 {
-            None
-        } else {
-            let len = u32::from_ne_bytes(bytes[141..145].try_into().unwrap());
-            unsafe {
-                Some(std::str::from_utf8_unchecked(
-                    &bytes[146..146 + len as usize],
-                ))
-            }
-        }
-    }
-
     /// Read the content of the event from a speedy encoding without decoding
     /// (zero allocation)
     ///
     /// Note this function is fragile, if the Event structure is reordered,
     /// or if speedy code changes, this will break.  Neither should happen.
     pub fn get_content_from_speedy_bytes<'a>(bytes: &'a [u8]) -> Option<&'a str> {
-        let start = if bytes.len() < 145 {
-            return None;
-        } else if bytes[140] == 0 {
-            141
-        } else {
-            // get OTS length and move past it
-            let len = u32::from_ne_bytes(bytes[141..145].try_into().unwrap());
-            141 + 4 + len as usize
-        };
-
-        let len = u32::from_ne_bytes(bytes[start..start + 4].try_into().unwrap());
+        let len = u32::from_ne_bytes(bytes[140..140 + 4].try_into().unwrap());
 
         unsafe {
             Some(std::str::from_utf8_unchecked(
-                &bytes[start + 4..start + 4 + len as usize],
+                &bytes[140 + 4..140 + 4 + len as usize],
             ))
         }
     }
@@ -1402,22 +1362,13 @@ impl EventV2 {
     /// Note this function is fragile, if the Event structure is reordered,
     /// or if speedy code changes, this will break.  Neither should happen.
     pub fn tag_search_in_speedy_bytes(bytes: &[u8], re: &Regex) -> Result<bool, Error> {
-        if bytes.len() < 145 {
+        if bytes.len() < 140 {
             return Ok(false);
         }
 
-        // skip OTS
-        let mut offset = if bytes[140] == 0 {
-            141
-        } else {
-            // get OTS length and move past it
-            let len = u32::from_ne_bytes(bytes[141..145].try_into().unwrap());
-            141 + 4 + len as usize
-        };
-
         // skip content
-        let len = u32::from_ne_bytes(bytes[offset..offset + 4].try_into().unwrap());
-        offset += 4 + len as usize;
+        let len = u32::from_ne_bytes(bytes[140..140 + 4].try_into().unwrap());
+        let offset = 140 + 4 + len as usize;
 
         // Deserialize the tags
         let tags: Vec<TagV2> = Vec::<TagV2>::read_from_buffer(&bytes[offset..])?;
@@ -1686,9 +1637,6 @@ mod test {
         let kind = EventV2::get_kind_from_speedy_bytes(&bytes).unwrap();
         assert_eq!(kind, event.kind);
 
-        let ots = EventV2::get_ots_from_speedy_bytes(&bytes);
-        assert_eq!(ots, None);
-
         let content = EventV2::get_content_from_speedy_bytes(&bytes);
         assert_eq!(content, Some(&*event.content));
 
@@ -1706,27 +1654,12 @@ mod test {
         let kind32: u32 = event.kind.into();
         println!("KIND: {:?}", kind32.to_ne_bytes());
         println!("SIG: {:?}", event.sig.0.as_ref());
-        if let Some(ots) = event.ots {
-            println!("OTS: [1, then] {:?}", ots.as_bytes());
-        } else {
-            println!("OTS: [0]");
-        }
         println!(
             "CONTENT: [len={:?}] {:?}",
             (event.content.as_bytes().len() as u32).to_ne_bytes(),
             event.content.as_bytes()
         );
         println!("TAGS: [len={:?}]", (event.tags.len() as u32).to_ne_bytes());
-
-        //2, 0, 0, 0, -- one tags
-        //  3, 0, 0, 0, -- Enum Variant #3
-        //    93, 246, 75, 51, 48, 61, 98, 175, 199, 153, 189, 195, 109, 23, 140, 7, 178, 225, 240, 216, 36, 243, 27, 125, 200, 18, 33, 148, 64, 175, 250, 182, -- Id
-        //       1, -- recommended_relay_url Option<UncheckedUrl is Some
-        //           19, 0, 0, 0, -- string is 19 chars long
-        //                47, 104, 111, 109, 101, 47, 117, 115, 101, 114, 47, 102, 105, 108, 101, 46, 116, 120, 116, -- "/home/user/file.txt"
-        //       0, -- marker Option<String> is None
-        //       0, 0, 0, 0 -- trailing Vec<String> is empty
-        //  ...
     }
 
     #[test]
