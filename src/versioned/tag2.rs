@@ -1,7 +1,7 @@
-use crate::Error;
 use crate::types::{
     DelegationConditions, EventKind, Id, PublicKeyHex, SignatureHex, UncheckedUrl, Unixtime,
 };
+use crate::Error;
 use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
 #[cfg(feature = "speedy")]

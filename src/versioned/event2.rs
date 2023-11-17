@@ -1,9 +1,9 @@
+use super::TagV2;
 use crate::types::{
     ContentEncryptionAlgorithm, EventAddr, EventDelegation, EventKind, EventReference, Id,
     Metadata, MilliSatoshi, NostrBech32, NostrUrl, PrivateKey, PublicKey, PublicKeyHex, RelayUrl,
-    Signature, Unixtime, ZapData
+    Signature, Unixtime, ZapData,
 };
-use super::TagV2;
 use crate::Error;
 use lightning_invoice::Invoice;
 use rand::Rng;
@@ -101,7 +101,11 @@ impl PreEventV2 {
     /// Create a rumor, wrapped in a seal, shrouded in a giftwrap
     /// The input.pubkey must match the privkey
     /// See NIP-59
-    pub fn into_gift_wrap(self, privkey: &PrivateKey, pubkey: &PublicKey) -> Result<EventV2, Error> {
+    pub fn into_gift_wrap(
+        self,
+        privkey: &PrivateKey,
+        pubkey: &PublicKey,
+    ) -> Result<EventV2, Error> {
         let sender_pubkey = self.pubkey;
 
         if privkey.public_key() != sender_pubkey {
@@ -1504,7 +1508,10 @@ mod test {
     }
 
     // helper
-    fn create_event_with_delegation(delegator_privkey: PrivateKey, created_at: Unixtime) -> EventV2 {
+    fn create_event_with_delegation(
+        delegator_privkey: PrivateKey,
+        created_at: Unixtime,
+    ) -> EventV2 {
         let privkey = PrivateKey::mock();
         let pubkey = privkey.public_key();
         let delegator_pubkey = delegator_privkey.public_key();

@@ -1,5 +1,5 @@
-use crate::types::{Id, SubscriptionId};
 use super::EventV1;
+use crate::types::{Id, SubscriptionId};
 use serde::de::Error as DeError;
 use serde::de::{Deserialize, Deserializer, IgnoredAny, SeqAccess, Visitor};
 use serde::ser::{Serialize, SerializeSeq, Serializer};

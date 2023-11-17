@@ -1,4 +1,4 @@
-use crate::versioned::relay_list::{SimpleRelayUsageV1, SimpleRelayListV1};
+use crate::versioned::relay_list::{SimpleRelayListV1, SimpleRelayUsageV1};
 
 /// A list of relays with SimpleRelayUsage
 pub type SimpleRelayList = SimpleRelayListV1;

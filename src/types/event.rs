@@ -25,4 +25,3 @@ pub struct ZapData {
     /// The public key of the zap provider, for verification purposes
     pub provider_pubkey: PublicKey,
 }
-

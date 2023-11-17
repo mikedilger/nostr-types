@@ -1,5 +1,5 @@
 use crate::versioned::relay_information_document::{
-    FeeV1, RelayFeesV1, RelayInformationDocumentV1, RelayLimitationV1, RelayRetentionV1
+    FeeV1, RelayFeesV1, RelayInformationDocumentV1, RelayLimitationV1, RelayRetentionV1,
 };
 
 /// Relay limitations
