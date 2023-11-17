@@ -1,4 +1,4 @@
-use crate::versioned::client_message::ClientMessageV1;
+use crate::versioned::ClientMessageV2;
 
 /// A message from a client to a relay
-pub type ClientMessage = ClientMessageV1;
+pub type ClientMessage = ClientMessageV2;

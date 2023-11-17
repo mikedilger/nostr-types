@@ -1,5 +1,8 @@
-pub(crate) mod client_message;
-pub use client_message::ClientMessageV1;
+pub(crate) mod client_message1;
+pub use client_message1::ClientMessageV1;
+
+pub(crate) mod client_message2;
+pub use client_message2::ClientMessageV2;
 
 pub(crate) mod event1;
 pub use event1::{EventV1, PreEventV1, RumorV1};
@@ -21,8 +24,11 @@ pub use relay_information_document::{
 pub(crate) mod relay_list;
 pub use relay_list::{SimpleRelayListV1, SimpleRelayUsageV1};
 
-pub(crate) mod relay_message;
-pub use relay_message::RelayMessageV1;
+pub(crate) mod relay_message1;
+pub use relay_message1::RelayMessageV1;
+
+pub(crate) mod relay_message2;
+pub use relay_message2::RelayMessageV2;
 
 pub(crate) mod tag1;
 pub use tag1::TagV1;
