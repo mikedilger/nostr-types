@@ -1,8 +1,11 @@
 pub(crate) mod client_message;
 pub use client_message::ClientMessageV1;
 
-pub(crate) mod event;
-pub use event::{EventV1, PreEventV1, RumorV1};
+pub(crate) mod event1;
+pub use event1::{EventV1, PreEventV1, RumorV1};
+
+pub(crate) mod event2;
+pub use event2::{EventV2, PreEventV2, RumorV2};
 
 pub(crate) mod metadata;
 pub use metadata::MetadataV1;
