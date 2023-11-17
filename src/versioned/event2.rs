@@ -647,7 +647,8 @@ impl EventV2 {
 
         // Use the last unmarked 'e' tag or any 'a' tag
         if let Some(tag) = self.tags.iter().rev().find(|t| {
-            matches!(t, TagV2::Event { marker: None, .. }) || matches!(t, TagV2::Address { .. })
+            matches!(t, TagV2::Event { marker: None, .. })
+                || matches!(t, TagV2::Address { marker: None, .. })
         }) {
             if let TagV2::Event {
                 id,
@@ -718,7 +719,8 @@ impl EventV2 {
         // otherwise use the first unmarked 'e' tag or first 'a' tag
         // (even if there is only 1 'e' or 'a' tag which means it is both root and reply)
         if let Some(tag) = self.tags.iter().find(|t| {
-            matches!(t, TagV2::Event { marker: None, .. }) || matches!(t, TagV2::Address { .. })
+            matches!(t, TagV2::Event { marker: None, .. })
+                || matches!(t, TagV2::Address { marker: None, .. })
         }) {
             if let TagV2::Event {
                 id,
@@ -837,7 +839,8 @@ impl EventV2 {
             .tags
             .iter()
             .filter(|e| {
-                matches!(e, TagV2::Event { marker: None, .. }) || matches!(e, TagV2::Address { .. })
+                matches!(e, TagV2::Event { marker: None, .. })
+                    || matches!(e, TagV2::Address { marker: None, .. })
             })
             .collect();
         if e_tags.len() > 2 {
