@@ -587,18 +587,7 @@ impl<'de> Visitor<'de> for TagVisitor {
                 Ok(pk) => pk,
                 Err(_) => return a_parse_fail(),
             };
-
-            let relay_url_string: Option<&str> = seq.next_element()?;
-            let relay_url: Option<UncheckedUrl> = match relay_url_string {
-                Some(s) => {
-                    if s.is_empty() {
-                        None
-                    } else {
-                        Some(UncheckedUrl(s.to_string()))
-                    }
-                }
-                None => None,
-            };
+            let relay_url: Option<UncheckedUrl> = seq.next_element()?;
             let marker: Option<String> = seq.next_element()?;
             let mut trailing: Vec<String> = Vec::new();
             while let Some(s) = seq.next_element()? {
@@ -948,12 +937,23 @@ mod test {
             kind: EventKind::LongFormContent,
             pubkey: PublicKeyHex::mock_deterministic(),
             d: "Testing123".to_owned(),
-            relay_url: None,
+            // NOTE, real tags from relays could not get a None here anyways:
+            relay_url: Some(UncheckedUrl("".to_owned())),
             marker: Some("reply".to_owned()),
             trailing: Vec::new(),
         };
         let string = serde_json::to_string(&tag).unwrap();
         let tag2 = serde_json::from_str(&string).unwrap();
         assert_eq!(tag, tag2);
+
+        let json = r#"["a","34550:d0debf9fb12def81f43d7c69429bb784812ac1e4d2d53a202db6aac7ea4b466c:git",""]"#;
+        let tag: TagV2 = serde_json::from_str(&json).unwrap();
+        if let TagV2::Address { ref relay_url, .. } = tag {
+            assert_eq!(*relay_url, Some(UncheckedUrl("".to_string())));
+        } else {
+            panic!("Tag not an address");
+        }
+        let json2 = serde_json::to_string(&tag).unwrap();
+        assert_eq!(json, json2);
     }
 }
