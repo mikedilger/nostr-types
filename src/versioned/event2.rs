@@ -919,26 +919,48 @@ impl EventV2 {
         None
     }
 
-    /// If this event deletes others, get all the Ids of the events that it deletes
-    /// along with the reason for the deletion
-    pub fn deletes(&self) -> Option<(Vec<Id>, String)> {
+    /// If this event deletes others, get all the EventReferences of the events that it
+    /// deletes along with the reason for the deletion
+    pub fn deletes(&self) -> Option<(Vec<EventReference>, String)> {
         if self.kind != EventKind::EventDeletion {
             return None;
         }
 
-        let mut ids: Vec<Id> = Vec::new();
+        let mut erefs: Vec<EventReference> = Vec::new();
 
-        // All 'e' tags are deleted
         for tag in self.tags.iter() {
+            // All 'e' tags are deleted
             if let TagV2::Event { id, .. } = tag {
-                ids.push(*id);
+                erefs.push(EventReference::Id(*id, None, None));
+            }
+            // All 'a' tag groups are deleted
+            else if let TagV2::Address {
+                kind,
+                pubkey,
+                d,
+                relay_url,
+                ..
+            } = tag
+            {
+                if let Ok(pk) = PublicKey::try_from_hex_string(pubkey, false) {
+                    let ea = EventAddr {
+                        d: d.clone(),
+                        relays: match relay_url {
+                            Some(url) => vec![url.clone()],
+                            None => vec![],
+                        },
+                        kind: *kind,
+                        author: pk,
+                    };
+                    erefs.push(EventReference::Addr(ea));
+                }
             }
         }
 
-        if ids.is_empty() {
+        if erefs.is_empty() {
             None
         } else {
-            Some((ids, self.content.clone()))
+            Some((erefs, self.content.clone()))
         }
     }
 
