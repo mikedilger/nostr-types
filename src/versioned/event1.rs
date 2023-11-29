@@ -572,19 +572,17 @@ impl EventV1 {
                 kind,
                 pubkey,
                 d,
-                relay_url,
+                relay_url: Some(rurl),
                 ..
             } = tag
             {
-                if let Some(rurl) = relay_url {
-                    if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
-                        output.push(EventReference::Addr(EventAddr {
-                            d: d.to_string(),
-                            relays: vec![rurl.clone()],
-                            kind: *kind,
-                            author: pk,
-                        }));
-                    }
+                if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
+                    output.push(EventReference::Addr(EventAddr {
+                        d: d.to_string(),
+                        relays: vec![rurl.clone()],
+                        kind: *kind,
+                        author: pk,
+                    }));
                 }
             }
         }
@@ -679,19 +677,17 @@ impl EventV1 {
                 kind,
                 pubkey,
                 d,
-                relay_url,
+                relay_url: Some(rurl),
                 ..
             } = tag
             {
-                if let Some(rurl) = relay_url {
-                    if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
-                        return Some(EventReference::Addr(EventAddr {
-                            d: d.to_string(),
-                            relays: vec![rurl.clone()],
-                            kind: *kind,
-                            author: pk,
-                        }));
-                    }
+                if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
+                    return Some(EventReference::Addr(EventAddr {
+                        d: d.to_string(),
+                        relays: vec![rurl.clone()],
+                        kind: *kind,
+                        author: pk,
+                    }));
                 }
             }
         }
@@ -750,19 +746,17 @@ impl EventV1 {
                 kind,
                 pubkey,
                 d,
-                relay_url,
+                relay_url: Some(rurl),
                 ..
             } = tag
             {
-                if let Some(rurl) = relay_url {
-                    if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
-                        return Some(EventReference::Addr(EventAddr {
-                            d: d.to_string(),
-                            relays: vec![rurl.clone()],
-                            kind: *kind,
-                            author: pk,
-                        }));
-                    }
+                if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
+                    return Some(EventReference::Addr(EventAddr {
+                        d: d.to_string(),
+                        relays: vec![rurl.clone()],
+                        kind: *kind,
+                        author: pk,
+                    }));
                 }
             }
         }
@@ -800,19 +794,17 @@ impl EventV1 {
                     kind,
                     pubkey,
                     d,
-                    relay_url,
+                    relay_url: Some(rurl),
                     trailing: _,
                 } = tag
                 {
-                    if let Some(rurl) = relay_url {
-                        if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
-                            output.push(EventReference::Addr(EventAddr {
-                                d: d.to_string(),
-                                relays: vec![rurl.clone()],
-                                kind: *kind,
-                                author: pk,
-                            }));
-                        }
+                    if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
+                        output.push(EventReference::Addr(EventAddr {
+                            d: d.to_string(),
+                            relays: vec![rurl.clone()],
+                            kind: *kind,
+                            author: pk,
+                        }));
                     }
                 }
             }
@@ -872,19 +864,17 @@ impl EventV1 {
                     kind,
                     pubkey,
                     d,
-                    relay_url,
+                    relay_url: Some(rurl),
                     ..
                 } = tag
                 {
-                    if let Some(rurl) = relay_url {
-                        if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
-                            output.push(EventReference::Addr(EventAddr {
-                                d: d.to_string(),
-                                relays: vec![rurl.clone()],
-                                kind: *kind,
-                                author: pk,
-                            }));
-                        }
+                    if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
+                        output.push(EventReference::Addr(EventAddr {
+                            d: d.to_string(),
+                            relays: vec![rurl.clone()],
+                            kind: *kind,
+                            author: pk,
+                        }));
                     }
                 }
             }
@@ -1073,7 +1063,7 @@ impl EventV1 {
     pub fn summary(&self) -> Option<String> {
         for tag in self.tags.iter() {
             if let TagV1::Other { tag, data } = tag {
-                if &*tag == "summary" && !data.is_empty() {
+                if tag == "summary" && !data.is_empty() {
                     return Some(data[0].clone());
                 }
             }
