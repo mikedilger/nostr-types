@@ -30,6 +30,9 @@ pub use relay_message1::RelayMessageV1;
 pub(crate) mod relay_message2;
 pub use relay_message2::RelayMessageV2;
 
+pub(crate) mod relay_message3;
+pub use relay_message3::{RelayMessageV3, Why};
+
 pub(crate) mod tag1;
 pub use tag1::TagV1;
 

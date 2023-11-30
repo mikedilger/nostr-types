@@ -1,4 +1,4 @@
-use crate::versioned::RelayMessageV2;
+use crate::versioned::RelayMessageV3;
 
 /// A message from a relay to a client
-pub type RelayMessage = RelayMessageV2;
+pub type RelayMessage = RelayMessageV3;
