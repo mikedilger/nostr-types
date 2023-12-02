@@ -344,7 +344,7 @@ impl RelayInformationDocumentV1 {
                 },
                 RelayRetentionV1 {
                     kinds: vec![EventKindOrRange::Range(vec![
-                        EventKind::CategorizedPeopleList,
+                        EventKind::FollowSets,
                         EventKind::Other(39999),
                     ])],
                     time: None,
