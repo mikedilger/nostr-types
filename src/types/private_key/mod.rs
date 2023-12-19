@@ -128,15 +128,15 @@ impl PrivateKey {
 
     /// Sign a 32-bit hash
     pub fn sign_id(&self, id: Id) -> Result<Signature, Error> {
-        let keypair = secp256k1::KeyPair::from_secret_key(secp256k1::SECP256K1, &self.0);
-        let message = secp256k1::Message::from_slice(id.0.as_slice())?;
+        let keypair = secp256k1::Keypair::from_secret_key(secp256k1::SECP256K1, &self.0);
+        let message = secp256k1::Message::from_digest_slice(id.0.as_slice())?;
         Ok(Signature(keypair.sign_schnorr(message)))
     }
 
     /// Sign a message (this hashes with SHA-256 first internally)
     pub fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
         use secp256k1::hashes::sha256;
-        let keypair = secp256k1::KeyPair::from_secret_key(secp256k1::SECP256K1, &self.0);
+        let keypair = secp256k1::Keypair::from_secret_key(secp256k1::SECP256K1, &self.0);
         let message = secp256k1::Message::from_hashed_data::<sha256::Hash>(message);
         Ok(Signature(keypair.sign_schnorr(message)))
     }
