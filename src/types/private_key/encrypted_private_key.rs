@@ -13,6 +13,8 @@ use pbkdf2::pbkdf2;
 use rand_core::{OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
+#[cfg(feature = "speedy")]
+use speedy::{Readable, Writable};
 use std::ops::Deref;
 use zeroize::Zeroize;
 
@@ -22,6 +24,7 @@ const V1_HMAC_ROUNDS: u32 = 100_000;
 
 /// This is an encrypted private key.
 #[derive(Clone, Debug, Display, Serialize, Deserialize)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct EncryptedPrivateKey(pub String);
 
 impl Deref for EncryptedPrivateKey {
