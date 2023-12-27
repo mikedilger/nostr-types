@@ -56,6 +56,12 @@ impl TryFrom<u8> for KeySecurity {
 #[allow(missing_debug_implementations)]
 pub struct PrivateKey(secp256k1::SecretKey, KeySecurity);
 
+impl Default for PrivateKey {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PrivateKey {
     /// Generate a new `PrivateKey` (which can be used to get the `PublicKey`)
     #[inline]

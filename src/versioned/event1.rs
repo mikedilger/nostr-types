@@ -2,7 +2,8 @@ use super::TagV1;
 use crate::types::{
     ContentEncryptionAlgorithm, EventAddr, EventDelegation, EventKind, EventReference, Id,
     Metadata, MilliSatoshi, NostrBech32, NostrUrl, PrivateKey, PublicKey, PublicKeyHex, RelayUrl,
-    Signature, Unixtime, ZapData,
+    Signature, Signer, SignerBuilder, SignerState, Unixtime, UnlockedKeyState, UnlockedSigner,
+    ZapData,
 };
 use crate::Error;
 use lightning_invoice::Invoice;
@@ -106,16 +107,14 @@ impl PreEventV1 {
     /// Create a rumor, wrapped in a seal, shrouded in a giftwrap
     /// The input.pubkey must match the privkey
     /// See NIP-59
-    ///
-    /// SECURITY CRITICAL (sees private key, does not copy)
-    pub fn into_gift_wrap(
-        self,
-        privkey: &PrivateKey,
-        pubkey: &PublicKey,
-    ) -> Result<EventV1, Error> {
+    pub fn into_gift_wrap<S>(self, pubkey: &PublicKey, signer: &Signer<S>) -> Result<EventV1, Error>
+    where
+        S: SignerState,
+        Signer<S>: UnlockedSigner,
+    {
         let sender_pubkey = self.pubkey;
 
-        if privkey.public_key() != sender_pubkey {
+        if (*signer).public_key() != sender_pubkey {
             return Err(Error::InvalidPrivateKey);
         }
 
@@ -132,7 +131,7 @@ impl PreEventV1 {
             let rumor = RumorV1::new(self)?;
             let rumor_json = serde_json::to_string(&rumor)?;
             let encrypted_rumor_json =
-                privkey.encrypt(pubkey, &rumor_json, ContentEncryptionAlgorithm::Nip44v2)?;
+                signer.encrypt(pubkey, &rumor_json, ContentEncryptionAlgorithm::Nip44v2)?;
 
             let pre_seal = PreEventV1 {
                 pubkey: sender_pubkey,
@@ -142,18 +141,21 @@ impl PreEventV1 {
                 tags: vec![],
             };
 
-            EventV1::new(pre_seal, privkey)?
+            EventV1::new(pre_seal, signer)?
         };
 
         // Generate a random keypair for the gift wrap
-        let random_private_key = PrivateKey::generate();
+        let random_signer = {
+            let random_private_key = PrivateKey::generate();
+            SignerBuilder::new_from_private_key(random_private_key, "", 1)
+        }?;
 
         let seal_json = serde_json::to_string(&seal)?;
         let encrypted_seal_json =
-            random_private_key.encrypt(pubkey, &seal_json, ContentEncryptionAlgorithm::Nip44v2)?;
+            random_signer.encrypt(pubkey, &seal_json, ContentEncryptionAlgorithm::Nip44v2)?;
 
         let pre_giftwrap = PreEventV1 {
-            pubkey: random_private_key.public_key(),
+            pubkey: random_signer.public_key(),
             created_at: giftwrap_backdate,
             kind: EventKind::GiftWrap,
             content: encrypted_seal_json,
@@ -165,7 +167,7 @@ impl PreEventV1 {
             }],
         };
 
-        EventV1::new(pre_giftwrap, &random_private_key)
+        EventV1::new::<UnlockedKeyState>(pre_giftwrap, &random_signer)
     }
 }
 
@@ -225,14 +227,21 @@ impl RumorV1 {
 
 impl EventV1 {
     /// Create a new event
-    ///
-    /// SECURITY CRITICAL (sees private key, does not copy)
-    pub fn new(input: PreEventV1, privkey: &PrivateKey) -> Result<EventV1, Error> {
+    pub fn new<S>(input: PreEventV1, signer: &Signer<S>) -> Result<EventV1, Error>
+    where
+        S: SignerState,
+        Signer<S>: UnlockedSigner,
+    {
+        // Verify the signer matches the input pubkey
+        if input.pubkey != (*signer).public_key() {
+            return Err(Error::InvalidPublicKey);
+        }
+
         // Generate Id
         let id = input.hash()?;
 
         // Generate Signature
-        let signature = privkey.sign_id(id)?;
+        let signature = signer.sign_id(id)?;
 
         Ok(EventV1 {
             id,
@@ -249,15 +258,22 @@ impl EventV1 {
     /// Create a new event with proof of work.
     ///
     /// This can take a long time, and is only cancellable by killing the thread.
-    ///
-    /// SECURITY CRITICAL (sees private key, does not copy)
-    pub fn new_with_pow(
+    pub fn new_with_pow<S>(
         mut input: PreEventV1,
-        privkey: &PrivateKey,
         zero_bits: u8,
         work_sender: Option<Sender<u8>>,
-    ) -> Result<EventV1, Error> {
+        signer: &Signer<S>,
+    ) -> Result<EventV1, Error>
+    where
+        S: SignerState,
+        Signer<S>: UnlockedSigner,
+    {
         let target = Some(format!("{zero_bits}"));
+
+        // Verify the signer matches the input pubkey
+        if input.pubkey != (*signer).public_key() {
+            return Err(Error::InvalidPublicKey);
+        }
 
         // Strip any pre-existing nonce tags
         input.tags.retain(|t| !matches!(t, TagV1::Nonce { .. }));
@@ -341,7 +357,7 @@ impl EventV1 {
         let id = input.hash().unwrap();
 
         // Signature
-        let signature = privkey.sign_id(id)?;
+        let signature = signer.sign_id(id)?;
 
         Ok(EventV1 {
             id,
@@ -395,8 +411,11 @@ impl EventV1 {
     /// Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> EventV1 {
-        let private_key = PrivateKey::mock();
-        let public_key = private_key.public_key();
+        let signer = {
+            let private_key = PrivateKey::mock();
+            SignerBuilder::new_from_private_key(private_key, "", 1).unwrap()
+        };
+        let public_key = signer.public_key();
         let pre = PreEventV1 {
             pubkey: public_key,
             created_at: Unixtime::mock(),
@@ -404,36 +423,40 @@ impl EventV1 {
             tags: vec![TagV1::mock(), TagV1::mock()],
             content: "This is a test".to_string(),
         };
-        EventV1::new(pre, &private_key).unwrap()
+        EventV1::new(pre, &signer).unwrap()
     }
 
     /// Create an event that sets Metadata
-    ///
-    /// SECURITY CRITICAL (sees private key, does not copy)
-    pub fn new_set_metadata(
+    pub fn new_set_metadata<S>(
         mut input: PreEventV1,
-        privkey: &PrivateKey,
         metadata: Metadata,
-    ) -> Result<EventV1, Error> {
+        signer: &Signer<S>,
+    ) -> Result<EventV1, Error>
+    where
+        S: SignerState,
+        Signer<S>: UnlockedSigner,
+    {
         input.kind = EventKind::Metadata;
         input.content = serde_json::to_string(&metadata)?;
-        EventV1::new(input, privkey)
+        EventV1::new(input, signer)
     }
 
     /// Create a ZapRequest event
     /// These events are not published to nostr, they are sent to a lnurl.
-    ///
-    /// SECURITY CRITICAL (sees private key, does not copy)
-    pub fn new_zap_request(
-        privkey: &PrivateKey,
+    pub fn new_zap_request<S>(
         recipient_pubkey: PublicKeyHex,
         zapped_event: Option<Id>,
         millisatoshis: u64,
         relays: Vec<String>,
         content: String,
-    ) -> Result<EventV1, Error> {
+        signer: &Signer<S>,
+    ) -> Result<EventV1, Error>
+    where
+        S: SignerState,
+        Signer<S>: UnlockedSigner,
+    {
         let mut pre_event = PreEventV1 {
-            pubkey: privkey.public_key(),
+            pubkey: (*signer).public_key(),
             created_at: Unixtime::now().unwrap(),
             kind: EventKind::ZapRequest,
             tags: vec![
@@ -464,7 +487,7 @@ impl EventV1 {
             });
         }
 
-        EventV1::new(pre_event, privkey)
+        EventV1::new(pre_event, signer)
     }
 
     /// Get the k-tag kind, if any
@@ -478,14 +501,16 @@ impl EventV1 {
     }
 
     /// If an event is an EncryptedDirectMessage, decrypt it's contents
-    ///
-    /// SECURITY CRITICAL (sees private key, does not copy)
-    pub fn decrypted_contents(&self, private_key: &PrivateKey) -> Result<String, Error> {
+    pub fn decrypted_contents<S>(&self, signer: &Signer<S>) -> Result<String, Error>
+    where
+        S: SignerState,
+        Signer<S>: UnlockedSigner,
+    {
         if self.kind != EventKind::EncryptedDirectMessage {
             return Err(Error::WrongEventKind);
         }
 
-        let pubkey = if self.pubkey == private_key.public_key() {
+        let pubkey = if self.pubkey == (*signer).public_key() {
             // If you are the author, get the pubkey from the tags
             self.people()
                 .iter()
@@ -497,7 +522,7 @@ impl EventV1 {
             self.pubkey
         };
 
-        let decrypted_bytes = private_key.decrypt_nip04(&pubkey, &self.content)?;
+        let decrypted_bytes = signer.decrypt_nip04(&pubkey, &self.content)?;
 
         let s: String = String::from_utf8_lossy(&decrypted_bytes).into();
         Ok(s)
@@ -1235,15 +1260,17 @@ impl EventV1 {
     }
 
     /// If a gift wrap event, unwrap and return the inner Rumor
-    ///
-    /// SECURITY CRITICAL (sees private key, does not copy)
-    pub fn giftwrap_unwrap(&self, privkey: &PrivateKey) -> Result<RumorV1, Error> {
+    pub fn giftwrap_unwrap<S>(&self, signer: &Signer<S>) -> Result<RumorV1, Error>
+    where
+        S: SignerState,
+        Signer<S>: UnlockedSigner,
+    {
         if self.kind != EventKind::GiftWrap {
             return Err(Error::WrongEventKind);
         }
 
         // Verify you are tagged
-        let pkhex: PublicKeyHex = privkey.public_key().into();
+        let pkhex: PublicKeyHex = (*signer).public_key().into();
         let mut tagged = false;
         for t in self.tags.iter() {
             if let TagV1::Pubkey { pubkey, .. } = t {
@@ -1257,7 +1284,7 @@ impl EventV1 {
         }
 
         // Decrypt the content
-        let content = privkey.decrypt_nip44(&self.pubkey, &self.content)?;
+        let content = signer.decrypt_nip44(&self.pubkey, &self.content)?;
 
         // Translate into a seal Event
         let seal: EventV1 = serde_json::from_str(&content)?;
@@ -1271,7 +1298,7 @@ impl EventV1 {
         let author = seal.pubkey;
 
         // Decrypt the content
-        let content = privkey.decrypt_nip44(&seal.pubkey, &seal.content)?;
+        let content = signer.decrypt_nip44(&seal.pubkey, &seal.content)?;
 
         // Translate into a Rumor
         let rumor: RumorV1 = serde_json::from_str(&content)?;
@@ -1298,12 +1325,10 @@ impl EventV1 {
     pub fn get_id_from_speedy_bytes(bytes: &[u8]) -> Option<Id> {
         if bytes.len() < 32 {
             None
+        } else if let Ok(arr) = <[u8; 32]>::try_from(&bytes[0..32]) {
+            Some(unsafe { std::mem::transmute(arr) })
         } else {
-            if let Ok(arr) = <[u8; 32]>::try_from(&bytes[0..32]) {
-                Some(unsafe { std::mem::transmute(arr) })
-            } else {
-                None
-            }
+            None
         }
     }
 
@@ -1358,7 +1383,8 @@ impl EventV1 {
     ///
     /// Note this function is fragile, if the Event structure is reordered,
     /// or if speedy code changes, this will break.  Neither should happen.
-    pub fn get_ots_from_speedy_bytes<'a>(bytes: &'a [u8]) -> Option<&'a str> {
+    pub fn get_ots_from_speedy_bytes(bytes: &[u8]) -> Option<&str> {
+        #[allow(clippy::if_same_then_else)]
         if bytes.len() < 140 {
             None
         } else if bytes[140] == 0 {
@@ -1380,7 +1406,7 @@ impl EventV1 {
     ///
     /// Note this function is fragile, if the Event structure is reordered,
     /// or if speedy code changes, this will break.  Neither should happen.
-    pub fn get_content_from_speedy_bytes<'a>(bytes: &'a [u8]) -> Option<&'a str> {
+    pub fn get_content_from_speedy_bytes(bytes: &[u8]) -> Option<&str> {
         let start = if bytes.len() < 145 {
             return None;
         } else if bytes[140] == 0 {
@@ -1451,7 +1477,7 @@ impl EventV1 {
                     }
                 }
                 TagV1::Other { tag, data } => {
-                    if tag == "summary" && data.len() > 0 && re.is_match(data[0].as_ref()) {
+                    if tag == "summary" && !data.is_empty() && re.is_match(data[0].as_ref()) {
                         return Ok(true);
                     }
                 }
@@ -1512,14 +1538,19 @@ fn get_leading_zero_bits(bytes: &[u8]) -> u8 {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::types::{DelegationConditions, UncheckedUrl};
+    use crate::types::{
+        DelegationConditions, Signer, SignerBuilder, SignerState, UncheckedUrl, UnlockedSigner,
+    };
 
     test_serde! {EventV1, test_event_serde}
 
     #[test]
     fn test_event_new_and_verify() {
-        let privkey = PrivateKey::mock();
-        let pubkey = privkey.public_key();
+        let signer = {
+            let privkey = PrivateKey::mock();
+            SignerBuilder::new_from_private_key(privkey, "", 1).unwrap()
+        };
+        let pubkey = signer.public_key();
         let preevent = PreEventV1 {
             pubkey,
             created_at: Unixtime::mock(),
@@ -1532,7 +1563,7 @@ mod test {
             }],
             content: "Hello World!".to_string(),
         };
-        let mut event = EventV1::new(preevent, &privkey).unwrap();
+        let mut event = EventV1::new(preevent, &signer).unwrap();
         assert!(event.verify(None).is_ok());
 
         // Now make sure it fails when the message has been modified
@@ -1555,25 +1586,30 @@ mod test {
     }
 
     // helper
-    fn create_event_with_delegation(
-        delegator_privkey: &PrivateKey,
-        created_at: Unixtime,
-    ) -> EventV1 {
-        let privkey = PrivateKey::mock();
-        let pubkey = privkey.public_key();
-        let delegator_pubkey = delegator_privkey.public_key();
+    fn create_event_with_delegation<S>(created_at: Unixtime, real_signer: &Signer<S>) -> EventV1
+    where
+        S: SignerState,
+        Signer<S>: UnlockedSigner,
+    {
+        let delegated_signer = {
+            let privkey = PrivateKey::mock();
+            SignerBuilder::new_from_private_key(privkey, "", 1).unwrap()
+        };
+
         let conditions = DelegationConditions::try_from_str(
             "kind=1&created_at>1680000000&created_at<1680050000",
         )
         .unwrap();
+
         let sig = conditions
             .generate_signature(
-                PublicKeyHex::try_from_str(&pubkey.as_hex_string()).unwrap(),
-                delegator_privkey,
+                PublicKeyHex::try_from_str(&delegated_signer.public_key().as_hex_string()).unwrap(),
+                real_signer,
             )
             .unwrap();
+
         let preevent = PreEventV1 {
-            pubkey,
+            pubkey: delegated_signer.public_key(),
             created_at,
             kind: EventKind::TextNote,
             tags: vec![
@@ -1584,7 +1620,7 @@ mod test {
                     trailing: Vec::new(),
                 },
                 TagV1::Delegation {
-                    pubkey: PublicKeyHex::try_from_string(delegator_pubkey.as_hex_string())
+                    pubkey: PublicKeyHex::try_from_string(real_signer.public_key().as_hex_string())
                         .unwrap(),
                     conditions,
                     sig,
@@ -1593,14 +1629,18 @@ mod test {
             ],
             content: "Hello World!".to_string(),
         };
-        EventV1::new(preevent, &privkey).unwrap()
+        EventV1::new::<UnlockedKeyState>(preevent, &delegated_signer).unwrap()
     }
 
     #[test]
     fn test_event_with_delegation_ok() {
-        let delegator_privkey = PrivateKey::mock();
-        let delegator_pubkey = delegator_privkey.public_key();
-        let event = create_event_with_delegation(&delegator_privkey, Unixtime(1680000012));
+        let delegator_signer = {
+            let delegator_privkey = PrivateKey::mock();
+            SignerBuilder::new_from_private_key(delegator_privkey, "", 1).unwrap()
+        };
+        let delegator_pubkey = delegator_signer.public_key();
+
+        let event = create_event_with_delegation(Unixtime(1680000012), &delegator_signer);
         assert!(event.verify(None).is_ok());
 
         // check delegation
@@ -1615,7 +1655,9 @@ mod test {
     #[test]
     fn test_event_with_delegation_invalid_created_after() {
         let delegator_privkey = PrivateKey::mock();
-        let event = create_event_with_delegation(&delegator_privkey, Unixtime(1690000000));
+        let signer = SignerBuilder::new_from_private_key(delegator_privkey, "", 1).unwrap();
+
+        let event = create_event_with_delegation(Unixtime(1690000000), &signer);
         assert!(event.verify(None).is_ok());
 
         // check delegation
@@ -1632,8 +1674,12 @@ mod test {
 
     #[test]
     fn test_event_with_delegation_invalid_created_before() {
-        let delegator_privkey = PrivateKey::mock();
-        let event = create_event_with_delegation(&delegator_privkey, Unixtime(1610000000));
+        let signer = {
+            let delegator_privkey = PrivateKey::mock();
+            SignerBuilder::new_from_private_key(delegator_privkey, "", 1).unwrap()
+        };
+
+        let event = create_event_with_delegation(Unixtime(1610000000), &signer);
         assert!(event.verify(None).is_ok());
 
         // check delegation
@@ -1659,10 +1705,13 @@ mod test {
     fn test_speedy_encoded_direct_field_access() {
         use speedy::Writable;
 
-        let privkey = PrivateKey::mock();
-        let pubkey = privkey.public_key();
+        let signer = {
+            let privkey = PrivateKey::mock();
+            SignerBuilder::new_from_private_key(privkey, "", 1).unwrap()
+        };
+
         let preevent = PreEventV1 {
-            pubkey,
+            pubkey: signer.public_key(),
             created_at: Unixtime(1680000012),
             kind: EventKind::TextNote,
             tags: vec![
@@ -1679,7 +1728,7 @@ mod test {
             ],
             content: "Hello World!".to_string(),
         };
-        let event = EventV1::new(preevent, &privkey).unwrap();
+        let event = EventV1::new(preevent, &signer).unwrap();
         let bytes = event.write_to_vec().unwrap();
 
         let id = EventV1::get_id_from_speedy_bytes(&bytes).unwrap();
@@ -1739,18 +1788,24 @@ mod test {
 
     #[test]
     fn test_event_gift_wrap() {
-        let sec1 = PrivateKey::try_from_hex_string(
-            "0000000000000000000000000000000000000000000000000000000000000001",
-        )
-        .unwrap();
+        let signer1 = {
+            let sec1 = PrivateKey::try_from_hex_string(
+                "0000000000000000000000000000000000000000000000000000000000000001",
+            )
+            .unwrap();
+            SignerBuilder::new_from_private_key(sec1, "", 1).unwrap()
+        };
 
-        let sec2 = PrivateKey::try_from_hex_string(
-            "0000000000000000000000000000000000000000000000000000000000000002",
-        )
-        .unwrap();
+        let signer2 = {
+            let sec2 = PrivateKey::try_from_hex_string(
+                "0000000000000000000000000000000000000000000000000000000000000002",
+            )
+            .unwrap();
+            SignerBuilder::new_from_private_key(sec2, "", 1).unwrap()
+        };
 
         let pre = PreEventV1 {
-            pubkey: sec1.public_key(),
+            pubkey: signer1.public_key(),
             created_at: Unixtime(1692_000_000),
             kind: EventKind::TextNote,
             content: "Hey man, this rocks! Please reply for a test.".to_string(),
@@ -1759,10 +1814,10 @@ mod test {
 
         let gift_wrap = pre
             .clone()
-            .into_gift_wrap(&sec1, &sec2.public_key())
+            .into_gift_wrap(&signer2.public_key(), &signer1)
             .unwrap();
 
-        let rumor = gift_wrap.giftwrap_unwrap(&sec2).unwrap();
+        let rumor = gift_wrap.giftwrap_unwrap(&signer2).unwrap();
         let output_pre: PreEventV1 = rumor.into();
 
         assert_eq!(pre, output_pre);

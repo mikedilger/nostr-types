@@ -63,6 +63,11 @@ pub use satoshi::MilliSatoshi;
 mod signature;
 pub use signature::{Signature, SignatureHex};
 
+mod signer;
+pub use signer::{
+    LockedKeyState, Signer, SignerBuilder, SignerState, UnlockedKeyState, UnlockedSigner,
+};
+
 mod relay_list;
 pub use relay_list::{SimpleRelayList, SimpleRelayUsage};
 

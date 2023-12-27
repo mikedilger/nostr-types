@@ -48,11 +48,12 @@ pub use types::{
     find_nostr_bech32_pos, find_nostr_url_pos, ClientMessage, ContentEncryptionAlgorithm,
     ContentSegment, DelegationConditions, EncryptedPrivateKey, Event, EventAddr, EventDelegation,
     EventKind, EventKindIterator, EventKindOrRange, EventPointer, EventReference, Fee, Filter, Id,
-    IdHex, KeySecurity, Metadata, MilliSatoshi, Nip05, NostrBech32, NostrUrl, PayRequestData,
-    PreEvent, PrivateKey, Profile, PublicKey, PublicKeyHex, RelayFees, RelayInformationDocument,
-    RelayLimitation, RelayMessage, RelayRetention, RelayUrl, Rumor, ShatteredContent, Signature,
-    SignatureHex, SimpleRelayList, SimpleRelayUsage, Span, SubscriptionId, Tag, UncheckedUrl,
-    Unixtime, Url, XOnlyPublicKey, ZapData,
+    IdHex, KeySecurity, LockedKeyState, Metadata, MilliSatoshi, Nip05, NostrBech32, NostrUrl,
+    PayRequestData, PreEvent, PrivateKey, Profile, PublicKey, PublicKeyHex, RelayFees,
+    RelayInformationDocument, RelayLimitation, RelayMessage, RelayRetention, RelayUrl, Rumor,
+    ShatteredContent, Signature, SignatureHex, Signer, SignerBuilder, SignerState, SimpleRelayList,
+    SimpleRelayUsage, Span, SubscriptionId, Tag, UncheckedUrl, Unixtime, UnlockedKeyState,
+    UnlockedSigner, Url, XOnlyPublicKey, ZapData,
 };
 
 mod versioned;

@@ -40,8 +40,8 @@ impl<'a, C: Context> Readable<'a, C> for Signature {
     #[inline]
     fn read_from<R: Reader<'a, C>>(reader: &mut R) -> Result<Self, C::Error> {
         let bytes: Vec<u8> = reader.read_vec(64)?;
-        let sig = secp256k1::schnorr::Signature::from_slice(&bytes[..])
-            .map_err(|e| speedy::Error::custom(e))?;
+        let sig =
+            secp256k1::schnorr::Signature::from_slice(&bytes[..]).map_err(speedy::Error::custom)?;
         Ok(Signature(sig))
     }
 

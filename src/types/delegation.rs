@@ -1,4 +1,7 @@
-use super::{EventKind, PrivateKey, PublicKey, PublicKeyHex, Signature, SignatureHex, Unixtime};
+use super::{
+    EventKind, PublicKey, PublicKeyHex, Signature, SignatureHex, Signer, SignerState, Unixtime,
+    UnlockedSigner,
+};
 use crate::Error;
 use serde::de::Error as DeError;
 use serde::de::{Deserialize, Deserializer, Visitor};
@@ -105,15 +108,17 @@ impl DelegationConditions {
     }
 
     /// Generate the signature part of a Delegation tag
-    ///
-    /// SECURITY CRITICAL (sees private key, does not copy)
-    pub fn generate_signature(
+    pub fn generate_signature<S>(
         &self,
         pubkey: PublicKeyHex,
-        private_key: &PrivateKey,
-    ) -> Result<SignatureHex, Error> {
+        signer: &Signer<S>,
+    ) -> Result<SignatureHex, Error>
+    where
+        S: SignerState,
+        Signer<S>: UnlockedSigner,
+    {
         let input = format!("nostr:delegation:{}:{}", pubkey, self.as_string());
-        let signature = private_key.sign(input.as_bytes())?;
+        let signature = signer.sign(input.as_bytes())?;
         Ok(signature.into())
     }
 
@@ -171,32 +176,34 @@ impl Visitor<'_> for DelegationConditionsVisitor {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::Tag;
+    use crate::{PrivateKey, SignerBuilder, Tag};
 
     test_serde! {DelegationConditions, test_delegation_conditions_serde}
 
     #[test]
     fn test_sign_delegation_verify_delegation_signature() {
-        let dc = DelegationConditions::try_from_str(
-            "kind=1&created_at>1674834236&created_at<1677426236",
-        )
-        .unwrap();
         let delegator_private_key = PrivateKey::try_from_hex_string(
             "ee35e8bb71131c02c1d7e73231daa48e9953d329a4b701f7133c8f46dd21139c",
         )
         .unwrap();
         let delegator_public_key = delegator_private_key.public_key();
+
+        let signer =
+            SignerBuilder::new_from_private_key(delegator_private_key, "lockme", 16).unwrap();
+
         let delegatee_public_key = PublicKey::try_from_hex_string(
             "477318cfb5427b9cfc66a9fa376150c1ddbc62115ae27cef72417eb959691396",
             true,
         )
         .unwrap();
 
+        let dc = DelegationConditions::try_from_str(
+            "kind=1&created_at>1674834236&created_at<1677426236",
+        )
+        .unwrap();
+
         let signature = dc
-            .generate_signature(
-                PublicKeyHex::from(delegatee_public_key),
-                &delegator_private_key,
-            )
+            .generate_signature(PublicKeyHex::from(delegatee_public_key), &signer)
             .unwrap();
 
         // signature is changing, validate by verify method
