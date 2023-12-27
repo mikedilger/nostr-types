@@ -58,6 +58,12 @@ pub struct PrivateKey(secp256k1::SecretKey, KeySecurity);
 
 impl PrivateKey {
     /// Generate a new `PrivateKey` (which can be used to get the `PublicKey`)
+    #[inline]
+    pub fn new() -> PrivateKey {
+        Self::generate()
+    }
+
+    /// Generate a new `PrivateKey` (which can be used to get the `PublicKey`)
     pub fn generate() -> PrivateKey {
         let secret_key = secp256k1::SecretKey::new(&mut OsRng);
         PrivateKey(secret_key, KeySecurity::Medium)

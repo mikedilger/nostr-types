@@ -101,6 +101,7 @@ impl PreEventV2 {
     /// Create a rumor, wrapped in a seal, shrouded in a giftwrap
     /// The input.pubkey must match the privkey
     /// See NIP-59
+    /// SECURITY CRITICAL (sees private key, does not copy)
     pub fn into_gift_wrap(
         self,
         privkey: &PrivateKey,
@@ -217,6 +218,8 @@ impl RumorV2 {
 
 impl EventV2 {
     /// Create a new event
+    ///
+    /// SECURITY CRITICAL (sees private key, does not copy)
     pub fn new(input: PreEventV2, privkey: &PrivateKey) -> Result<EventV2, Error> {
         // Generate Id
         let id = input.hash()?;
@@ -238,6 +241,8 @@ impl EventV2 {
     /// Create a new event with proof of work.
     ///
     /// This can take a long time, and is only cancellable by killing the thread.
+    ///
+    /// SECURITY CRITICAL (sees private key, does not copy)
     pub fn new_with_pow(
         mut input: PreEventV2,
         privkey: &PrivateKey,
@@ -378,7 +383,7 @@ impl EventV2 {
         }
     }
 
-    // Mock data for testing
+    /// Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> EventV2 {
         let private_key = PrivateKey::mock();
@@ -394,6 +399,8 @@ impl EventV2 {
     }
 
     /// Create an event that sets Metadata
+    ///
+    /// SECURITY CRITICAL (sees private key, does not copy)
     pub fn new_set_metadata(
         mut input: PreEventV2,
         privkey: &PrivateKey,
@@ -406,6 +413,8 @@ impl EventV2 {
 
     /// Create a ZapRequest event
     /// These events are not published to nostr, they are sent to a lnurl.
+    ///
+    /// SECURITY CRITICAL (sees private key, does not copy)
     pub fn new_zap_request(
         privkey: &PrivateKey,
         recipient_pubkey: PublicKeyHex,
@@ -460,6 +469,8 @@ impl EventV2 {
     }
 
     /// If an event is an EncryptedDirectMessage, decrypt it's contents
+    ///
+    /// SECURITY CRITICAL (sees private key, does not copy)
     pub fn decrypted_contents(&self, private_key: &PrivateKey) -> Result<String, Error> {
         if self.kind != EventKind::EncryptedDirectMessage {
             return Err(Error::WrongEventKind);
@@ -1241,6 +1252,8 @@ impl EventV2 {
     }
 
     /// If a gift wrap event, unwrap and return the inner Rumor
+    ///
+    /// SECURITY CRITICAL (sees private key, does not copy)
     pub fn giftwrap_unwrap(&self, privkey: &PrivateKey) -> Result<RumorV2, Error> {
         if self.kind != EventKind::GiftWrap {
             return Err(Error::WrongEventKind);
@@ -1519,7 +1532,7 @@ mod test {
 
     // helper
     fn create_event_with_delegation(
-        delegator_privkey: PrivateKey,
+        delegator_privkey: &PrivateKey,
         created_at: Unixtime,
     ) -> EventV2 {
         let privkey = PrivateKey::mock();
@@ -1563,7 +1576,7 @@ mod test {
     fn test_event_with_delegation_ok() {
         let delegator_privkey = PrivateKey::mock();
         let delegator_pubkey = delegator_privkey.public_key();
-        let event = create_event_with_delegation(delegator_privkey, Unixtime(1680000012));
+        let event = create_event_with_delegation(&delegator_privkey, Unixtime(1680000012));
         assert!(event.verify(None).is_ok());
 
         // check delegation
@@ -1578,7 +1591,7 @@ mod test {
     #[test]
     fn test_event_with_delegation_invalid_created_after() {
         let delegator_privkey = PrivateKey::mock();
-        let event = create_event_with_delegation(delegator_privkey, Unixtime(1690000000));
+        let event = create_event_with_delegation(&delegator_privkey, Unixtime(1690000000));
         assert!(event.verify(None).is_ok());
 
         // check delegation
@@ -1596,7 +1609,7 @@ mod test {
     #[test]
     fn test_event_with_delegation_invalid_created_before() {
         let delegator_privkey = PrivateKey::mock();
-        let event = create_event_with_delegation(delegator_privkey, Unixtime(1610000000));
+        let event = create_event_with_delegation(&delegator_privkey, Unixtime(1610000000));
         assert!(event.verify(None).is_ok());
 
         // check delegation

@@ -105,10 +105,12 @@ impl DelegationConditions {
     }
 
     /// Generate the signature part of a Delegation tag
+    ///
+    /// SECURITY CRITICAL (sees private key, does not copy)
     pub fn generate_signature(
         &self,
         pubkey: PublicKeyHex,
-        private_key: PrivateKey,
+        private_key: &PrivateKey,
     ) -> Result<SignatureHex, Error> {
         let input = format!("nostr:delegation:{}:{}", pubkey, self.as_string());
         let signature = private_key.sign(input.as_bytes())?;
@@ -193,7 +195,7 @@ mod test {
         let signature = dc
             .generate_signature(
                 PublicKeyHex::from(delegatee_public_key),
-                delegator_private_key,
+                &delegator_private_key,
             )
             .unwrap();
 
