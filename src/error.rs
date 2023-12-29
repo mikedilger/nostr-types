@@ -143,6 +143,10 @@ pub enum Error {
     #[error("JSON (de)serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
 
+    /// Signer is locked
+    #[error("Signer is locked")]
+    SignerIsLocked,
+
     /// Try from slice error
     #[error("Try From Slice error: {0}")]
     Slice(#[from] std::array::TryFromSliceError),

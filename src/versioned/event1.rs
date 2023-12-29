@@ -1,8 +1,8 @@
 use super::TagV1;
 use crate::types::{
     ContentEncryptionAlgorithm, EventAddr, EventDelegation, EventKind, EventReference, Id,
-    Metadata, MilliSatoshi, NostrBech32, NostrUrl, PrivateKey, PublicKey, PublicKeyHex, RelayUrl,
-    Signature, Signer, SignerBuilder, Unixtime, UnlockedSigner, ZapData,
+    KeySigner, Metadata, MilliSatoshi, NostrBech32, NostrUrl, PrivateKey, PublicKey, PublicKeyHex,
+    RelayUrl, Signature, Signer, Unixtime, ZapData,
 };
 use crate::Error;
 use lightning_invoice::Invoice;
@@ -108,7 +108,7 @@ impl PreEventV1 {
     /// See NIP-59
     pub fn into_gift_wrap<S>(self, pubkey: &PublicKey, signer: &S) -> Result<EventV1, Error>
     where
-        S: UnlockedSigner,
+        S: Signer,
     {
         let sender_pubkey = self.pubkey;
 
@@ -145,7 +145,7 @@ impl PreEventV1 {
         // Generate a random keypair for the gift wrap
         let random_signer = {
             let random_private_key = PrivateKey::generate();
-            SignerBuilder::new_from_private_key(random_private_key, "", 1)
+            KeySigner::new_from_private_key(random_private_key, "", 1)
         }?;
 
         let seal_json = serde_json::to_string(&seal)?;
@@ -227,7 +227,7 @@ impl EventV1 {
     /// Create a new event
     pub fn new<S>(input: PreEventV1, signer: &S) -> Result<EventV1, Error>
     where
-        S: UnlockedSigner,
+        S: Signer,
     {
         // Verify the signer matches the input pubkey
         if input.pubkey != (*signer).public_key() {
@@ -262,7 +262,7 @@ impl EventV1 {
         signer: &S,
     ) -> Result<EventV1, Error>
     where
-        S: UnlockedSigner,
+        S: Signer,
     {
         let target = Some(format!("{zero_bits}"));
 
@@ -409,7 +409,7 @@ impl EventV1 {
     pub(crate) fn mock() -> EventV1 {
         let signer = {
             let private_key = PrivateKey::mock();
-            SignerBuilder::new_from_private_key(private_key, "", 1).unwrap()
+            KeySigner::new_from_private_key(private_key, "", 1).unwrap()
         };
         let public_key = signer.public_key();
         let pre = PreEventV1 {
@@ -429,7 +429,7 @@ impl EventV1 {
         signer: &S,
     ) -> Result<EventV1, Error>
     where
-        S: UnlockedSigner,
+        S: Signer,
     {
         input.kind = EventKind::Metadata;
         input.content = serde_json::to_string(&metadata)?;
@@ -447,7 +447,7 @@ impl EventV1 {
         signer: &S,
     ) -> Result<EventV1, Error>
     where
-        S: UnlockedSigner,
+        S: Signer,
     {
         let mut pre_event = PreEventV1 {
             pubkey: (*signer).public_key(),
@@ -497,7 +497,7 @@ impl EventV1 {
     /// If an event is an EncryptedDirectMessage, decrypt it's contents
     pub fn decrypted_contents<S>(&self, signer: &S) -> Result<String, Error>
     where
-        S: UnlockedSigner,
+        S: Signer,
     {
         if self.kind != EventKind::EncryptedDirectMessage {
             return Err(Error::WrongEventKind);
@@ -1255,7 +1255,7 @@ impl EventV1 {
     /// If a gift wrap event, unwrap and return the inner Rumor
     pub fn giftwrap_unwrap<S>(&self, signer: &S) -> Result<RumorV1, Error>
     where
-        S: UnlockedSigner,
+        S: Signer,
     {
         if self.kind != EventKind::GiftWrap {
             return Err(Error::WrongEventKind);
@@ -1530,7 +1530,7 @@ fn get_leading_zero_bits(bytes: &[u8]) -> u8 {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::types::{DelegationConditions, Signer, SignerBuilder, UncheckedUrl, UnlockedSigner};
+    use crate::types::{DelegationConditions, Signer, UncheckedUrl};
 
     test_serde! {EventV1, test_event_serde}
 
@@ -1538,7 +1538,7 @@ mod test {
     fn test_event_new_and_verify() {
         let signer = {
             let privkey = PrivateKey::mock();
-            SignerBuilder::new_from_private_key(privkey, "", 1).unwrap()
+            KeySigner::new_from_private_key(privkey, "", 1).unwrap()
         };
         let pubkey = signer.public_key();
         let preevent = PreEventV1 {
@@ -1578,11 +1578,11 @@ mod test {
     // helper
     fn create_event_with_delegation<S>(created_at: Unixtime, real_signer: &S) -> EventV1
     where
-        S: UnlockedSigner,
+        S: Signer,
     {
         let delegated_signer = {
             let privkey = PrivateKey::mock();
-            SignerBuilder::new_from_private_key(privkey, "", 1).unwrap()
+            KeySigner::new_from_private_key(privkey, "", 1).unwrap()
         };
 
         let conditions = DelegationConditions::try_from_str(
@@ -1625,7 +1625,7 @@ mod test {
     fn test_event_with_delegation_ok() {
         let delegator_signer = {
             let delegator_privkey = PrivateKey::mock();
-            SignerBuilder::new_from_private_key(delegator_privkey, "", 1).unwrap()
+            KeySigner::new_from_private_key(delegator_privkey, "", 1).unwrap()
         };
         let delegator_pubkey = delegator_signer.public_key();
 
@@ -1644,7 +1644,7 @@ mod test {
     #[test]
     fn test_event_with_delegation_invalid_created_after() {
         let delegator_privkey = PrivateKey::mock();
-        let signer = SignerBuilder::new_from_private_key(delegator_privkey, "", 1).unwrap();
+        let signer = KeySigner::new_from_private_key(delegator_privkey, "", 1).unwrap();
 
         let event = create_event_with_delegation(Unixtime(1690000000), &signer);
         assert!(event.verify(None).is_ok());
@@ -1665,7 +1665,7 @@ mod test {
     fn test_event_with_delegation_invalid_created_before() {
         let signer = {
             let delegator_privkey = PrivateKey::mock();
-            SignerBuilder::new_from_private_key(delegator_privkey, "", 1).unwrap()
+            KeySigner::new_from_private_key(delegator_privkey, "", 1).unwrap()
         };
 
         let event = create_event_with_delegation(Unixtime(1610000000), &signer);
@@ -1696,7 +1696,7 @@ mod test {
 
         let signer = {
             let privkey = PrivateKey::mock();
-            SignerBuilder::new_from_private_key(privkey, "", 1).unwrap()
+            KeySigner::new_from_private_key(privkey, "", 1).unwrap()
         };
 
         let preevent = PreEventV1 {
@@ -1782,7 +1782,7 @@ mod test {
                 "0000000000000000000000000000000000000000000000000000000000000001",
             )
             .unwrap();
-            SignerBuilder::new_from_private_key(sec1, "", 1).unwrap()
+            KeySigner::new_from_private_key(sec1, "", 1).unwrap()
         };
 
         let signer2 = {
@@ -1790,7 +1790,7 @@ mod test {
                 "0000000000000000000000000000000000000000000000000000000000000002",
             )
             .unwrap();
-            SignerBuilder::new_from_private_key(sec2, "", 1).unwrap()
+            KeySigner::new_from_private_key(sec2, "", 1).unwrap()
         };
 
         let pre = PreEventV1 {

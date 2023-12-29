@@ -4,39 +4,160 @@ use crate::{
 };
 use std::fmt;
 
-/// Signer with a locked local key (and public key)
-#[derive(Debug)]
-#[allow(dead_code)]
-pub struct LockedKeySigner {
+/// Signer with a local private key (and public key)
+pub struct KeySigner {
     encrypted_private_key: EncryptedPrivateKey,
     public_key: PublicKey,
+    private_key: Option<PrivateKey>,
 }
 
-/// Signer with an unlocked local key
-#[allow(dead_code)]
-pub struct UnlockedKeySigner {
-    encrypted_private_key: EncryptedPrivateKey,
-    public_key: PublicKey,
-    private_key: PrivateKey,
-}
-
-impl fmt::Debug for UnlockedKeySigner {
+impl fmt::Debug for KeySigner {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        f.debug_struct("UnlockedKeySigner")
+        f.debug_struct("KeySigner")
             .field("encrypted_private_key", &self.encrypted_private_key)
             .field("public_key", &self.public_key)
             .finish()
     }
 }
 
-mod sealed {
-    pub trait Sealed {}
-    impl Sealed for super::LockedKeySigner {}
-    impl Sealed for super::UnlockedKeySigner {}
+impl KeySigner {
+    /// Create a Signer from an `EncryptedPrivateKey`
+    pub fn new_from_locked_parts(epk: EncryptedPrivateKey, pk: PublicKey) -> Self {
+        Self {
+            encrypted_private_key: epk,
+            public_key: pk,
+            private_key: None,
+        }
+    }
+
+    /// Create a Signer from a `PrivateKey`
+    pub fn new_from_private_key(
+        privk: PrivateKey,
+        password: &str,
+        log_n: u8,
+    ) -> Result<Self, Error> {
+        let epk = privk.export_encrypted(password, log_n)?;
+        Ok(Self {
+            encrypted_private_key: epk,
+            public_key: privk.public_key(),
+            private_key: Some(privk),
+        })
+    }
+
+    /// Create a Signer by generating a new `PrivateKey`
+    pub fn generate(password: &str, log_n: u8) -> Result<Self, Error> {
+        let privk = PrivateKey::generate();
+        let epk = privk.export_encrypted(password, log_n)?;
+        Ok(Self {
+            encrypted_private_key: epk,
+            public_key: privk.public_key(),
+            private_key: Some(privk),
+        })
+    }
+
+    /// Try to unlock the encrypted private key
+    pub fn unlock(&mut self, password: &str) -> Result<(), Error> {
+        if !self.locked() {
+            return Ok(());
+        }
+
+        let private_key = match self.encrypted_private_key.decrypt(password) {
+            Ok(pk) => pk,
+            Err(e) => return Err(e),
+        };
+
+        self.private_key = Some(private_key);
+
+        Ok(())
+    }
+
+    /// Change the passphrase
+    pub fn change_passphrase(&mut self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
+        let private_key = self.encrypted_private_key.decrypt(old)?;
+        self.encrypted_private_key = private_key.export_encrypted(new, log_n)?;
+        self.private_key = Some(private_key);
+        Ok(())
+    }
+
+    /// Lock the private key
+    pub fn lock(&mut self) {
+        self.private_key = None;
+    }
+
+    /// Get the security level of the private key
+    pub fn key_security(&self) -> Result<KeySecurity, Error> {
+        match &self.private_key {
+            Some(pk) => Ok(pk.key_security()),
+            None => Err(Error::SignerIsLocked),
+        }
+    }
+
+    /// Export the private key in hex.
+    ///
+    /// This returns a boolean indicating if the key security was downgraded. If it was,
+    /// the caller should save the new self.encrypted_private_key()
+    ///
+    /// We need the password and log_n parameters to possibly rebuild
+    /// the EncryptedPrivateKey when downgrading key security
+    pub fn export_private_key_in_hex(
+        &mut self,
+        pass: &str,
+        log_n: u8,
+    ) -> Result<(String, bool), Error> {
+        if let Some(pk) = &mut self.private_key {
+            // Test password and check key security
+            let pkcheck = self.encrypted_private_key.decrypt(pass)?;
+
+            // side effect: this may downgrade the key security of self.private_key
+            let output = pk.as_hex_string();
+
+            // If key security changed, re-export
+            let mut downgraded = false;
+            if pk.key_security() != pkcheck.key_security() {
+                downgraded = true;
+                self.encrypted_private_key = pk.export_encrypted(pass, log_n)?;
+            }
+            Ok((output, downgraded))
+        } else {
+            Err(Error::SignerIsLocked)
+        }
+    }
+
+    /// Export the private key in bech32.
+    ///
+    /// This returns a boolean indicating if the key security was downgraded. If it was,
+    /// the caller should save the new self.encrypted_private_key()
+    ///
+    /// We need the password and log_n parameters to possibly rebuild
+    /// the EncryptedPrivateKey when downgrading key security
+    pub fn export_private_key_in_bech32(
+        &mut self,
+        pass: &str,
+        log_n: u8,
+    ) -> Result<(String, bool), Error> {
+        if let Some(pk) = &mut self.private_key {
+            // Test password and check key security
+            let pkcheck = self.encrypted_private_key.decrypt(pass)?;
+
+            // side effect: this may downgrade the key security of self.private_key
+            let output = pk.as_bech32_string();
+
+            // If key security changed, re-export
+            let mut downgraded = false;
+            if pk.key_security() != pkcheck.key_security() {
+                downgraded = true;
+                self.encrypted_private_key = pk.export_encrypted(pass, log_n)?;
+            }
+
+            Ok((output, downgraded))
+        } else {
+            Err(Error::SignerIsLocked)
+        }
+    }
 }
 
-/// The state of the Signer
-pub trait Signer: sealed::Sealed {
+/// Signer operations
+pub trait Signer {
     /// Is the signer locked?
     fn locked(&self) -> bool;
 
@@ -45,34 +166,7 @@ pub trait Signer: sealed::Sealed {
 
     /// What is the signer's encrypted private key?
     fn encrypted_private_key(&self) -> Option<&EncryptedPrivateKey>;
-}
 
-impl Signer for LockedKeySigner {
-    fn locked(&self) -> bool {
-        true
-    }
-    fn public_key(&self) -> PublicKey {
-        self.public_key
-    }
-    fn encrypted_private_key(&self) -> Option<&EncryptedPrivateKey> {
-        Some(&self.encrypted_private_key)
-    }
-}
-
-impl Signer for UnlockedKeySigner {
-    fn locked(&self) -> bool {
-        false
-    }
-    fn public_key(&self) -> PublicKey {
-        self.public_key
-    }
-    fn encrypted_private_key(&self) -> Option<&EncryptedPrivateKey> {
-        Some(&self.encrypted_private_key)
-    }
-}
-
-/// Trait and operations that an unlocked signer can perform
-pub trait UnlockedSigner: Signer {
     /// Sign a 32-bit hash
     fn sign_id(&self, id: Id) -> Result<Signature, Error>;
 
@@ -94,164 +188,31 @@ pub trait UnlockedSigner: Signer {
     fn decrypt_nip04(&self, other: &PublicKey, ciphertext: &str) -> Result<Vec<u8>, Error>;
 }
 
-/// Build a new signer
-#[derive(Debug, Copy, Clone)]
-pub struct SignerBuilder;
-
-impl SignerBuilder {
-    /// Create a Signer from an `EncryptedPrivateKey`
-    pub fn new_from_locked_parts(epk: EncryptedPrivateKey, pk: PublicKey) -> LockedKeySigner {
-        LockedKeySigner {
-            encrypted_private_key: epk,
-            public_key: pk,
-        }
+impl Signer for KeySigner {
+    fn locked(&self) -> bool {
+        self.private_key.is_none()
     }
 
-    /// Create a Signer from a `PrivateKey`
-    pub fn new_from_private_key(
-        privk: PrivateKey,
-        password: &str,
-        log_n: u8,
-    ) -> Result<UnlockedKeySigner, Error> {
-        let epk = privk.export_encrypted(password, log_n)?;
-        Ok(UnlockedKeySigner {
-            encrypted_private_key: epk,
-            public_key: privk.public_key(),
-            private_key: privk,
-        })
+    fn public_key(&self) -> PublicKey {
+        self.public_key
     }
 
-    /// Create a Signer by generating a new `PrivateKey`
-    pub fn generate(password: &str, log_n: u8) -> Result<UnlockedKeySigner, Error> {
-        let privk = PrivateKey::generate();
-        let epk = privk.export_encrypted(password, log_n)?;
-        Ok(UnlockedKeySigner {
-            encrypted_private_key: epk,
-            public_key: privk.public_key(),
-            private_key: privk,
-        })
-    }
-}
-
-impl LockedKeySigner {
-    /// Try to unlock the encrypted private key
-    pub fn unlock(self, password: &str) -> Result<UnlockedKeySigner, (Self, Error)> {
-        let private_key = match self.encrypted_private_key.decrypt(password) {
-            Ok(pk) => pk,
-            Err(e) => return Err((self, e)),
-        };
-
-        Ok(UnlockedKeySigner {
-            encrypted_private_key: self.encrypted_private_key,
-            public_key: private_key.public_key(),
-            private_key,
-        })
+    fn encrypted_private_key(&self) -> Option<&EncryptedPrivateKey> {
+        Some(&self.encrypted_private_key)
     }
 
-    /// Change the passphrase
-    pub fn change_passphrase(
-        self,
-        old: &str,
-        new: &str,
-        log_n: u8,
-    ) -> Result<UnlockedKeySigner, Error> {
-        // Test old password first
-        let private_key = self.encrypted_private_key.decrypt(old)?;
-        let encrypted_private_key = private_key.export_encrypted(new, log_n)?;
-        Ok(UnlockedKeySigner {
-            encrypted_private_key,
-            public_key: private_key.public_key(),
-            private_key,
-        })
-    }
-}
-
-impl UnlockedKeySigner {
-    /// Lock the private key
-    pub fn lock(self) -> LockedKeySigner {
-        LockedKeySigner {
-            encrypted_private_key: self.encrypted_private_key,
-            public_key: self.public_key,
-        }
-    }
-
-    /// Get the security level of the private key
-    pub fn key_security(&self) -> KeySecurity {
-        self.private_key.key_security()
-    }
-
-    /// Change the passphrase
-    pub fn change_passphrase(&mut self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
-        // Test old password first
-        let _ = self.encrypted_private_key.decrypt(old)?;
-        self.encrypted_private_key = self.private_key.export_encrypted(new, log_n)?;
-        Ok(())
-    }
-
-    /// Export the private key in hex.
-    ///
-    /// This returns a boolean indicating if the key security was downgraded. If it was,
-    /// the caller should save the new self.encrypted_private_key()
-    ///
-    /// We need the password and log_n parameters to possibly rebuild
-    /// the EncryptedPrivateKey when downgrading key security
-    pub fn export_private_key_in_hex(
-        &mut self,
-        pass: &str,
-        log_n: u8,
-    ) -> Result<(String, bool), Error> {
-        // side effect: this may downgrade the key security of self.private_key
-        let output = self.private_key.as_hex_string();
-
-        // Test password and check key security
-        let pk = self.encrypted_private_key.decrypt(pass)?;
-
-        // If key security changed, re-export
-        let mut downgraded = false;
-        if self.private_key.key_security() != pk.key_security() {
-            downgraded = true;
-            self.encrypted_private_key = self.private_key.export_encrypted(pass, log_n)?;
-        }
-
-        Ok((output, downgraded))
-    }
-
-    /// Export the private key in bech32.
-    ///
-    /// This returns a boolean indicating if the key security was downgraded. If it was,
-    /// the caller should save the new self.encrypted_private_key()
-    ///
-    /// We need the password and log_n parameters to possibly rebuild
-    /// the EncryptedPrivateKey when downgrading key security
-    pub fn export_private_key_in_bech32(
-        &mut self,
-        pass: &str,
-        log_n: u8,
-    ) -> Result<(String, bool), Error> {
-        // side effect: this may downgrade the key security of self.private_key
-        let output = self.private_key.as_bech32_string();
-
-        // Test password and check key security
-        let pk = self.encrypted_private_key.decrypt(pass)?;
-
-        // If key security changed, re-export
-        let mut downgraded = false;
-        if self.private_key.key_security() != pk.key_security() {
-            downgraded = true;
-            self.encrypted_private_key = self.private_key.export_encrypted(pass, log_n)?;
-        }
-
-        Ok((output, downgraded))
-    }
-}
-
-impl UnlockedSigner for UnlockedKeySigner {
     fn sign_id(&self, id: Id) -> Result<Signature, Error> {
-        self.private_key.sign_id(id)
+        match &self.private_key {
+            Some(pk) => pk.sign_id(id),
+            None => Err(Error::SignerIsLocked),
+        }
     }
 
     fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
-        self.private_key.sign(message)
+        match &self.private_key {
+            Some(pk) => pk.sign(message),
+            None => Err(Error::SignerIsLocked),
+        }
     }
 
     fn encrypt(
@@ -260,14 +221,23 @@ impl UnlockedSigner for UnlockedKeySigner {
         plaintext: &str,
         algo: ContentEncryptionAlgorithm,
     ) -> Result<String, Error> {
-        self.private_key.encrypt(other, plaintext, algo)
+        match &self.private_key {
+            Some(pk) => pk.encrypt(other, plaintext, algo),
+            None => Err(Error::SignerIsLocked),
+        }
     }
 
     fn decrypt_nip44(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
-        self.private_key.decrypt_nip44(other, ciphertext)
+        match &self.private_key {
+            Some(pk) => pk.decrypt_nip44(other, ciphertext),
+            None => Err(Error::SignerIsLocked),
+        }
     }
 
     fn decrypt_nip04(&self, other: &PublicKey, ciphertext: &str) -> Result<Vec<u8>, Error> {
-        self.private_key.decrypt_nip04(other, ciphertext)
+        match &self.private_key {
+            Some(pk) => pk.decrypt_nip04(other, ciphertext),
+            None => Err(Error::SignerIsLocked),
+        }
     }
 }

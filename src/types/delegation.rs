@@ -1,6 +1,4 @@
-use super::{
-    EventKind, PublicKey, PublicKeyHex, Signature, SignatureHex, Unixtime, UnlockedSigner,
-};
+use super::{EventKind, PublicKey, PublicKeyHex, Signature, SignatureHex, Signer, Unixtime};
 use crate::Error;
 use serde::de::Error as DeError;
 use serde::de::{Deserialize, Deserializer, Visitor};
@@ -113,7 +111,7 @@ impl DelegationConditions {
         signer: &S,
     ) -> Result<SignatureHex, Error>
     where
-        S: UnlockedSigner,
+        S: Signer,
     {
         let input = format!("nostr:delegation:{}:{}", pubkey, self.as_string());
         let signature = signer.sign(input.as_bytes())?;
@@ -174,7 +172,7 @@ impl Visitor<'_> for DelegationConditionsVisitor {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{PrivateKey, SignerBuilder, Tag};
+    use crate::{KeySigner, PrivateKey, Tag};
 
     test_serde! {DelegationConditions, test_delegation_conditions_serde}
 
@@ -186,8 +184,7 @@ mod test {
         .unwrap();
         let delegator_public_key = delegator_private_key.public_key();
 
-        let signer =
-            SignerBuilder::new_from_private_key(delegator_private_key, "lockme", 16).unwrap();
+        let signer = KeySigner::new_from_private_key(delegator_private_key, "lockme", 16).unwrap();
 
         let delegatee_public_key = PublicKey::try_from_hex_string(
             "477318cfb5427b9cfc66a9fa376150c1ddbc62115ae27cef72417eb959691396",

@@ -64,7 +64,7 @@ mod signature;
 pub use signature::{Signature, SignatureHex};
 
 mod signer;
-pub use signer::{LockedKeySigner, Signer, SignerBuilder, UnlockedKeySigner, UnlockedSigner};
+pub use signer::{KeySigner, Signer};
 
 mod relay_list;
 pub use relay_list::{SimpleRelayList, SimpleRelayUsage};
