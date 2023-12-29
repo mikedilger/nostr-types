@@ -1,6 +1,5 @@
 use super::{
-    EventKind, PublicKey, PublicKeyHex, Signature, SignatureHex, Signer, SignerState, Unixtime,
-    UnlockedSigner,
+    EventKind, PublicKey, PublicKeyHex, Signature, SignatureHex, Unixtime, UnlockedSigner,
 };
 use crate::Error;
 use serde::de::Error as DeError;
@@ -111,11 +110,10 @@ impl DelegationConditions {
     pub fn generate_signature<S>(
         &self,
         pubkey: PublicKeyHex,
-        signer: &Signer<S>,
+        signer: &S,
     ) -> Result<SignatureHex, Error>
     where
-        S: SignerState,
-        Signer<S>: UnlockedSigner,
+        S: UnlockedSigner,
     {
         let input = format!("nostr:delegation:{}:{}", pubkey, self.as_string());
         let signature = signer.sign(input.as_bytes())?;

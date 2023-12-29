@@ -2,8 +2,7 @@ use super::TagV2;
 use crate::types::{
     ContentEncryptionAlgorithm, EventAddr, EventDelegation, EventKind, EventReference, Id,
     Metadata, MilliSatoshi, NostrBech32, NostrUrl, PrivateKey, PublicKey, PublicKeyHex, RelayUrl,
-    Signature, Signer, SignerBuilder, SignerState, Unixtime, UnlockedKeyState, UnlockedSigner,
-    ZapData,
+    Signature, Signer, SignerBuilder, Unixtime, UnlockedSigner, ZapData,
 };
 use crate::Error;
 use lightning_invoice::Invoice;
@@ -102,10 +101,9 @@ impl PreEventV2 {
     /// Create a rumor, wrapped in a seal, shrouded in a giftwrap
     /// The input.pubkey must match the privkey
     /// See NIP-59
-    pub fn into_gift_wrap<S>(self, pubkey: &PublicKey, signer: &Signer<S>) -> Result<EventV2, Error>
+    pub fn into_gift_wrap<S>(self, pubkey: &PublicKey, signer: &S) -> Result<EventV2, Error>
     where
-        S: SignerState,
-        Signer<S>: UnlockedSigner,
+        S: UnlockedSigner,
     {
         let sender_pubkey = self.pubkey;
 
@@ -162,7 +160,7 @@ impl PreEventV2 {
             }],
         };
 
-        EventV2::new::<UnlockedKeyState>(pre_giftwrap, &random_signer)
+        EventV2::new(pre_giftwrap, &random_signer)
     }
 }
 
@@ -221,10 +219,9 @@ impl RumorV2 {
 
 impl EventV2 {
     /// Create a new event
-    pub fn new<S>(input: PreEventV2, signer: &Signer<S>) -> Result<EventV2, Error>
+    pub fn new<S>(input: PreEventV2, signer: &S) -> Result<EventV2, Error>
     where
-        S: SignerState,
-        Signer<S>: UnlockedSigner,
+        S: UnlockedSigner,
     {
         // Verify the signer matches the input pubkey
         if input.pubkey != (*signer).public_key() {
@@ -255,11 +252,10 @@ impl EventV2 {
         mut input: PreEventV2,
         zero_bits: u8,
         work_sender: Option<Sender<u8>>,
-        signer: &Signer<S>,
+        signer: &S,
     ) -> Result<EventV2, Error>
     where
-        S: SignerState,
-        Signer<S>: UnlockedSigner,
+        S: UnlockedSigner,
     {
         let target = Some(format!("{zero_bits}"));
 
@@ -422,11 +418,10 @@ impl EventV2 {
     pub fn new_set_metadata<S>(
         mut input: PreEventV2,
         metadata: Metadata,
-        signer: &Signer<S>,
+        signer: &S,
     ) -> Result<EventV2, Error>
     where
-        S: SignerState,
-        Signer<S>: UnlockedSigner,
+        S: UnlockedSigner,
     {
         input.kind = EventKind::Metadata;
         input.content = serde_json::to_string(&metadata)?;
@@ -441,11 +436,10 @@ impl EventV2 {
         millisatoshis: u64,
         relays: Vec<String>,
         content: String,
-        signer: &Signer<S>,
+        signer: &S,
     ) -> Result<EventV2, Error>
     where
-        S: SignerState,
-        Signer<S>: UnlockedSigner,
+        S: UnlockedSigner,
     {
         let mut pre_event = PreEventV2 {
             pubkey: (*signer).public_key(),
@@ -493,10 +487,9 @@ impl EventV2 {
     }
 
     /// If an event is an EncryptedDirectMessage, decrypt it's contents
-    pub fn decrypted_contents<S>(&self, signer: &Signer<S>) -> Result<String, Error>
+    pub fn decrypted_contents<S>(&self, signer: &S) -> Result<String, Error>
     where
-        S: SignerState,
-        Signer<S>: UnlockedSigner,
+        S: UnlockedSigner,
     {
         if self.kind != EventKind::EncryptedDirectMessage {
             return Err(Error::WrongEventKind);
@@ -1278,10 +1271,9 @@ impl EventV2 {
     }
 
     /// If a gift wrap event, unwrap and return the inner Rumor
-    pub fn giftwrap_unwrap<S>(&self, signer: &Signer<S>) -> Result<RumorV2, Error>
+    pub fn giftwrap_unwrap<S>(&self, signer: &S) -> Result<RumorV2, Error>
     where
-        S: SignerState,
-        Signer<S>: UnlockedSigner,
+        S: UnlockedSigner,
     {
         if self.kind != EventKind::GiftWrap {
             return Err(Error::WrongEventKind);
@@ -1514,9 +1506,7 @@ fn get_leading_zero_bits(bytes: &[u8]) -> u8 {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::types::{
-        DelegationConditions, Signer, SignerBuilder, SignerState, UncheckedUrl, UnlockedSigner,
-    };
+    use crate::types::{DelegationConditions, Signer, SignerBuilder, UncheckedUrl, UnlockedSigner};
 
     test_serde! {EventV2, test_event_serde}
 
@@ -1562,10 +1552,9 @@ mod test {
     }
 
     // helper
-    fn create_event_with_delegation<S>(created_at: Unixtime, real_signer: &Signer<S>) -> EventV2
+    fn create_event_with_delegation<S>(created_at: Unixtime, real_signer: &S) -> EventV2
     where
-        S: SignerState,
-        Signer<S>: UnlockedSigner,
+        S: UnlockedSigner,
     {
         let delegated_signer = {
             let privkey = PrivateKey::mock();
@@ -1605,7 +1594,7 @@ mod test {
             ],
             content: "Hello World!".to_string(),
         };
-        EventV2::new::<UnlockedKeyState>(preevent, &delegated_signer).unwrap()
+        EventV2::new(preevent, &delegated_signer).unwrap()
     }
 
     #[test]

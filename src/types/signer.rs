@@ -7,22 +7,22 @@ use std::fmt;
 /// Signer with a locked local key (and public key)
 #[derive(Debug)]
 #[allow(dead_code)]
-pub struct LockedKeyState {
+pub struct LockedKeySigner {
     encrypted_private_key: EncryptedPrivateKey,
     public_key: PublicKey,
 }
 
 /// Signer with an unlocked local key
 #[allow(dead_code)]
-pub struct UnlockedKeyState {
+pub struct UnlockedKeySigner {
     encrypted_private_key: EncryptedPrivateKey,
     public_key: PublicKey,
     private_key: PrivateKey,
 }
 
-impl fmt::Debug for UnlockedKeyState {
+impl fmt::Debug for UnlockedKeySigner {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        f.debug_struct("UnlockedKeyState")
+        f.debug_struct("UnlockedKeySigner")
             .field("encrypted_private_key", &self.encrypted_private_key)
             .field("public_key", &self.public_key)
             .finish()
@@ -31,12 +31,12 @@ impl fmt::Debug for UnlockedKeyState {
 
 mod sealed {
     pub trait Sealed {}
-    impl Sealed for super::LockedKeyState {}
-    impl Sealed for super::UnlockedKeyState {}
+    impl Sealed for super::LockedKeySigner {}
+    impl Sealed for super::UnlockedKeySigner {}
 }
 
 /// The state of the Signer
-pub trait SignerState: sealed::Sealed {
+pub trait Signer: sealed::Sealed {
     /// Is the signer locked?
     fn locked(&self) -> bool;
 
@@ -47,7 +47,7 @@ pub trait SignerState: sealed::Sealed {
     fn encrypted_private_key(&self) -> Option<&EncryptedPrivateKey>;
 }
 
-impl SignerState for LockedKeyState {
+impl Signer for LockedKeySigner {
     fn locked(&self) -> bool {
         true
     }
@@ -58,7 +58,8 @@ impl SignerState for LockedKeyState {
         Some(&self.encrypted_private_key)
     }
 }
-impl SignerState for UnlockedKeyState {
+
+impl Signer for UnlockedKeySigner {
     fn locked(&self) -> bool {
         false
     }
@@ -71,7 +72,7 @@ impl SignerState for UnlockedKeyState {
 }
 
 /// Trait and operations that an unlocked signer can perform
-pub trait UnlockedSigner {
+pub trait UnlockedSigner: Signer {
     /// Sign a 32-bit hash
     fn sign_id(&self, id: Id) -> Result<Signature, Error>;
 
@@ -93,28 +94,16 @@ pub trait UnlockedSigner {
     fn decrypt_nip04(&self, other: &PublicKey, ciphertext: &str) -> Result<Vec<u8>, Error>;
 }
 
-/// A signer
-#[allow(dead_code)]
-#[derive(Debug)]
-pub struct Signer<S: SignerState> {
-    state: S,
-}
-
 /// Build a new signer
 #[derive(Debug, Copy, Clone)]
 pub struct SignerBuilder;
 
 impl SignerBuilder {
     /// Create a Signer from an `EncryptedPrivateKey`
-    pub fn new_from_locked_parts(
-        epk: EncryptedPrivateKey,
-        pk: PublicKey,
-    ) -> Signer<LockedKeyState> {
-        Signer {
-            state: LockedKeyState {
-                encrypted_private_key: epk,
-                public_key: pk,
-            },
+    pub fn new_from_locked_parts(epk: EncryptedPrivateKey, pk: PublicKey) -> LockedKeySigner {
+        LockedKeySigner {
+            encrypted_private_key: epk,
+            public_key: pk,
         }
     }
 
@@ -123,65 +112,39 @@ impl SignerBuilder {
         privk: PrivateKey,
         password: &str,
         log_n: u8,
-    ) -> Result<Signer<UnlockedKeyState>, Error> {
+    ) -> Result<UnlockedKeySigner, Error> {
         let epk = privk.export_encrypted(password, log_n)?;
-        Ok(Signer {
-            state: UnlockedKeyState {
-                encrypted_private_key: epk,
-                public_key: privk.public_key(),
-                private_key: privk,
-            },
+        Ok(UnlockedKeySigner {
+            encrypted_private_key: epk,
+            public_key: privk.public_key(),
+            private_key: privk,
         })
     }
 
     /// Create a Signer by generating a new `PrivateKey`
-    pub fn generate(password: &str, log_n: u8) -> Result<Signer<UnlockedKeyState>, Error> {
+    pub fn generate(password: &str, log_n: u8) -> Result<UnlockedKeySigner, Error> {
         let privk = PrivateKey::generate();
         let epk = privk.export_encrypted(password, log_n)?;
-        Ok(Signer {
-            state: UnlockedKeyState {
-                encrypted_private_key: epk,
-                public_key: privk.public_key(),
-                private_key: privk,
-            },
+        Ok(UnlockedKeySigner {
+            encrypted_private_key: epk,
+            public_key: privk.public_key(),
+            private_key: privk,
         })
     }
 }
 
-impl<S: SignerState> Signer<S> {
-    /// Is the private key locked?
-    #[inline]
-    pub fn locked(&self) -> bool {
-        self.state.locked()
-    }
-
-    /// The public key
-    #[inline]
-    pub fn public_key(&self) -> PublicKey {
-        self.state.public_key()
-    }
-
-    /// The encrypted private key
-    #[inline]
-    pub fn encrypted_private_key(&self) -> Option<&EncryptedPrivateKey> {
-        self.state.encrypted_private_key()
-    }
-}
-
-impl Signer<LockedKeyState> {
+impl LockedKeySigner {
     /// Try to unlock the encrypted private key
-    pub fn unlock(self, password: &str) -> Result<Signer<UnlockedKeyState>, (Self, Error)> {
-        let private_key = match self.state.encrypted_private_key.decrypt(password) {
+    pub fn unlock(self, password: &str) -> Result<UnlockedKeySigner, (Self, Error)> {
+        let private_key = match self.encrypted_private_key.decrypt(password) {
             Ok(pk) => pk,
             Err(e) => return Err((self, e)),
         };
 
-        Ok(Signer {
-            state: UnlockedKeyState {
-                encrypted_private_key: self.state.encrypted_private_key,
-                public_key: private_key.public_key(),
-                private_key,
-            },
+        Ok(UnlockedKeySigner {
+            encrypted_private_key: self.encrypted_private_key,
+            public_key: private_key.public_key(),
+            private_key,
         })
     }
 
@@ -191,41 +154,37 @@ impl Signer<LockedKeyState> {
         old: &str,
         new: &str,
         log_n: u8,
-    ) -> Result<Signer<UnlockedKeyState>, Error> {
+    ) -> Result<UnlockedKeySigner, Error> {
         // Test old password first
-        let private_key = self.state.encrypted_private_key.decrypt(old)?;
+        let private_key = self.encrypted_private_key.decrypt(old)?;
         let encrypted_private_key = private_key.export_encrypted(new, log_n)?;
-        Ok(Signer {
-            state: UnlockedKeyState {
-                encrypted_private_key,
-                public_key: private_key.public_key(),
-                private_key,
-            },
+        Ok(UnlockedKeySigner {
+            encrypted_private_key,
+            public_key: private_key.public_key(),
+            private_key,
         })
     }
 }
 
-impl Signer<UnlockedKeyState> {
+impl UnlockedKeySigner {
     /// Lock the private key
-    pub fn lock(self) -> Signer<LockedKeyState> {
-        Signer {
-            state: LockedKeyState {
-                encrypted_private_key: self.state.encrypted_private_key,
-                public_key: self.state.public_key,
-            },
+    pub fn lock(self) -> LockedKeySigner {
+        LockedKeySigner {
+            encrypted_private_key: self.encrypted_private_key,
+            public_key: self.public_key,
         }
     }
 
     /// Get the security level of the private key
     pub fn key_security(&self) -> KeySecurity {
-        self.state.private_key.key_security()
+        self.private_key.key_security()
     }
 
     /// Change the passphrase
     pub fn change_passphrase(&mut self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
         // Test old password first
-        let _ = self.state.encrypted_private_key.decrypt(old)?;
-        self.state.encrypted_private_key = self.state.private_key.export_encrypted(new, log_n)?;
+        let _ = self.encrypted_private_key.decrypt(old)?;
+        self.encrypted_private_key = self.private_key.export_encrypted(new, log_n)?;
         Ok(())
     }
 
@@ -242,17 +201,16 @@ impl Signer<UnlockedKeyState> {
         log_n: u8,
     ) -> Result<(String, bool), Error> {
         // side effect: this may downgrade the key security of self.private_key
-        let output = self.state.private_key.as_hex_string();
+        let output = self.private_key.as_hex_string();
 
         // Test password and check key security
-        let pk = self.state.encrypted_private_key.decrypt(pass)?;
+        let pk = self.encrypted_private_key.decrypt(pass)?;
 
         // If key security changed, re-export
         let mut downgraded = false;
-        if self.state.private_key.key_security() != pk.key_security() {
+        if self.private_key.key_security() != pk.key_security() {
             downgraded = true;
-            self.state.encrypted_private_key =
-                self.state.private_key.export_encrypted(pass, log_n)?;
+            self.encrypted_private_key = self.private_key.export_encrypted(pass, log_n)?;
         }
 
         Ok((output, downgraded))
@@ -271,30 +229,29 @@ impl Signer<UnlockedKeyState> {
         log_n: u8,
     ) -> Result<(String, bool), Error> {
         // side effect: this may downgrade the key security of self.private_key
-        let output = self.state.private_key.as_bech32_string();
+        let output = self.private_key.as_bech32_string();
 
         // Test password and check key security
-        let pk = self.state.encrypted_private_key.decrypt(pass)?;
+        let pk = self.encrypted_private_key.decrypt(pass)?;
 
         // If key security changed, re-export
         let mut downgraded = false;
-        if self.state.private_key.key_security() != pk.key_security() {
+        if self.private_key.key_security() != pk.key_security() {
             downgraded = true;
-            self.state.encrypted_private_key =
-                self.state.private_key.export_encrypted(pass, log_n)?;
+            self.encrypted_private_key = self.private_key.export_encrypted(pass, log_n)?;
         }
 
         Ok((output, downgraded))
     }
 }
 
-impl UnlockedSigner for Signer<UnlockedKeyState> {
+impl UnlockedSigner for UnlockedKeySigner {
     fn sign_id(&self, id: Id) -> Result<Signature, Error> {
-        self.state.private_key.sign_id(id)
+        self.private_key.sign_id(id)
     }
 
     fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
-        self.state.private_key.sign(message)
+        self.private_key.sign(message)
     }
 
     fn encrypt(
@@ -303,14 +260,14 @@ impl UnlockedSigner for Signer<UnlockedKeyState> {
         plaintext: &str,
         algo: ContentEncryptionAlgorithm,
     ) -> Result<String, Error> {
-        self.state.private_key.encrypt(other, plaintext, algo)
+        self.private_key.encrypt(other, plaintext, algo)
     }
 
     fn decrypt_nip44(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
-        self.state.private_key.decrypt_nip44(other, ciphertext)
+        self.private_key.decrypt_nip44(other, ciphertext)
     }
 
     fn decrypt_nip04(&self, other: &PublicKey, ciphertext: &str) -> Result<Vec<u8>, Error> {
-        self.state.private_key.decrypt_nip04(other, ciphertext)
+        self.private_key.decrypt_nip04(other, ciphertext)
     }
 }
