@@ -28,6 +28,9 @@ pub use filter::Filter;
 mod id;
 pub use id::{Id, IdHex};
 
+mod identity;
+pub use identity::Identity;
+
 mod metadata;
 pub use metadata::Metadata;
 

@@ -184,7 +184,7 @@ mod test {
         .unwrap();
         let delegator_public_key = delegator_private_key.public_key();
 
-        let signer = KeySigner::new_from_private_key(delegator_private_key, "lockme", 16).unwrap();
+        let signer = KeySigner::from_private_key(delegator_private_key, "lockme", 16).unwrap();
 
         let delegatee_public_key = PublicKey::try_from_hex_string(
             "477318cfb5427b9cfc66a9fa376150c1ddbc62115ae27cef72417eb959691396",

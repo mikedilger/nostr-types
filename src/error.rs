@@ -123,6 +123,14 @@ pub enum Error {
     #[error("Missing URL Authority")]
     InvalidUrlMissingAuthority,
 
+    /// No Private Key
+    #[error("No private key")]
+    NoPrivateKey,
+
+    /// No Public Key
+    #[error("No public key")]
+    NoPublicKey,
+
     /// Out of Range
     #[error("Out of Range")]
     OutOfRange(usize),

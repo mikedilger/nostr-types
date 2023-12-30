@@ -145,7 +145,7 @@ impl PreEventV1 {
         // Generate a random keypair for the gift wrap
         let random_signer = {
             let random_private_key = PrivateKey::generate();
-            KeySigner::new_from_private_key(random_private_key, "", 1)
+            KeySigner::from_private_key(random_private_key, "", 1)
         }?;
 
         let seal_json = serde_json::to_string(&seal)?;
@@ -409,7 +409,7 @@ impl EventV1 {
     pub(crate) fn mock() -> EventV1 {
         let signer = {
             let private_key = PrivateKey::mock();
-            KeySigner::new_from_private_key(private_key, "", 1).unwrap()
+            KeySigner::from_private_key(private_key, "", 1).unwrap()
         };
         let public_key = signer.public_key();
         let pre = PreEventV1 {
@@ -1538,7 +1538,7 @@ mod test {
     fn test_event_new_and_verify() {
         let signer = {
             let privkey = PrivateKey::mock();
-            KeySigner::new_from_private_key(privkey, "", 1).unwrap()
+            KeySigner::from_private_key(privkey, "", 1).unwrap()
         };
         let pubkey = signer.public_key();
         let preevent = PreEventV1 {
@@ -1582,7 +1582,7 @@ mod test {
     {
         let delegated_signer = {
             let privkey = PrivateKey::mock();
-            KeySigner::new_from_private_key(privkey, "", 1).unwrap()
+            KeySigner::from_private_key(privkey, "", 1).unwrap()
         };
 
         let conditions = DelegationConditions::try_from_str(
@@ -1625,7 +1625,7 @@ mod test {
     fn test_event_with_delegation_ok() {
         let delegator_signer = {
             let delegator_privkey = PrivateKey::mock();
-            KeySigner::new_from_private_key(delegator_privkey, "", 1).unwrap()
+            KeySigner::from_private_key(delegator_privkey, "", 1).unwrap()
         };
         let delegator_pubkey = delegator_signer.public_key();
 
@@ -1644,7 +1644,7 @@ mod test {
     #[test]
     fn test_event_with_delegation_invalid_created_after() {
         let delegator_privkey = PrivateKey::mock();
-        let signer = KeySigner::new_from_private_key(delegator_privkey, "", 1).unwrap();
+        let signer = KeySigner::from_private_key(delegator_privkey, "", 1).unwrap();
 
         let event = create_event_with_delegation(Unixtime(1690000000), &signer);
         assert!(event.verify(None).is_ok());
@@ -1665,7 +1665,7 @@ mod test {
     fn test_event_with_delegation_invalid_created_before() {
         let signer = {
             let delegator_privkey = PrivateKey::mock();
-            KeySigner::new_from_private_key(delegator_privkey, "", 1).unwrap()
+            KeySigner::from_private_key(delegator_privkey, "", 1).unwrap()
         };
 
         let event = create_event_with_delegation(Unixtime(1610000000), &signer);
@@ -1696,7 +1696,7 @@ mod test {
 
         let signer = {
             let privkey = PrivateKey::mock();
-            KeySigner::new_from_private_key(privkey, "", 1).unwrap()
+            KeySigner::from_private_key(privkey, "", 1).unwrap()
         };
 
         let preevent = PreEventV1 {
@@ -1782,7 +1782,7 @@ mod test {
                 "0000000000000000000000000000000000000000000000000000000000000001",
             )
             .unwrap();
-            KeySigner::new_from_private_key(sec1, "", 1).unwrap()
+            KeySigner::from_private_key(sec1, "", 1).unwrap()
         };
 
         let signer2 = {
@@ -1790,7 +1790,7 @@ mod test {
                 "0000000000000000000000000000000000000000000000000000000000000002",
             )
             .unwrap();
-            KeySigner::new_from_private_key(sec2, "", 1).unwrap()
+            KeySigner::from_private_key(sec2, "", 1).unwrap()
         };
 
         let pre = PreEventV1 {
