@@ -66,6 +66,9 @@ pub trait Signer: fmt::Debug {
     /// Change the passphrase used for locking access to the private key
     fn change_passphrase(&mut self, old: &str, new: &str, log_n: u8) -> Result<(), Error>;
 
+    /// Upgrade the encrypted private key to the latest format
+    fn upgrade(&mut self, pass: &str, log_n: u8) -> Result<(), Error>;
+
     /// What is the signer's public key?
     fn public_key(&self) -> PublicKey;
 
@@ -147,6 +150,12 @@ impl Signer for KeySigner {
         let private_key = self.encrypted_private_key.decrypt(old)?;
         self.encrypted_private_key = private_key.export_encrypted(new, log_n)?;
         self.private_key = Some(private_key);
+        Ok(())
+    }
+
+    fn upgrade(&mut self, pass: &str, log_n: u8) -> Result<(), Error> {
+        let private_key = self.encrypted_private_key.decrypt(pass)?;
+        self.encrypted_private_key = private_key.export_encrypted(pass, log_n)?;
         Ok(())
     }
 
