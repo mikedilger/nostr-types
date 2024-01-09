@@ -954,6 +954,25 @@ impl EventV2 {
         }
     }
 
+    /// Can this event be deleted by the given public key?
+    pub fn delete_author_allowed(&self, by: PublicKey) -> bool {
+        // Author can always delete
+        if self.pubkey == by {
+            return true;
+        }
+
+        if self.kind == EventKind::GiftWrap {
+            for tag in self.tags.iter() {
+                if let TagV2::Pubkey { pubkey, .. } = tag {
+                    let pkh: PublicKeyHex = by.into();
+                    return pkh == *pubkey;
+                }
+            }
+        }
+
+        false
+    }
+
     /// If this event zaps another event, get data about that.
     ///
     /// That includes the Id, the amount, and the public key of the provider,
