@@ -1,24 +1,17 @@
 use super::TagV2;
 use crate::types::{
-    ContentEncryptionAlgorithm, EventAddr, EventDelegation, EventKind, EventReference, Id,
-    KeySigner, Metadata, MilliSatoshi, NostrBech32, NostrUrl, PrivateKey, PublicKey, PublicKeyHex,
-    RelayUrl, Signature, Signer, Unixtime, ZapData,
+    EventAddr, EventDelegation, EventKind, EventReference, Id, KeySigner, MilliSatoshi,
+    NostrBech32, NostrUrl, PrivateKey, PublicKey, PublicKeyHex, RelayUrl, Signature, Signer,
+    Unixtime, ZapData,
 };
 use crate::Error;
 use lightning_invoice::Invoice;
-use rand::Rng;
-use rand_core::OsRng;
 #[cfg(feature = "speedy")]
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "speedy")]
 use speedy::{Readable, Writable};
 use std::str::FromStr;
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
-use std::sync::mpsc::Sender;
-use std::sync::Arc;
-use std::thread;
-use std::thread::JoinHandle;
 
 /// The main event type
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -97,71 +90,6 @@ impl PreEventV2 {
         let id: [u8; 32] = hash.to_byte_array();
         Ok(Id(id))
     }
-
-    /// Create a rumor, wrapped in a seal, shrouded in a giftwrap
-    /// The input.pubkey must match the privkey
-    /// See NIP-59
-    pub fn into_gift_wrap<S>(self, pubkey: &PublicKey, signer: &S) -> Result<EventV2, Error>
-    where
-        S: Signer,
-    {
-        let sender_pubkey = self.pubkey;
-
-        if (*signer).public_key() != sender_pubkey {
-            return Err(Error::InvalidPrivateKey);
-        }
-
-        let seal_backdate = Unixtime(
-            self.created_at.0
-                - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 7)),
-        );
-        let giftwrap_backdate = Unixtime(
-            self.created_at.0
-                - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 7)),
-        );
-
-        let seal = {
-            let rumor = RumorV2::new(self)?;
-            let rumor_json = serde_json::to_string(&rumor)?;
-            let encrypted_rumor_json =
-                signer.encrypt(pubkey, &rumor_json, ContentEncryptionAlgorithm::Nip44v2)?;
-
-            let pre_seal = PreEventV2 {
-                pubkey: sender_pubkey,
-                created_at: seal_backdate,
-                kind: EventKind::Seal,
-                content: encrypted_rumor_json,
-                tags: vec![],
-            };
-
-            EventV2::new(pre_seal, signer)?
-        };
-
-        // Generate a random keypair for the gift wrap
-        let random_signer = {
-            let random_private_key = PrivateKey::generate();
-            KeySigner::from_private_key(random_private_key, "", 1)
-        }?;
-
-        let seal_json = serde_json::to_string(&seal)?;
-        let encrypted_seal_json =
-            random_signer.encrypt(pubkey, &seal_json, ContentEncryptionAlgorithm::Nip44v2)?;
-
-        let pre_giftwrap = PreEventV2 {
-            pubkey: random_signer.public_key(),
-            created_at: giftwrap_backdate,
-            kind: EventKind::GiftWrap,
-            content: encrypted_seal_json,
-            tags: vec![TagV2::Pubkey {
-                pubkey: (*pubkey).into(),
-                recommended_relay_url: None,
-                petname: None,
-                trailing: vec![],
-            }],
-        };
-
-        EventV2::new(pre_giftwrap, &random_signer)
-    }
 }
 
 /// A Rumor is an Event without a signature
@@ -218,147 +146,6 @@ impl RumorV2 {
 }
 
 impl EventV2 {
-    /// Create a new event
-    pub fn new<S>(input: PreEventV2, signer: &S) -> Result<EventV2, Error>
-    where
-        S: Signer,
-    {
-        // Verify the signer matches the input pubkey
-        if input.pubkey != (*signer).public_key() {
-            return Err(Error::InvalidPublicKey);
-        }
-
-        // Generate Id
-        let id = input.hash()?;
-
-        // Generate Signature
-        let signature = signer.sign_id(id)?;
-
-        Ok(EventV2 {
-            id,
-            pubkey: input.pubkey,
-            created_at: input.created_at,
-            kind: input.kind,
-            tags: input.tags,
-            content: input.content,
-            sig: signature,
-        })
-    }
-
-    /// Create a new event with proof of work.
-    ///
-    /// This can take a long time, and is only cancellable by killing the thread.
-    pub fn new_with_pow<S>(
-        mut input: PreEventV2,
-        zero_bits: u8,
-        work_sender: Option<Sender<u8>>,
-        signer: &S,
-    ) -> Result<EventV2, Error>
-    where
-        S: Signer,
-    {
-        let target = Some(format!("{zero_bits}"));
-
-        // Verify the signer matches the input pubkey
-        if input.pubkey != (*signer).public_key() {
-            return Err(Error::InvalidPublicKey);
-        }
-
-        // Strip any pre-existing nonce tags
-        input.tags.retain(|t| !matches!(t, TagV2::Nonce { .. }));
-
-        // Add nonce tag to the end
-        input.tags.push(TagV2::Nonce {
-            nonce: "0".to_string(),
-            target: target.clone(),
-            trailing: Vec::new(),
-        });
-        let index = input.tags.len() - 1;
-
-        let cores = num_cpus::get();
-
-        let quitting = Arc::new(AtomicBool::new(false));
-        let nonce = Arc::new(AtomicU64::new(0)); // will store the nonce that works
-        let best_work = Arc::new(AtomicU8::new(0));
-
-        let mut join_handles: Vec<JoinHandle<_>> = Vec::with_capacity(cores);
-
-        for core in 0..cores {
-            let mut attempt: u64 = core as u64 * (u64::MAX / cores as u64);
-            let mut input = input.clone();
-            let target = target.clone();
-            let quitting = quitting.clone();
-            let nonce = nonce.clone();
-            let best_work = best_work.clone();
-            let work_sender = work_sender.clone();
-            let join_handle = thread::spawn(move || {
-                loop {
-                    // Lower the thread priority so other threads aren't starved
-                    let _ = thread_priority::set_current_thread_priority(
-                        thread_priority::ThreadPriority::Min,
-                    );
-
-                    if quitting.load(Ordering::Relaxed) {
-                        break;
-                    }
-
-                    input.tags[index] = TagV2::Nonce {
-                        nonce: format!("{attempt}"),
-                        target: target.clone(),
-                        trailing: Vec::new(),
-                    };
-
-                    let Id(id) = input.hash().unwrap();
-
-                    let leading_zeroes = get_leading_zero_bits(&id);
-                    if leading_zeroes >= zero_bits {
-                        nonce.store(attempt, Ordering::Relaxed);
-                        quitting.store(true, Ordering::Relaxed);
-                        if let Some(sender) = work_sender.clone() {
-                            sender.send(leading_zeroes).unwrap();
-                        }
-                        break;
-                    } else if leading_zeroes > best_work.load(Ordering::Relaxed) {
-                        best_work.store(leading_zeroes, Ordering::Relaxed);
-                        if let Some(sender) = work_sender.clone() {
-                            sender.send(leading_zeroes).unwrap();
-                        }
-                    }
-
-                    attempt += 1;
-
-                    // We don't update created_at, which is a bit tricky to synchronize.
-                }
-            });
-            join_handles.push(join_handle);
-        }
-
-        for joinhandle in join_handles {
-            let _ = joinhandle.join();
-        }
-
-        // We found the nonce. Do it for reals
-        input.tags[index] = TagV2::Nonce {
-            nonce: format!("{}", nonce.load(Ordering::Relaxed)),
-            target,
-            trailing: Vec::new(),
-        };
-        let id = input.hash().unwrap();
-
-        // Signature
-        let signature = signer.sign_id(id)?;
-
-        Ok(EventV2 {
-            id,
-            pubkey: input.pubkey,
-            created_at: input.created_at,
-            kind: input.kind,
-            tags: input.tags,
-            content: input.content,
-            sig: signature,
-        })
-    }
-
     /// Check the validity of an event. This is useful if you deserialize an event
     /// from the network. If you create an event using new() it should already be
     /// trustworthy.
@@ -411,69 +198,7 @@ impl EventV2 {
             tags: vec![TagV2::mock(), TagV2::mock()],
             content: "This is a test".to_string(),
         };
-        EventV2::new(pre, &signer).unwrap()
-    }
-
-    /// Create an event that sets Metadata
-    pub fn new_set_metadata<S>(
-        mut input: PreEventV2,
-        metadata: Metadata,
-        signer: &S,
-    ) -> Result<EventV2, Error>
-    where
-        S: Signer,
-    {
-        input.kind = EventKind::Metadata;
-        input.content = serde_json::to_string(&metadata)?;
-        EventV2::new(input, signer)
-    }
-
-    /// Create a ZapRequest event
-    /// These events are not published to nostr, they are sent to a lnurl.
-    pub fn new_zap_request<S>(
-        recipient_pubkey: PublicKeyHex,
-        zapped_event: Option<Id>,
-        millisatoshis: u64,
-        relays: Vec<String>,
-        content: String,
-        signer: &S,
-    ) -> Result<EventV2, Error>
-    where
-        S: Signer,
-    {
-        let mut pre_event = PreEventV2 {
-            pubkey: (*signer).public_key(),
-            created_at: Unixtime::now().unwrap(),
-            kind: EventKind::ZapRequest,
-            tags: vec![
-                TagV2::Pubkey {
-                    pubkey: recipient_pubkey,
-                    recommended_relay_url: None,
-                    petname: None,
-                    trailing: Vec::new(),
-                },
-                TagV2::Other {
-                    tag: "relays".to_owned(),
-                    data: relays,
-                },
-                TagV2::Other {
-                    tag: "amount".to_owned(),
-                    data: vec![format!("{millisatoshis}")],
-                },
-            ],
-            content,
-        };
-
-        if let Some(ze) = zapped_event {
-            pre_event.tags.push(TagV2::Event {
-                id: ze,
-                recommended_relay_url: None,
-                marker: None,
-                trailing: Vec::new(),
-            });
-        }
-
-        EventV2::new(pre_event, signer)
+        signer.sign_event(pre).unwrap()
     }
 
     /// Get the k-tag kind, if any
@@ -484,33 +209,6 @@ impl EventV2 {
             }
         }
         None
-    }
-
-    /// If an event is an EncryptedDirectMessage, decrypt it's contents
-    pub fn decrypted_contents<S>(&self, signer: &S) -> Result<String, Error>
-    where
-        S: Signer,
-    {
-        if self.kind != EventKind::EncryptedDirectMessage {
-            return Err(Error::WrongEventKind);
-        }
-
-        let pubkey = if self.pubkey == (*signer).public_key() {
-            // If you are the author, get the pubkey from the tags
-            self.people()
-                .iter()
-                .filter_map(|(pkh, _, _)| PublicKey::try_from(pkh).ok())
-                .filter(|pk| *pk != self.pubkey)
-                .nth(0)
-                .unwrap_or(self.pubkey) // in case you sent it to yourself.
-        } else {
-            self.pubkey
-        };
-
-        let decrypted_bytes = signer.decrypt_nip04(&pubkey, &self.content)?;
-
-        let s: String = String::from_utf8_lossy(&decrypted_bytes).into();
-        Ok(s)
     }
 
     /// If the event refers to people by tag, get all the PublicKeys it refers to
@@ -1203,7 +901,7 @@ impl EventV2 {
     /// Get the proof-of-work count of leading bits
     pub fn pow(&self) -> u8 {
         // Count leading bits in the Id field
-        let zeroes: u8 = get_leading_zero_bits(&self.id.0);
+        let zeroes: u8 = crate::get_leading_zero_bits(&self.id.0);
 
         // Check that they meant it
         let mut target_zeroes: u8 = 0;
@@ -1287,58 +985,6 @@ impl EventV2 {
             }
         }
         None
-    }
-
-    /// If a gift wrap event, unwrap and return the inner Rumor
-    pub fn giftwrap_unwrap<S>(&self, signer: &S) -> Result<RumorV2, Error>
-    where
-        S: Signer,
-    {
-        if self.kind != EventKind::GiftWrap {
-            return Err(Error::WrongEventKind);
-        }
-
-        // Verify you are tagged
-        let pkhex: PublicKeyHex = (*signer).public_key().into();
-        let mut tagged = false;
-        for t in self.tags.iter() {
-            if let TagV2::Pubkey { pubkey, .. } = t {
-                if *pubkey == pkhex {
-                    tagged = true;
-                }
-            }
-        }
-        if !tagged {
-            return Err(Error::InvalidRecipient);
-        }
-
-        // Decrypt the content
-        let content = signer.decrypt_nip44(&self.pubkey, &self.content)?;
-
-        // Translate into a seal Event
-        let seal: EventV2 = serde_json::from_str(&content)?;
-
-        // Verify it is a Seal
-        if seal.kind != EventKind::Seal {
-            return Err(Error::WrongEventKind);
-        }
-
-        // Note the author
-        let author = seal.pubkey;
-
-        // Decrypt the content
-        let content = signer.decrypt_nip44(&seal.pubkey, &seal.content)?;
-
-        // Translate into a Rumor
-        let rumor: RumorV2 = serde_json::from_str(&content)?;
-
-        // Compae the author
-        if rumor.pubkey != author {
-            return Err(Error::InvalidPublicKey);
-        }
-
-        // Return the Rumor
-        Ok(rumor)
     }
 }
 
@@ -1508,20 +1154,6 @@ impl TryFrom<PreEventV2> for RumorV2 {
     }
 }
 
-#[inline]
-fn get_leading_zero_bits(bytes: &[u8]) -> u8 {
-    let mut res = 0_u8;
-    for b in bytes {
-        if *b == 0 {
-            res += 8;
-        } else {
-            res += b.leading_zeros() as u8;
-            return res;
-        }
-    }
-    res
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -1548,7 +1180,7 @@ mod test {
             }],
             content: "Hello World!".to_string(),
         };
-        let mut event = EventV2::new(preevent, &signer).unwrap();
+        let mut event = signer.sign_event(preevent).unwrap();
         assert!(event.verify(None).is_ok());
 
         // Now make sure it fails when the message has been modified
@@ -1585,11 +1217,8 @@ mod test {
         )
         .unwrap();
 
-        let sig = conditions
-            .generate_signature(
-                PublicKeyHex::try_from_str(&delegated_signer.public_key().as_hex_string()).unwrap(),
-                real_signer,
-            )
+        let sig = real_signer
+            .generate_delegation_signature(delegated_signer.public_key(), &conditions)
             .unwrap();
 
         let preevent = PreEventV2 {
@@ -1607,13 +1236,13 @@ mod test {
                     pubkey: PublicKeyHex::try_from_string(real_signer.public_key().as_hex_string())
                         .unwrap(),
                     conditions,
-                    sig,
+                    sig: sig.into(),
                     trailing: Vec::new(),
                 },
             ],
             content: "Hello World!".to_string(),
         };
-        EventV2::new(preevent, &delegated_signer).unwrap()
+        delegated_signer.sign_event(preevent).unwrap()
     }
 
     #[test]
@@ -1712,7 +1341,7 @@ mod test {
             ],
             content: "Hello World!".to_string(),
         };
-        let event = EventV2::new(preevent, &signer).unwrap();
+        let event = signer.sign_event(preevent).unwrap();
         let bytes = event.write_to_vec().unwrap();
 
         let id = EventV2::get_id_from_speedy_bytes(&bytes).unwrap();
@@ -1778,12 +1407,8 @@ mod test {
             tags: vec![],
         };
 
-        let gift_wrap = pre
-            .clone()
-            .into_gift_wrap(&signer2.public_key(), &signer1)
-            .unwrap();
-
-        let rumor = gift_wrap.giftwrap_unwrap(&signer2).unwrap();
+        let gift_wrap = signer1.giftwrap(pre.clone(), signer2.public_key()).unwrap();
+        let rumor = signer2.unwrap_giftwrap(&gift_wrap).unwrap();
         let output_pre: PreEventV2 = rumor.into();
 
         assert_eq!(pre, output_pre);

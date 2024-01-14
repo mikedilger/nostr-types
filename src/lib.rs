@@ -62,3 +62,17 @@ pub use versioned::{
     RelayMessageV2, RelayMessageV3, RelayRetentionV1, RumorV1, RumorV2, SimpleRelayListV1,
     SimpleRelayUsageV1, TagV1, TagV2, Why,
 };
+
+#[inline]
+pub(crate) fn get_leading_zero_bits(bytes: &[u8]) -> u8 {
+    let mut res = 0_u8;
+    for b in bytes {
+        if *b == 0 {
+            res += 8;
+        } else {
+            res += b.leading_zeros() as u8;
+            return res;
+        }
+    }
+    res
+}

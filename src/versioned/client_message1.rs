@@ -24,14 +24,6 @@ pub enum ClientMessageV1 {
     Auth(Box<EventV1>),
 }
 
-impl ClientMessageV1 {
-    // Mock data for testing
-    #[allow(dead_code)]
-    pub(crate) fn mock() -> ClientMessageV1 {
-        ClientMessageV1::Event(Box::new(EventV1::mock()))
-    }
-}
-
 impl Serialize for ClientMessageV1 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -133,11 +125,4 @@ impl<'de> Visitor<'de> for ClientMessageVisitor {
             None => Err(DeError::custom(format!("Unknown Message: {word}"))),
         }
     }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    test_serde! {ClientMessageV1, test_client_message_serde}
 }

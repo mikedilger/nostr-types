@@ -300,6 +300,28 @@ impl EventKind {
         )
     }
 
+    /// If the contents are expected to be encrypted (or empty)
+    pub fn contents_are_encrypted(&self) -> bool {
+        matches!(
+            *self,
+            EncryptedDirectMessage
+                | MuteList
+                | PinList
+                | BookmarkList
+                | CommunityList
+                | PublicChatsList
+                | BlockedRelaysList
+                | SearchRelaysList
+                | InterestsList
+                | UserEmojiList
+                | JobRequest(_)
+                | JobResult(_)
+                | WalletRequest
+                | WalletResponse
+                | NostrConnect
+        )
+    }
+
     /// This iterates through every well-known EventKind
     pub fn iter() -> EventKindIterator {
         EventKindIterator::new()

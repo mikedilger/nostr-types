@@ -27,14 +27,6 @@ pub enum RelayMessageV1 {
     Auth(String),
 }
 
-impl RelayMessageV1 {
-    // Mock data for testing
-    #[allow(dead_code)]
-    pub(crate) fn mock() -> RelayMessageV1 {
-        RelayMessageV1::Event(SubscriptionId::mock(), Box::new(EventV1::mock()))
-    }
-}
-
 impl Serialize for RelayMessageV1 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -148,11 +140,4 @@ impl<'de> Visitor<'de> for RelayMessageVisitor {
             None => Err(DeError::custom(format!("Unknown Message: {word}"))),
         }
     }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    test_serde! {RelayMessageV1, test_relay_message_serde}
 }

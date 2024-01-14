@@ -1,56 +1,16 @@
 use crate::{
-    ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, Id, KeySecurity, PrivateKey, PublicKey,
-    Signature,
+    ContentEncryptionAlgorithm, DelegationConditions, EncryptedPrivateKey, Error, Event, EventKind,
+    Id, KeySecurity, KeySigner, Metadata, PreEvent, PrivateKey, PublicKey, PublicKeyHex, Rumor,
+    Signature, Tag, Unixtime,
 };
+use rand::Rng;
+use rand_core::OsRng;
 use std::fmt;
-
-/// Signer with a local private key (and public key)
-pub struct KeySigner {
-    encrypted_private_key: EncryptedPrivateKey,
-    public_key: PublicKey,
-    private_key: Option<PrivateKey>,
-}
-
-impl fmt::Debug for KeySigner {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        f.debug_struct("KeySigner")
-            .field("encrypted_private_key", &self.encrypted_private_key)
-            .field("public_key", &self.public_key)
-            .finish()
-    }
-}
-
-impl KeySigner {
-    /// Create a Signer from an `EncryptedPrivateKey`
-    pub fn from_locked_parts(epk: EncryptedPrivateKey, pk: PublicKey) -> Self {
-        Self {
-            encrypted_private_key: epk,
-            public_key: pk,
-            private_key: None,
-        }
-    }
-
-    /// Create a Signer from a `PrivateKey`
-    pub fn from_private_key(privk: PrivateKey, password: &str, log_n: u8) -> Result<Self, Error> {
-        let epk = privk.export_encrypted(password, log_n)?;
-        Ok(Self {
-            encrypted_private_key: epk,
-            public_key: privk.public_key(),
-            private_key: Some(privk),
-        })
-    }
-
-    /// Create a Signer by generating a new `PrivateKey`
-    pub fn generate(password: &str, log_n: u8) -> Result<Self, Error> {
-        let privk = PrivateKey::generate();
-        let epk = privk.export_encrypted(password, log_n)?;
-        Ok(Self {
-            encrypted_private_key: epk,
-            public_key: privk.public_key(),
-            private_key: Some(privk),
-        })
-    }
-}
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
+use std::sync::mpsc::Sender;
+use std::sync::Arc;
+use std::thread;
+use std::thread::JoinHandle;
 
 /// Signer operations
 pub trait Signer: fmt::Debug {
@@ -80,6 +40,11 @@ pub trait Signer: fmt::Debug {
 
     /// Sign a message (this hashes with SHA-256 first internally)
     fn sign(&self, message: &[u8]) -> Result<Signature, Error>;
+
+    /// Verify
+    fn verify(&self, message: &[u8], signature: &Signature) -> Result<(), Error> {
+        self.public_key().verify(message, signature)
+    }
 
     /// Encrypt
     fn encrypt(
@@ -120,146 +85,359 @@ pub trait Signer: fmt::Debug {
 
     /// Get the security level of the private key
     fn key_security(&self) -> Result<KeySecurity, Error>;
-}
 
-impl Signer for KeySigner {
-    fn is_locked(&self) -> bool {
-        self.private_key.is_none()
+    /// Generate delegation signature
+    fn generate_delegation_signature(
+        &self,
+        delegated_pubkey: PublicKey,
+        delegation_conditions: &DelegationConditions,
+    ) -> Result<Signature, Error> {
+        let input = format!(
+            "nostr:delegation:{}:{}",
+            delegated_pubkey.as_hex_string(),
+            delegation_conditions.as_string()
+        );
+
+        self.sign(input.as_bytes())
     }
 
-    fn unlock(&mut self, password: &str) -> Result<(), Error> {
-        if !self.is_locked() {
-            return Ok(());
+    /// Verify delegation signature
+    fn verify_delegation_signature(
+        &self,
+        delegated_pubkey: PublicKey,
+        delegation_conditions: &DelegationConditions,
+        signature: &Signature,
+    ) -> Result<(), Error> {
+        let input = format!(
+            "nostr:delegation:{}:{}",
+            delegated_pubkey.as_hex_string(),
+            delegation_conditions.as_string()
+        );
+
+        self.public_key().verify(input.as_bytes(), signature)
+    }
+
+    /// Sign an event
+    fn sign_event(&self, input: PreEvent) -> Result<Event, Error> {
+        // Verify the pubkey matches
+        if input.pubkey != self.public_key() {
+            return Err(Error::InvalidPrivateKey);
         }
 
-        let private_key = match self.encrypted_private_key.decrypt(password) {
-            Ok(pk) => pk,
-            Err(e) => return Err(e),
+        // Generate Id
+        let id = input.hash()?;
+
+        // Generate Signature
+        let signature = self.sign_id(id)?;
+
+        Ok(Event {
+            id,
+            pubkey: input.pubkey,
+            created_at: input.created_at,
+            kind: input.kind,
+            tags: input.tags,
+            content: input.content,
+            sig: signature,
+        })
+    }
+
+    /// Sign an event with Proof-of-Work
+    fn sign_event_with_pow(
+        &self,
+        mut input: PreEvent,
+        zero_bits: u8,
+        work_sender: Option<Sender<u8>>,
+    ) -> Result<Event, Error> {
+        let target = Some(format!("{zero_bits}"));
+
+        // Verify the pubkey matches
+        if input.pubkey != self.public_key() {
+            return Err(Error::InvalidPrivateKey);
+        }
+
+        // Strip any pre-existing nonce tags
+        input.tags.retain(|t| !matches!(t, Tag::Nonce { .. }));
+
+        // Add nonce tag to the end
+        input.tags.push(Tag::Nonce {
+            nonce: "0".to_string(),
+            target: target.clone(),
+            trailing: Vec::new(),
+        });
+        let index = input.tags.len() - 1;
+
+        let cores = num_cpus::get();
+
+        let quitting = Arc::new(AtomicBool::new(false));
+        let nonce = Arc::new(AtomicU64::new(0)); // will store the nonce that works
+        let best_work = Arc::new(AtomicU8::new(0));
+
+        let mut join_handles: Vec<JoinHandle<_>> = Vec::with_capacity(cores);
+
+        for core in 0..cores {
+            let mut attempt: u64 = core as u64 * (u64::MAX / cores as u64);
+            let mut input = input.clone();
+            let target = target.clone();
+            let quitting = quitting.clone();
+            let nonce = nonce.clone();
+            let best_work = best_work.clone();
+            let work_sender = work_sender.clone();
+            let join_handle = thread::spawn(move || {
+                loop {
+                    // Lower the thread priority so other threads aren't starved
+                    let _ = thread_priority::set_current_thread_priority(
+                        thread_priority::ThreadPriority::Min,
+                    );
+
+                    if quitting.load(Ordering::Relaxed) {
+                        break;
+                    }
+
+                    input.tags[index] = Tag::Nonce {
+                        nonce: format!("{attempt}"),
+                        target: target.clone(),
+                        trailing: Vec::new(),
+                    };
+
+                    let Id(id) = input.hash().unwrap();
+
+                    let leading_zeroes = crate::get_leading_zero_bits(&id);
+                    if leading_zeroes >= zero_bits {
+                        nonce.store(attempt, Ordering::Relaxed);
+                        quitting.store(true, Ordering::Relaxed);
+                        if let Some(sender) = work_sender.clone() {
+                            sender.send(leading_zeroes).unwrap();
+                        }
+                        break;
+                    } else if leading_zeroes > best_work.load(Ordering::Relaxed) {
+                        best_work.store(leading_zeroes, Ordering::Relaxed);
+                        if let Some(sender) = work_sender.clone() {
+                            sender.send(leading_zeroes).unwrap();
+                        }
+                    }
+
+                    attempt += 1;
+
+                    // We don't update created_at, which is a bit tricky to synchronize.
+                }
+            });
+            join_handles.push(join_handle);
+        }
+
+        for joinhandle in join_handles {
+            let _ = joinhandle.join();
+        }
+
+        // We found the nonce. Do it for reals
+        input.tags[index] = Tag::Nonce {
+            nonce: format!("{}", nonce.load(Ordering::Relaxed)),
+            target,
+            trailing: Vec::new(),
+        };
+        let id = input.hash().unwrap();
+
+        // Signature
+        let signature = self.sign_id(id)?;
+
+        Ok(Event {
+            id,
+            pubkey: input.pubkey,
+            created_at: input.created_at,
+            kind: input.kind,
+            tags: input.tags,
+            content: input.content,
+            sig: signature,
+        })
+    }
+
+    /// Giftwrap an event
+    fn giftwrap(&self, input: PreEvent, pubkey: PublicKey) -> Result<Event, Error> {
+        let sender_pubkey = input.pubkey;
+
+        // Verify the pubkey matches
+        if sender_pubkey != self.public_key() {
+            return Err(Error::InvalidPrivateKey);
+        }
+
+        let seal_backdate = Unixtime(
+            input.created_at.0
+                - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 7)),
+        );
+        let giftwrap_backdate = Unixtime(
+            input.created_at.0
+                - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 7)),
+        );
+
+        let seal = {
+            let rumor = Rumor::new(input)?;
+            let rumor_json = serde_json::to_string(&rumor)?;
+            let encrypted_rumor_json =
+                self.encrypt(&pubkey, &rumor_json, ContentEncryptionAlgorithm::Nip44v2)?;
+
+            let pre_seal = PreEvent {
+                pubkey: sender_pubkey,
+                created_at: seal_backdate,
+                kind: EventKind::Seal,
+                content: encrypted_rumor_json,
+                tags: vec![],
+            };
+
+            self.sign_event(pre_seal)?
         };
 
-        self.private_key = Some(private_key);
+        // Generate a random keypair for the gift wrap
+        let random_signer = {
+            let random_private_key = PrivateKey::generate();
+            KeySigner::from_private_key(random_private_key, "", 1)
+        }?;
 
-        Ok(())
+        let seal_json = serde_json::to_string(&seal)?;
+        let encrypted_seal_json =
+            random_signer.encrypt(&pubkey, &seal_json, ContentEncryptionAlgorithm::Nip44v2)?;
+
+        let pre_giftwrap = PreEvent {
+            pubkey: random_signer.public_key(),
+            created_at: giftwrap_backdate,
+            kind: EventKind::GiftWrap,
+            content: encrypted_seal_json,
+            tags: vec![Tag::Pubkey {
+                pubkey: pubkey.into(),
+                recommended_relay_url: None,
+                petname: None,
+                trailing: vec![],
+            }],
+        };
+
+        random_signer.sign_event(pre_giftwrap)
     }
 
-    fn lock(&mut self) {
-        self.private_key = None;
-    }
-
-    fn change_passphrase(&mut self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
-        let private_key = self.encrypted_private_key.decrypt(old)?;
-        self.encrypted_private_key = private_key.export_encrypted(new, log_n)?;
-        self.private_key = Some(private_key);
-        Ok(())
-    }
-
-    fn upgrade(&mut self, pass: &str, log_n: u8) -> Result<(), Error> {
-        let private_key = self.encrypted_private_key.decrypt(pass)?;
-        self.encrypted_private_key = private_key.export_encrypted(pass, log_n)?;
-        Ok(())
-    }
-
-    fn public_key(&self) -> PublicKey {
-        self.public_key
-    }
-
-    fn encrypted_private_key(&self) -> Option<&EncryptedPrivateKey> {
-        Some(&self.encrypted_private_key)
-    }
-
-    fn sign_id(&self, id: Id) -> Result<Signature, Error> {
-        match &self.private_key {
-            Some(pk) => pk.sign_id(id),
-            None => Err(Error::SignerIsLocked),
-        }
-    }
-
-    fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
-        match &self.private_key {
-            Some(pk) => pk.sign(message),
-            None => Err(Error::SignerIsLocked),
-        }
-    }
-
-    fn encrypt(
+    /// Create an event that sets Metadata
+    fn create_metadata_event(
         &self,
-        other: &PublicKey,
-        plaintext: &str,
-        algo: ContentEncryptionAlgorithm,
-    ) -> Result<String, Error> {
-        match &self.private_key {
-            Some(pk) => pk.encrypt(other, plaintext, algo),
-            None => Err(Error::SignerIsLocked),
-        }
+        mut input: PreEvent,
+        metadata: Metadata,
+    ) -> Result<Event, Error> {
+        input.kind = EventKind::Metadata;
+        input.content = serde_json::to_string(&metadata)?;
+        self.sign_event(input)
     }
 
-    fn decrypt_nip44(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
-        match &self.private_key {
-            Some(pk) => pk.decrypt_nip44(other, ciphertext),
-            None => Err(Error::SignerIsLocked),
+    /// Create a ZapRequest event
+    /// These events are not published to nostr, they are sent to a lnurl.
+    fn create_zap_request_event(
+        &self,
+        recipient_pubkey: PublicKeyHex,
+        zapped_event: Option<Id>,
+        millisatoshis: u64,
+        relays: Vec<String>,
+        content: String,
+    ) -> Result<Event, Error> {
+        let mut pre_event = PreEvent {
+            pubkey: self.public_key(),
+            created_at: Unixtime::now().unwrap(),
+            kind: EventKind::ZapRequest,
+            tags: vec![
+                Tag::Pubkey {
+                    pubkey: recipient_pubkey,
+                    recommended_relay_url: None,
+                    petname: None,
+                    trailing: Vec::new(),
+                },
+                Tag::Other {
+                    tag: "relays".to_owned(),
+                    data: relays,
+                },
+                Tag::Other {
+                    tag: "amount".to_owned(),
+                    data: vec![format!("{millisatoshis}")],
+                },
+            ],
+            content,
+        };
+
+        if let Some(ze) = zapped_event {
+            pre_event.tags.push(Tag::Event {
+                id: ze,
+                recommended_relay_url: None,
+                marker: None,
+                trailing: Vec::new(),
+            });
         }
+
+        self.sign_event(pre_event)
     }
 
-    fn decrypt_nip04(&self, other: &PublicKey, ciphertext: &str) -> Result<Vec<u8>, Error> {
-        match &self.private_key {
-            Some(pk) => pk.decrypt_nip04(other, ciphertext),
-            None => Err(Error::SignerIsLocked),
+    /// Decrypt the contents of an event
+    fn decrypt_event_contents(&self, event: &Event) -> Result<String, Error> {
+        if !event.kind.contents_are_encrypted() {
+            return Err(Error::WrongEventKind);
         }
-    }
 
-    fn export_private_key_in_hex(
-        &mut self,
-        pass: &str,
-        log_n: u8,
-    ) -> Result<(String, bool), Error> {
-        if let Some(pk) = &mut self.private_key {
-            // Test password and check key security
-            let pkcheck = self.encrypted_private_key.decrypt(pass)?;
-
-            // side effect: this may downgrade the key security of self.private_key
-            let output = pk.as_hex_string();
-
-            // If key security changed, re-export
-            let mut downgraded = false;
-            if pk.key_security() != pkcheck.key_security() {
-                downgraded = true;
-                self.encrypted_private_key = pk.export_encrypted(pass, log_n)?;
-            }
-            Ok((output, downgraded))
+        let pubkey = if event.pubkey == self.public_key() {
+            // If you are the author, get the other pubkey from the tags
+            event
+                .people()
+                .iter()
+                .filter_map(|(pkh, _, _)| PublicKey::try_from(pkh).ok())
+                .filter(|pk| *pk != event.pubkey)
+                .nth(0)
+                .unwrap_or(event.pubkey) // in case you sent it to yourself.
         } else {
-            Err(Error::SignerIsLocked)
-        }
+            event.pubkey
+        };
+
+        let decrypted_bytes = self.decrypt_nip04(&pubkey, &event.content)?;
+
+        let s: String = String::from_utf8_lossy(&decrypted_bytes).into();
+        Ok(s)
     }
 
-    fn export_private_key_in_bech32(
-        &mut self,
-        pass: &str,
-        log_n: u8,
-    ) -> Result<(String, bool), Error> {
-        if let Some(pk) = &mut self.private_key {
-            // Test password and check key security
-            let pkcheck = self.encrypted_private_key.decrypt(pass)?;
+    /// If a gift wrap event, unwrap and return the inner Rumor
+    fn unwrap_giftwrap(&self, event: &Event) -> Result<Rumor, Error> {
+        if event.kind != EventKind::GiftWrap {
+            return Err(Error::WrongEventKind);
+        }
 
-            // side effect: this may downgrade the key security of self.private_key
-            let output = pk.as_bech32_string();
-
-            // If key security changed, re-export
-            let mut downgraded = false;
-            if pk.key_security() != pkcheck.key_security() {
-                downgraded = true;
-                self.encrypted_private_key = pk.export_encrypted(pass, log_n)?;
+        // Verify you are tagged
+        let pkhex: PublicKeyHex = self.public_key().into();
+        let mut tagged = false;
+        for t in event.tags.iter() {
+            if let Tag::Pubkey { pubkey, .. } = t {
+                if *pubkey == pkhex {
+                    tagged = true;
+                }
             }
-
-            Ok((output, downgraded))
-        } else {
-            Err(Error::SignerIsLocked)
         }
-    }
-
-    fn key_security(&self) -> Result<KeySecurity, Error> {
-        match &self.private_key {
-            Some(pk) => Ok(pk.key_security()),
-            None => Err(Error::SignerIsLocked),
+        if !tagged {
+            return Err(Error::InvalidRecipient);
         }
+
+        // Decrypt the content
+        let content = self.decrypt_nip44(&event.pubkey, &event.content)?;
+
+        // Translate into a seal Event
+        let seal: Event = serde_json::from_str(&content)?;
+
+        // Verify it is a Seal
+        if seal.kind != EventKind::Seal {
+            return Err(Error::WrongEventKind);
+        }
+
+        // Note the author
+        let author = seal.pubkey;
+
+        // Decrypt the content
+        let content = self.decrypt_nip44(&seal.pubkey, &seal.content)?;
+
+        // Translate into a Rumor
+        let rumor: Rumor = serde_json::from_str(&content)?;
+
+        // Compae the author
+        if rumor.pubkey != author {
+            return Err(Error::InvalidPublicKey);
+        }
+
+        // Return the Rumor
+        Ok(rumor)
     }
 }

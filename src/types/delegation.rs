@@ -1,4 +1,4 @@
-use super::{EventKind, PublicKey, PublicKeyHex, Signature, SignatureHex, Signer, Unixtime};
+use super::{EventKind, PublicKey, Signature, Unixtime};
 use crate::Error;
 use serde::de::Error as DeError;
 use serde::de::{Deserialize, Deserializer, Visitor};
@@ -104,20 +104,6 @@ impl DelegationConditions {
         dc
     }
 
-    /// Generate the signature part of a Delegation tag
-    pub fn generate_signature<S>(
-        &self,
-        pubkey: PublicKeyHex,
-        signer: &S,
-    ) -> Result<SignatureHex, Error>
-    where
-        S: Signer,
-    {
-        let input = format!("nostr:delegation:{}:{}", pubkey, self.as_string());
-        let signature = signer.sign(input.as_bytes())?;
-        Ok(signature.into())
-    }
-
     /// Verify the signature part of a Delegation tag
     pub fn verify_signature(
         &self,
@@ -172,7 +158,7 @@ impl Visitor<'_> for DelegationConditionsVisitor {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{KeySigner, PrivateKey, Tag};
+    use crate::{KeySigner, PrivateKey, Signer, Tag};
 
     test_serde! {DelegationConditions, test_delegation_conditions_serde}
 
@@ -197,8 +183,8 @@ mod test {
         )
         .unwrap();
 
-        let signature = dc
-            .generate_signature(PublicKeyHex::from(delegatee_public_key), &signer)
+        let signature = signer
+            .generate_delegation_signature(delegatee_public_key, &dc)
             .unwrap();
 
         // signature is changing, validate by verify method

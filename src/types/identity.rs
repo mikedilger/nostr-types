@@ -5,9 +5,10 @@ use crate::{
 use std::ops::DerefMut;
 
 /// All states that your identity can be in
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum Identity {
     /// No identity information
+    #[default]
     None,
 
     /// Public key only
@@ -17,17 +18,12 @@ pub enum Identity {
     Signer(Box<dyn Signer>),
 }
 
-impl Default for Identity {
-    fn default() -> Identity {
-        Identity::None
-    }
-}
 
 // No one besides the Identity has the internal Signer, so we can safely Send
-unsafe impl Send for Identity { }
+unsafe impl Send for Identity {}
 
 // Nobody can write while someone else is reading with just a non-mutable &reference
-unsafe impl Sync for Identity { }
+unsafe impl Sync for Identity {}
 
 impl Identity {
     /// New `Identity` from a public key

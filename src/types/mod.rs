@@ -31,6 +31,9 @@ pub use id::{Id, IdHex};
 mod identity;
 pub use identity::Identity;
 
+mod key_signer;
+pub use key_signer::KeySigner;
+
 mod metadata;
 pub use metadata::Metadata;
 
@@ -67,7 +70,7 @@ mod signature;
 pub use signature::{Signature, SignatureHex};
 
 mod signer;
-pub use signer::{KeySigner, Signer};
+pub use signer::Signer;
 
 mod relay_list;
 pub use relay_list::{SimpleRelayList, SimpleRelayUsage};
