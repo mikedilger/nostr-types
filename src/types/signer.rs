@@ -1,7 +1,7 @@
 use crate::{
     ContentEncryptionAlgorithm, DelegationConditions, EncryptedPrivateKey, Error, Event, EventKind,
-    Id, KeySecurity, KeySigner, Metadata, PreEvent, PrivateKey, PublicKey, PublicKeyHex, Rumor,
-    Signature, Tag, Unixtime,
+    EventV1, Id, KeySecurity, KeySigner, Metadata, PreEvent, PrivateKey, PublicKey, PublicKeyHex,
+    Rumor, RumorV1, Signature, Tag, TagV1, Unixtime,
 };
 use rand::Rng;
 use rand_core::OsRng;
@@ -431,6 +431,56 @@ pub trait Signer: fmt::Debug {
 
         // Translate into a Rumor
         let rumor: Rumor = serde_json::from_str(&content)?;
+
+        // Compae the author
+        if rumor.pubkey != author {
+            return Err(Error::InvalidPublicKey);
+        }
+
+        // Return the Rumor
+        Ok(rumor)
+    }
+
+    /// If a gift wrap event, unwrap and return the inner Rumor
+    /// @deprecated for migrations only
+    fn unwrap_giftwrap1(&self, event: &EventV1) -> Result<RumorV1, Error> {
+        if event.kind != EventKind::GiftWrap {
+            return Err(Error::WrongEventKind);
+        }
+
+        // Verify you are tagged
+        let pkhex: PublicKeyHex = self.public_key().into();
+        let mut tagged = false;
+        for t in event.tags.iter() {
+            if let TagV1::Pubkey { pubkey, .. } = t {
+                if *pubkey == pkhex {
+                    tagged = true;
+                }
+            }
+        }
+        if !tagged {
+            return Err(Error::InvalidRecipient);
+        }
+
+        // Decrypt the content
+        let content = self.decrypt_nip44(&event.pubkey, &event.content)?;
+
+        // Translate into a seal Event
+        let seal: EventV1 = serde_json::from_str(&content)?;
+
+        // Verify it is a Seal
+        if seal.kind != EventKind::Seal {
+            return Err(Error::WrongEventKind);
+        }
+
+        // Note the author
+        let author = seal.pubkey;
+
+        // Decrypt the content
+        let content = self.decrypt_nip44(&seal.pubkey, &seal.content)?;
+
+        // Translate into a Rumor
+        let rumor: RumorV1 = serde_json::from_str(&content)?;
 
         // Compae the author
         if rumor.pubkey != author {
