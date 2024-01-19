@@ -1,4 +1,4 @@
-use super::{EventKind, IdHex, PublicKeyHex, Unixtime};
+use super::{Event, EventKind, IdHex, PublicKeyHex, Unixtime};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "speedy")]
 use speedy::{Readable, Writable};
@@ -159,6 +159,48 @@ impl Filter {
         }
     }
 
+    /// This is an INCOMPLETE matching of an event against the filter.
+    ///
+    /// It is only incomplete because I plan to rewrite how tags work and it makes
+    /// sense to do that first.
+    pub fn event_matches_incomplete(&self, e: &Event) -> bool {
+        if !self.ids.is_empty() {
+            let idhex: IdHex = e.id.into();
+            if !self.ids.contains(&idhex) {
+                return false;
+            }
+        }
+
+        if !self.authors.is_empty() {
+            let pubkeyhex: PublicKeyHex = e.pubkey.into();
+            if !self.authors.contains(&pubkeyhex) {
+                return false;
+            }
+        }
+
+        if !self.kinds.is_empty() {
+            if !self.kinds.contains(&e.kind) {
+                return false;
+            }
+        }
+
+        // TBD - check tags
+
+        if let Some(since) = self.since {
+            if e.created_at < since {
+                return false;
+            }
+        }
+
+        if let Some(until) = self.until {
+            if e.created_at > until {
+                return false;
+            }
+        }
+
+        true
+    }
+
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> Filter {
@@ -209,4 +251,53 @@ mod test {
     }
 
     // add_remove_author would be very similar to the above
+
+    #[test]
+    fn test_event_matches() {
+        use crate::{Id, KeySigner, PreEvent, PrivateKey, Signer, Tag, UncheckedUrl};
+
+        let signer = {
+            let privkey = PrivateKey::mock();
+            KeySigner::from_private_key(privkey, "", 1).unwrap()
+        };
+        let preevent = PreEvent {
+            pubkey: signer.public_key(),
+            created_at: Unixtime(1680000012),
+            kind: EventKind::TextNote,
+            tags: vec![
+                Tag::Event {
+                    id: Id::mock(),
+                    recommended_relay_url: Some(UncheckedUrl::mock()),
+                    marker: None,
+                    trailing: Vec::new(),
+                },
+                Tag::Hashtag {
+                    hashtag: "foodstr".to_string(),
+                    trailing: Vec::new(),
+                },
+            ],
+            content: "Hello World!".to_string(),
+        };
+        let event = signer.sign_event(preevent).unwrap();
+
+        let filter = Filter {
+            authors: vec![signer.public_key().into()],
+            ..Default::default()
+        };
+        assert_eq!(filter.event_matches_incomplete(&event), true);
+
+        let filter = Filter {
+            authors: vec![signer.public_key().into()],
+            kinds: vec![EventKind::LongFormContent],
+            ..Default::default()
+        };
+        assert_eq!(filter.event_matches_incomplete(&event), false);
+
+        let filter = Filter {
+            ids: vec![IdHex::mock()],
+            authors: vec![signer.public_key().into()],
+            ..Default::default()
+        };
+        assert_eq!(filter.event_matches_incomplete(&event), false);
+    }
 }
