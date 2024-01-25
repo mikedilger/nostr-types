@@ -138,6 +138,11 @@ impl PrivateKey {
         }
     }
 
+    /// As a `secp256k1::SecretKey`
+    pub fn as_secret_key(&self) -> secp256k1::SecretKey {
+        self.0
+    }
+
     /// Sign a 32-bit hash
     pub fn sign_id(&self, id: Id) -> Result<Signature, Error> {
         let keypair = secp256k1::Keypair::from_secret_key(secp256k1::SECP256K1, &self.0);

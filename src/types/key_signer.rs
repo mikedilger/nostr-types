@@ -137,6 +137,14 @@ impl Signer for KeySigner {
         }
     }
 
+    fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error> {
+        let xpub = other.as_xonly_public_key();
+        match &self.private_key {
+            Some(pk) => Ok(nip44::get_conversation_key(pk.as_secret_key(), xpub)),
+            None => Err(Error::SignerIsLocked),
+        }
+    }
+
     fn export_private_key_in_hex(
         &mut self,
         pass: &str,

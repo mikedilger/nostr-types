@@ -41,11 +41,6 @@ pub trait Signer: fmt::Debug {
     /// Sign a message (this hashes with SHA-256 first internally)
     fn sign(&self, message: &[u8]) -> Result<Signature, Error>;
 
-    /// Verify
-    fn verify(&self, message: &[u8], signature: &Signature) -> Result<(), Error> {
-        self.public_key().verify(message, signature)
-    }
-
     /// Encrypt
     fn encrypt(
         &self,
@@ -59,6 +54,9 @@ pub trait Signer: fmt::Debug {
 
     /// Decrypt NIP-04
     fn decrypt_nip04(&self, other: &PublicKey, ciphertext: &str) -> Result<Vec<u8>, Error>;
+
+    /// Get NIP-44 conversation key
+    fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error>;
 
     /// Export the private key in hex.
     ///

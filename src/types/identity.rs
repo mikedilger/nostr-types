@@ -167,6 +167,15 @@ impl Identity {
         }
     }
 
+    /// Get NIP-44 conversation key
+    pub fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error> {
+        match self {
+            Identity::None => Err(Error::NoPublicKey),
+            Identity::Public(_) => Err(Error::NoPrivateKey),
+            Identity::Signer(boxed_signer) => boxed_signer.nip44_conversation_key(other),
+        }
+    }
+
     /// Export the private key in hex.
     ///
     /// This returns a boolean indicating if the key security was downgraded. If it was,
@@ -334,15 +343,6 @@ impl Identity {
             Identity::Signer(boxed_signer) => {
                 boxed_signer.sign_event_with_pow(input, zero_bits, work_sender)
             }
-        }
-    }
-
-    /// Verify
-    pub fn verify(&self, message: &[u8], signature: &Signature) -> Result<(), Error> {
-        match self {
-            Identity::None => Err(Error::NoPublicKey),
-            Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.verify(message, signature),
         }
     }
 
