@@ -1,14 +1,14 @@
 use crate::types::{Id, MilliSatoshi, PublicKey};
-use crate::versioned::event2::{EventV2, PreEventV2, RumorV2};
+use crate::versioned::event3::{EventV3, PreEventV3, RumorV3};
 
 /// The main event type
-pub type Event = EventV2;
+pub type Event = EventV3;
 
 /// Data used to construct an event
-pub type PreEvent = PreEventV2;
+pub type PreEvent = PreEventV3;
 
 /// A Rumor is an Event without a signature
-pub type Rumor = RumorV2;
+pub type Rumor = RumorV3;
 
 /// Data about a Zap
 #[derive(Clone, Debug, Copy)]

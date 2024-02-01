@@ -1,4 +1,4 @@
-use super::{EventV2, Why};
+use super::EventV3;
 use crate::types::{Id, SubscriptionId};
 use serde::de::Error as DeError;
 use serde::de::{Deserialize, Deserializer, IgnoredAny, SeqAccess, Visitor};
@@ -10,7 +10,7 @@ use std::fmt;
 /// A message from a relay to a client
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
-pub enum RelayMessageV3 {
+pub enum RelayMessageV4 {
     /// Used to send authentication challenges
     Auth(String),
 
@@ -25,7 +25,7 @@ pub enum RelayMessageV3 {
     Eose(SubscriptionId),
 
     /// An event matching a subscription
-    Event(SubscriptionId, Box<EventV2>),
+    Event(SubscriptionId, Box<EventV3>),
 
     /// A human readable notice for errors and other information
     Notice(String),
@@ -38,12 +38,40 @@ pub enum RelayMessageV3 {
     Ok(Id, bool, String),
 }
 
-impl RelayMessageV3 {
+/// The reason why a relay issued an OK or CLOSED message
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub enum Why {
+    /// Authentication is required
+    AuthRequired,
+
+    /// You have been blocked from this relay
+    Blocked,
+
+    /// Your request is a duplicate
+    Duplicate,
+
+    /// Other error
+    Error,
+
+    /// Your request is invalid
+    Invalid,
+
+    /// Proof-of-work is required
+    Pow,
+
+    /// Rejected due to rate limiting
+    RateLimited,
+
+    /// The action you requested is restricted to your identity
+    Restricted,
+}
+
+impl RelayMessageV4 {
     /// Translate the machine-readable prefix from the message
     pub fn why(&self) -> Option<Why> {
         let s = match *self {
-            RelayMessageV3::Closed(_, ref s) => s,
-            RelayMessageV3::Ok(_, _, ref s) => s,
+            RelayMessageV4::Closed(_, ref s) => s,
+            RelayMessageV4::Ok(_, _, ref s) => s,
             _ => return None,
         };
 
@@ -62,50 +90,50 @@ impl RelayMessageV3 {
 
     // Mock data for testing
     #[allow(dead_code)]
-    pub(crate) fn mock() -> RelayMessageV3 {
-        RelayMessageV3::Event(SubscriptionId::mock(), Box::new(EventV2::mock()))
+    pub(crate) fn mock() -> RelayMessageV4 {
+        RelayMessageV4::Event(SubscriptionId::mock(), Box::new(EventV3::mock()))
     }
 }
 
-impl Serialize for RelayMessageV3 {
+impl Serialize for RelayMessageV4 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         match self {
-            RelayMessageV3::Auth(challenge) => {
+            RelayMessageV4::Auth(challenge) => {
                 let mut seq = serializer.serialize_seq(Some(2))?;
                 seq.serialize_element("AUTH")?;
                 seq.serialize_element(&challenge)?;
                 seq.end()
             }
-            RelayMessageV3::Closed(id, message) => {
+            RelayMessageV4::Closed(id, message) => {
                 let mut seq = serializer.serialize_seq(Some(3))?;
                 seq.serialize_element("CLOSED")?;
                 seq.serialize_element(&id)?;
                 seq.serialize_element(&message)?;
                 seq.end()
             }
-            RelayMessageV3::Eose(id) => {
+            RelayMessageV4::Eose(id) => {
                 let mut seq = serializer.serialize_seq(Some(2))?;
                 seq.serialize_element("EOSE")?;
                 seq.serialize_element(&id)?;
                 seq.end()
             }
-            RelayMessageV3::Event(id, event) => {
+            RelayMessageV4::Event(id, event) => {
                 let mut seq = serializer.serialize_seq(Some(3))?;
                 seq.serialize_element("EVENT")?;
                 seq.serialize_element(&id)?;
                 seq.serialize_element(&event)?;
                 seq.end()
             }
-            RelayMessageV3::Notice(s) => {
+            RelayMessageV4::Notice(s) => {
                 let mut seq = serializer.serialize_seq(Some(2))?;
                 seq.serialize_element("NOTICE")?;
                 seq.serialize_element(&s)?;
                 seq.end()
             }
-            RelayMessageV3::Ok(id, ok, message) => {
+            RelayMessageV4::Ok(id, ok, message) => {
                 let mut seq = serializer.serialize_seq(Some(4))?;
                 seq.serialize_element("OK")?;
                 seq.serialize_element(&id)?;
@@ -117,7 +145,7 @@ impl Serialize for RelayMessageV3 {
     }
 }
 
-impl<'de> Deserialize<'de> for RelayMessageV3 {
+impl<'de> Deserialize<'de> for RelayMessageV4 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -129,38 +157,38 @@ impl<'de> Deserialize<'de> for RelayMessageV3 {
 struct RelayMessageVisitor;
 
 impl<'de> Visitor<'de> for RelayMessageVisitor {
-    type Value = RelayMessageV3;
+    type Value = RelayMessageV4;
 
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "a sequence of strings")
     }
 
-    fn visit_seq<A>(self, mut seq: A) -> Result<RelayMessageV3, A::Error>
+    fn visit_seq<A>(self, mut seq: A) -> Result<RelayMessageV4, A::Error>
     where
         A: SeqAccess<'de>,
     {
         let word: &str = seq
             .next_element()?
             .ok_or_else(|| DeError::custom("Message missing initial string field"))?;
-        let mut output: Option<RelayMessageV3> = None;
+        let mut output: Option<RelayMessageV4> = None;
         if word == "EVENT" {
             let id: SubscriptionId = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing id field"))?;
-            let event: EventV2 = seq
+            let event: EventV3 = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing event field"))?;
-            output = Some(RelayMessageV3::Event(id, Box::new(event)));
+            output = Some(RelayMessageV4::Event(id, Box::new(event)));
         } else if word == "NOTICE" {
             let s: String = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing string field"))?;
-            output = Some(RelayMessageV3::Notice(s));
+            output = Some(RelayMessageV4::Notice(s));
         } else if word == "EOSE" {
             let id: SubscriptionId = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing id field"))?;
-            output = Some(RelayMessageV3::Eose(id))
+            output = Some(RelayMessageV4::Eose(id))
         } else if word == "OK" {
             let id: Id = seq
                 .next_element()?
@@ -171,12 +199,12 @@ impl<'de> Visitor<'de> for RelayMessageVisitor {
             let message: String = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing string field"))?;
-            output = Some(RelayMessageV3::Ok(id, ok, message));
+            output = Some(RelayMessageV4::Ok(id, ok, message));
         } else if word == "AUTH" {
             let challenge: String = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing challenge field"))?;
-            output = Some(RelayMessageV3::Auth(challenge));
+            output = Some(RelayMessageV4::Auth(challenge));
         } else if word == "CLOSED" {
             let id: SubscriptionId = seq
                 .next_element()?
@@ -184,7 +212,7 @@ impl<'de> Visitor<'de> for RelayMessageVisitor {
             let message: String = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing string field"))?;
-            output = Some(RelayMessageV3::Closed(id, message));
+            output = Some(RelayMessageV4::Closed(id, message));
         }
 
         // Consume any trailing fields
@@ -201,5 +229,5 @@ impl<'de> Visitor<'de> for RelayMessageVisitor {
 mod test {
     use super::*;
 
-    test_serde! {RelayMessageV3, test_relay_message_serde}
+    test_serde! {RelayMessageV4, test_relay_message_serde}
 }

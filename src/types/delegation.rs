@@ -197,13 +197,7 @@ mod test {
     fn test_delegation_tag_parse_and_verify() {
         let tag_str = "[\"delegation\",\"1a459a8a6aa6441d480ba665fb8fb21a4cfe8bcacb7d87300f8046a558a3fce4\",\"kind=1&created_at>1676067553&created_at<1678659553\",\"369aed09c1ad52fceb77ecd6c16f2433eac4a3803fc41c58876a5b60f4f36b9493d5115e5ec5a0ce6c3668ffe5b58d47f2cbc97233833bb7e908f66dbbbd9d36\"]";
         let dt = serde_json::from_str::<Tag>(tag_str).unwrap();
-        if let Tag::Delegation {
-            pubkey,
-            conditions,
-            sig,
-            ..
-        } = dt
-        {
+        if let Ok((pubkey, conditions, sig)) = dt.parse_delegation() {
             assert_eq!(
                 conditions.as_string(),
                 "kind=1&created_at>1676067553&created_at<1678659553"
@@ -216,7 +210,7 @@ mod test {
             .unwrap();
 
             let verify_result = conditions.verify_signature(
-                &PublicKey::try_from_hex_string(pubkey.as_str(), true).unwrap(),
+                &pubkey,
                 &delegatee_public_key,
                 &Signature::try_from(sig).unwrap(),
             );
@@ -231,13 +225,7 @@ mod test {
         // Clauses in the condition string are not in the canonical order, but this should not matter
         let tag_str = "[\"delegation\",\"05bc52a6117c57f99b73f5315f3105b21cecdcd2c6825dee8d508bd7d972ad6a\",\"kind=1&created_at<1686078180&created_at>1680807780\",\"1016d2f4284cdb4e6dc6eaa4e61dff87b9f4138786154d070d36e9434f817bd623abed2133bb62b9dcfb2fbf54b42e16bcd44cfc23907f8eb5b45c011caaa47c\"]";
         let dt = serde_json::from_str::<Tag>(tag_str).unwrap();
-        if let Tag::Delegation {
-            pubkey,
-            conditions,
-            sig,
-            ..
-        } = dt
-        {
+        if let Ok((pubkey, conditions, sig)) = dt.parse_delegation() {
             assert_eq!(
                 conditions.as_string(),
                 "kind=1&created_at<1686078180&created_at>1680807780"
@@ -250,7 +238,7 @@ mod test {
             .unwrap();
 
             let verify_result = conditions.verify_signature(
-                &PublicKey::try_from_hex_string(pubkey.as_str(), true).unwrap(),
+                &pubkey,
                 &delegatee_public_key,
                 &Signature::try_from(sig).unwrap(),
             );

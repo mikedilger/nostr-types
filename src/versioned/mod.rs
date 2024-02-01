@@ -4,11 +4,17 @@ pub use client_message1::ClientMessageV1;
 pub(crate) mod client_message2;
 pub use client_message2::ClientMessageV2;
 
+pub(crate) mod client_message3;
+pub use client_message3::ClientMessageV3;
+
 pub(crate) mod event1;
 pub use event1::{EventV1, PreEventV1, RumorV1};
 
 pub(crate) mod event2;
 pub use event2::{EventV2, PreEventV2, RumorV2};
+
+pub(crate) mod event3;
+pub use event3::{EventV3, PreEventV3, RumorV3};
 
 pub(crate) mod metadata;
 pub use metadata::MetadataV1;
@@ -31,7 +37,10 @@ pub(crate) mod relay_message2;
 pub use relay_message2::RelayMessageV2;
 
 pub(crate) mod relay_message3;
-pub use relay_message3::{RelayMessageV3, Why};
+pub use relay_message3::RelayMessageV3;
+
+pub(crate) mod relay_message4;
+pub use relay_message4::{RelayMessageV4, Why};
 
 pub(crate) mod tag1;
 pub use tag1::TagV1;

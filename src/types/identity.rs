@@ -1,7 +1,7 @@
 use crate::{
     ContentEncryptionAlgorithm, DelegationConditions, EncryptedPrivateKey, Error, Event, EventV1,
-    Id, KeySecurity, KeySigner, Metadata, PreEvent, PrivateKey, PublicKey, PublicKeyHex, Rumor,
-    RumorV1, Signature, Signer,
+    Id, KeySecurity, KeySigner, Metadata, PreEvent, PrivateKey, PublicKey, Rumor, RumorV1,
+    Signature, Signer,
 };
 use std::ops::DerefMut;
 use std::sync::mpsc::Sender;
@@ -250,7 +250,7 @@ impl Identity {
     /// Create a ZapRequest event These events are not published to nostr, they are sent to a lnurl.
     pub fn create_zap_request_event(
         &self,
-        recipient_pubkey: PublicKeyHex,
+        recipient_pubkey: PublicKey,
         zapped_event: Option<Id>,
         millisatoshis: u64,
         relays: Vec<String>,

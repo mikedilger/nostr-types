@@ -153,10 +153,8 @@ impl Filter {
             }
         }
 
-        if !self.kinds.is_empty() {
-            if !self.kinds.contains(&e.kind) {
-                return false;
-            }
+        if !self.kinds.is_empty() && !self.kinds.contains(&e.kind) {
+            return false;
         }
 
         // TBD - check tags
@@ -297,16 +295,8 @@ mod test {
             created_at: Unixtime(1680000012),
             kind: EventKind::TextNote,
             tags: vec![
-                Tag::Event {
-                    id: Id::mock(),
-                    recommended_relay_url: Some(UncheckedUrl::mock()),
-                    marker: None,
-                    trailing: Vec::new(),
-                },
-                Tag::Hashtag {
-                    hashtag: "foodstr".to_string(),
-                    trailing: Vec::new(),
-                },
+                Tag::new_event(Id::mock(), Some(UncheckedUrl::mock()), None),
+                Tag::new_hashtag("foodstr".to_string()),
             ],
             content: "Hello World!".to_string(),
         };

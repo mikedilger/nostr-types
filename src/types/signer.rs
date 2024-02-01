@@ -1,7 +1,7 @@
 use crate::{
     ContentEncryptionAlgorithm, DelegationConditions, EncryptedPrivateKey, Error, Event, EventKind,
-    EventV1, Id, KeySecurity, KeySigner, Metadata, PreEvent, PrivateKey, PublicKey, PublicKeyHex,
-    Rumor, RumorV1, Signature, Tag, TagV1, Unixtime,
+    EventV1, EventV2, Id, KeySecurity, KeySigner, Metadata, PreEvent, PreEventV2, PrivateKey,
+    PublicKey, PublicKeyHex, Rumor, RumorV1, RumorV2, Signature, Tag, TagV1, TagV2, Unixtime,
 };
 use rand::Rng;
 use rand_core::OsRng;
@@ -139,6 +139,30 @@ pub trait Signer: fmt::Debug {
         })
     }
 
+    /// Sign an event
+    fn sign_event2(&self, input: PreEventV2) -> Result<EventV2, Error> {
+        // Verify the pubkey matches
+        if input.pubkey != self.public_key() {
+            return Err(Error::InvalidPrivateKey);
+        }
+
+        // Generate Id
+        let id = input.hash()?;
+
+        // Generate Signature
+        let signature = self.sign_id(id)?;
+
+        Ok(EventV2 {
+            id,
+            pubkey: input.pubkey,
+            created_at: input.created_at,
+            kind: input.kind,
+            tags: input.tags,
+            content: input.content,
+            sig: signature,
+        })
+    }
+
     /// Sign an event with Proof-of-Work
     fn sign_event_with_pow(
         &self,
@@ -146,7 +170,7 @@ pub trait Signer: fmt::Debug {
         zero_bits: u8,
         work_sender: Option<Sender<u8>>,
     ) -> Result<Event, Error> {
-        let target = Some(format!("{zero_bits}"));
+        let target = format!("{zero_bits}");
 
         // Verify the pubkey matches
         if input.pubkey != self.public_key() {
@@ -154,14 +178,10 @@ pub trait Signer: fmt::Debug {
         }
 
         // Strip any pre-existing nonce tags
-        input.tags.retain(|t| !matches!(t, Tag::Nonce { .. }));
+        input.tags.retain(|t| t.tagname() != "nonce");
 
         // Add nonce tag to the end
-        input.tags.push(Tag::Nonce {
-            nonce: "0".to_string(),
-            target: target.clone(),
-            trailing: Vec::new(),
-        });
+        input.tags.push(Tag::new(&["nonce", "0", &target]));
         let index = input.tags.len() - 1;
 
         let cores = num_cpus::get();
@@ -175,7 +195,6 @@ pub trait Signer: fmt::Debug {
         for core in 0..cores {
             let mut attempt: u64 = core as u64 * (u64::MAX / cores as u64);
             let mut input = input.clone();
-            let target = target.clone();
             let quitting = quitting.clone();
             let nonce = nonce.clone();
             let best_work = best_work.clone();
@@ -191,11 +210,7 @@ pub trait Signer: fmt::Debug {
                         break;
                     }
 
-                    input.tags[index] = Tag::Nonce {
-                        nonce: format!("{attempt}"),
-                        target: target.clone(),
-                        trailing: Vec::new(),
-                    };
+                    input.tags[index].set_index(1, format!("{attempt}"));
 
                     let Id(id) = input.hash().unwrap();
 
@@ -227,11 +242,7 @@ pub trait Signer: fmt::Debug {
         }
 
         // We found the nonce. Do it for reals
-        input.tags[index] = Tag::Nonce {
-            nonce: format!("{}", nonce.load(Ordering::Relaxed)),
-            target,
-            trailing: Vec::new(),
-        };
+        input.tags[index].set_index(1, format!("{}", nonce.load(Ordering::Relaxed)));
         let id = input.hash().unwrap();
 
         // Signature
@@ -298,7 +309,63 @@ pub trait Signer: fmt::Debug {
             created_at: giftwrap_backdate,
             kind: EventKind::GiftWrap,
             content: encrypted_seal_json,
-            tags: vec![Tag::Pubkey {
+            tags: vec![Tag::new_pubkey(pubkey, None, None)],
+        };
+
+        random_signer.sign_event(pre_giftwrap)
+    }
+
+    /// Giftwrap an event
+    fn giftwrap2(&self, input: PreEventV2, pubkey: PublicKey) -> Result<EventV2, Error> {
+        let sender_pubkey = input.pubkey;
+
+        // Verify the pubkey matches
+        if sender_pubkey != self.public_key() {
+            return Err(Error::InvalidPrivateKey);
+        }
+
+        let seal_backdate = Unixtime(
+            input.created_at.0
+                - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 7)),
+        );
+        let giftwrap_backdate = Unixtime(
+            input.created_at.0
+                - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 7)),
+        );
+
+        let seal = {
+            let rumor = RumorV2::new(input)?;
+            let rumor_json = serde_json::to_string(&rumor)?;
+            let encrypted_rumor_json =
+                self.encrypt(&pubkey, &rumor_json, ContentEncryptionAlgorithm::Nip44v2)?;
+
+            let pre_seal = PreEventV2 {
+                pubkey: sender_pubkey,
+                created_at: seal_backdate,
+                kind: EventKind::Seal,
+                content: encrypted_rumor_json,
+                tags: vec![],
+            };
+
+            self.sign_event2(pre_seal)?
+        };
+
+        // Generate a random keypair for the gift wrap
+        let random_signer = {
+            let random_private_key = PrivateKey::generate();
+            KeySigner::from_private_key(random_private_key, "", 1)
+        }?;
+
+        let seal_json = serde_json::to_string(&seal)?;
+        let encrypted_seal_json =
+            random_signer.encrypt(&pubkey, &seal_json, ContentEncryptionAlgorithm::Nip44v2)?;
+
+        let pre_giftwrap = PreEventV2 {
+            pubkey: random_signer.public_key(),
+            created_at: giftwrap_backdate,
+            kind: EventKind::GiftWrap,
+            content: encrypted_seal_json,
+            tags: vec![TagV2::Pubkey {
                 pubkey: pubkey.into(),
                 recommended_relay_url: None,
                 petname: None,
@@ -306,7 +373,7 @@ pub trait Signer: fmt::Debug {
             }],
         };
 
-        random_signer.sign_event(pre_giftwrap)
+        random_signer.sign_event2(pre_giftwrap)
     }
 
     /// Create an event that sets Metadata
@@ -324,42 +391,29 @@ pub trait Signer: fmt::Debug {
     /// These events are not published to nostr, they are sent to a lnurl.
     fn create_zap_request_event(
         &self,
-        recipient_pubkey: PublicKeyHex,
+        recipient_pubkey: PublicKey,
         zapped_event: Option<Id>,
         millisatoshis: u64,
         relays: Vec<String>,
         content: String,
     ) -> Result<Event, Error> {
+        let mut relays_tag = Tag::new(&["relays"]);
+        relays_tag.push_values(relays);
+
         let mut pre_event = PreEvent {
             pubkey: self.public_key(),
             created_at: Unixtime::now().unwrap(),
             kind: EventKind::ZapRequest,
             tags: vec![
-                Tag::Pubkey {
-                    pubkey: recipient_pubkey,
-                    recommended_relay_url: None,
-                    petname: None,
-                    trailing: Vec::new(),
-                },
-                Tag::Other {
-                    tag: "relays".to_owned(),
-                    data: relays,
-                },
-                Tag::Other {
-                    tag: "amount".to_owned(),
-                    data: vec![format!("{millisatoshis}")],
-                },
+                Tag::new_pubkey(recipient_pubkey, None, None),
+                relays_tag,
+                Tag::new(&["amount", &format!("{millisatoshis}")]),
             ],
             content,
         };
 
         if let Some(ze) = zapped_event {
-            pre_event.tags.push(Tag::Event {
-                id: ze,
-                recommended_relay_url: None,
-                marker: None,
-                trailing: Vec::new(),
-            });
+            pre_event.tags.push(Tag::new_event(ze, None, None));
         }
 
         self.sign_event(pre_event)
@@ -376,8 +430,7 @@ pub trait Signer: fmt::Debug {
             event
                 .people()
                 .iter()
-                .filter_map(|(pkh, _, _)| PublicKey::try_from(pkh).ok())
-                .filter(|pk| *pk != event.pubkey)
+                .filter_map(|(pk, _, _)| if *pk != event.pubkey { Some(*pk) } else { None })
                 .nth(0)
                 .unwrap_or(event.pubkey) // in case you sent it to yourself.
         } else {
@@ -397,11 +450,10 @@ pub trait Signer: fmt::Debug {
         }
 
         // Verify you are tagged
-        let pkhex: PublicKeyHex = self.public_key().into();
         let mut tagged = false;
         for t in event.tags.iter() {
-            if let Tag::Pubkey { pubkey, .. } = t {
-                if *pubkey == pkhex {
+            if let Ok((pubkey, _, _)) = t.parse_pubkey() {
+                if pubkey == self.public_key() {
                     tagged = true;
                 }
             }
@@ -429,6 +481,56 @@ pub trait Signer: fmt::Debug {
 
         // Translate into a Rumor
         let rumor: Rumor = serde_json::from_str(&content)?;
+
+        // Compae the author
+        if rumor.pubkey != author {
+            return Err(Error::InvalidPublicKey);
+        }
+
+        // Return the Rumor
+        Ok(rumor)
+    }
+
+    /// If a gift wrap event, unwrap and return the inner Rumor
+    /// @deprecated for migrations only
+    fn unwrap_giftwrap2(&self, event: &EventV2) -> Result<RumorV2, Error> {
+        if event.kind != EventKind::GiftWrap {
+            return Err(Error::WrongEventKind);
+        }
+
+        // Verify you are tagged
+        let pkhex: PublicKeyHex = self.public_key().into();
+        let mut tagged = false;
+        for t in event.tags.iter() {
+            if let TagV2::Pubkey { pubkey, .. } = t {
+                if *pubkey == pkhex {
+                    tagged = true;
+                }
+            }
+        }
+        if !tagged {
+            return Err(Error::InvalidRecipient);
+        }
+
+        // Decrypt the content
+        let content = self.decrypt_nip44(&event.pubkey, &event.content)?;
+
+        // Translate into a seal Event
+        let seal: EventV2 = serde_json::from_str(&content)?;
+
+        // Verify it is a Seal
+        if seal.kind != EventKind::Seal {
+            return Err(Error::WrongEventKind);
+        }
+
+        // Note the author
+        let author = seal.pubkey;
+
+        // Decrypt the content
+        let content = self.decrypt_nip44(&seal.pubkey, &seal.content)?;
+
+        // Translate into a Rumor
+        let rumor: RumorV2 = serde_json::from_str(&content)?;
 
         // Compae the author
         if rumor.pubkey != author {

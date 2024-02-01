@@ -1,4 +1,4 @@
-use crate::versioned::tag2::TagV2;
+use crate::versioned::tag3::TagV3;
 
 /// A tag on an Event
-pub type Tag = TagV2;
+pub type Tag = TagV3;
