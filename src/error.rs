@@ -164,6 +164,10 @@ pub enum Error {
     #[error("Speedy (de)serialization error: {0}")]
     Speedy(#[from] speedy::Error),
 
+    /// Tag mismatch
+    #[error("Tag mismatch")]
+    TagMismatch,
+
     /// Time error
     #[error("System Time Error: {0}")]
     Time(#[from] std::time::SystemTimeError),

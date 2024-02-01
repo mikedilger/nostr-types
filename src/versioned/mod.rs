@@ -38,3 +38,6 @@ pub use tag1::TagV1;
 
 pub(crate) mod tag2;
 pub use tag2::TagV2;
+
+pub(crate) mod tag3;
+pub use tag3::TagV3;
