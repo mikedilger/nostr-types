@@ -899,33 +899,40 @@ impl EventV3 {
 
         // Search through them
         for tag in &tags {
-            match tag {
-                TagV3::ContentWarning { warning, .. } => {
-                    if re.is_match(warning.as_ref()) {
+            match tag.tagname() {
+                "content-warning" => {
+                    if let Ok(Some(warning)) = tag.parse_content_warning() {
+                        if re.is_match(warning.as_ref()) {
+                            return Ok(true);
+                        }
+                    }
+                }
+                "t" => {
+                    if let Ok(hashtag) = tag.parse_hashtag() {
+                        if re.is_match(hashtag.as_ref()) {
+                            return Ok(true);
+                        }
+                    }
+                }
+                "subject" => {
+                    if let Ok(subject) = tag.parse_subject() {
+                        if re.is_match(subject.as_ref()) {
+                            return Ok(true);
+                        }
+                    }
+                }
+                "title" => {
+                    if let Ok(title) = tag.parse_title() {
+                        if re.is_match(title.as_ref()) {
+                            return Ok(true);
+                        }
+                    }
+                }
+                _ => {
+                    if tag.tagname() == "summary" && re.is_match(tag.value()) {
                         return Ok(true);
                     }
                 }
-                TagV3::Hashtag { hashtag, .. } => {
-                    if re.is_match(hashtag.as_ref()) {
-                        return Ok(true);
-                    }
-                }
-                TagV3::Subject { subject, .. } => {
-                    if re.is_match(subject.as_ref()) {
-                        return Ok(true);
-                    }
-                }
-                TagV3::Title { title, .. } => {
-                    if re.is_match(title.as_ref()) {
-                        return Ok(true);
-                    }
-                }
-                TagV3::Other { tag, data } => {
-                    if tag == "summary" && !data.is_empty() && re.is_match(data[0].as_ref()) {
-                        return Ok(true);
-                    }
-                }
-                _ => {}
             }
         }
 
@@ -1148,7 +1155,7 @@ mod test {
             created_at: Unixtime(1680000012),
             kind: EventKind::TextNote,
             tags: vec![
-                TagV3::new_event(Id::mock(), Some(UncheckedUrl::mock()), none),
+                TagV3::new_event(Id::mock(), Some(UncheckedUrl::mock()), None),
                 TagV3::new_hashtag("foodstr".to_string()),
             ],
             content: "Hello World!".to_string(),
