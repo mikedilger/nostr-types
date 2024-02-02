@@ -1,7 +1,7 @@
 use crate::{
     ContentEncryptionAlgorithm, DelegationConditions, EncryptedPrivateKey, Error, Event, EventV1,
-    Id, KeySecurity, KeySigner, Metadata, PreEvent, PrivateKey, PublicKey, Rumor, RumorV1,
-    Signature, Signer,
+    EventV2, Id, KeySecurity, KeySigner, Metadata, PreEvent, PrivateKey, PublicKey, Rumor, RumorV1,
+    RumorV2, Signature, Signer,
 };
 use std::ops::DerefMut;
 use std::sync::mpsc::Sender;
@@ -294,6 +294,16 @@ impl Identity {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
             Identity::Signer(boxed_signer) => boxed_signer.unwrap_giftwrap1(event),
+        }
+    }
+
+    /// If a gift wrap event, unwrap and return the inner Rumor
+    /// @deprecated for migrations only
+    pub fn unwrap_giftwrap2(&self, event: &EventV2) -> Result<RumorV2, Error> {
+        match self {
+            Identity::None => Err(Error::NoPublicKey),
+            Identity::Public(_) => Err(Error::NoPrivateKey),
+            Identity::Signer(boxed_signer) => boxed_signer.unwrap_giftwrap2(event),
         }
     }
 
