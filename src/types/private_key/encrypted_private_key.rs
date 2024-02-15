@@ -16,6 +16,7 @@ use sha2::Sha256;
 #[cfg(feature = "speedy")]
 use speedy::{Readable, Writable};
 use std::ops::Deref;
+use unicode_normalization::UnicodeNormalization;
 use zeroize::Zeroize;
 
 // This allows us to detect bad decryptions with wrong passwords.
@@ -122,7 +123,7 @@ impl PrivateKey {
 
         let ciphertext = {
             let cipher = {
-                let symmetric_key = Self::password_to_key_v2(password, &salt, log2_rounds)?;
+                let symmetric_key = Self::password_to_key_v2(&password, &salt, log2_rounds)?;
                 XChaCha20Poly1305::new((&symmetric_key).into())
             };
 
@@ -338,6 +339,9 @@ impl PrivateKey {
 
     // Hash/Stretch password with scrypt into a 32-byte (256-bit) key
     fn password_to_key_v2(password: &str, salt: &[u8; 16], log_n: u8) -> Result<[u8; 32], Error> {
+        // Normalize unicode (NFKC)
+        let password = password.nfkc().collect::<String>();
+
         let params = match scrypt::Params::new(log_n, 8, 1, 32) {
             // r=8, p=1
             Ok(p) => p,
@@ -417,6 +421,25 @@ mod test {
             encrypted.decrypt("nostr").unwrap().as_hex_string(),
             decrypted
         );
+    }
+
+    #[test]
+    fn test_nfkc_unicode_normalization() {
+        // "ÅΩẛ̣"
+        // U+212B U+2126 U+1E9B U+0323
+        let password1: [u8; 11] = [
+            0xE2, 0x84, 0xAB, 0xE2, 0x84, 0xA6, 0xE1, 0xBA, 0x9B, 0xCC, 0xA3,
+        ];
+
+        // "ÅΩẛ̣"
+        // U+00C5 U+03A9 U+1E69
+        let password2: [u8; 7] = [0xC3, 0x85, 0xCE, 0xA9, 0xE1, 0xB9, 0xA9];
+
+        let password1_str = unsafe { std::str::from_utf8_unchecked(password1.as_slice()) };
+        let password2_str = unsafe { std::str::from_utf8_unchecked(password2.as_slice()) };
+
+        let password1_nfkc = password1_str.nfkc().collect::<String>();
+        assert_eq!(password1_nfkc, password2_str);
     }
 }
 
