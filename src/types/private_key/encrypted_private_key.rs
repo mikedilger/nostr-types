@@ -123,7 +123,7 @@ impl PrivateKey {
 
         let ciphertext = {
             let cipher = {
-                let symmetric_key = Self::password_to_key_v2(&password, &salt, log2_rounds)?;
+                let symmetric_key = Self::password_to_key_v2(password, &salt, log2_rounds)?;
                 XChaCha20Poly1305::new((&symmetric_key).into())
             };
 
