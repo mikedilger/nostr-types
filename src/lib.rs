@@ -50,9 +50,10 @@ pub use types::{
     EventKind, EventKindIterator, EventKindOrRange, EventPointer, EventReference, Fee, Filter, Id,
     IdHex, Identity, KeySecurity, KeySigner, Metadata, MilliSatoshi, Nip05, NostrBech32, NostrUrl,
     PayRequestData, PreEvent, PrivateKey, Profile, PublicKey, PublicKeyHex, RelayFees,
-    RelayInformationDocument, RelayLimitation, RelayMessage, RelayRetention, RelayUrl, Rumor,
-    ShatteredContent, Signature, SignatureHex, Signer, SimpleRelayList, SimpleRelayUsage, Span,
-    SubscriptionId, Tag, UncheckedUrl, Unixtime, Url, XOnlyPublicKey, ZapData,
+    RelayInformationDocument, RelayLimitation, RelayList, RelayMessage, RelayRetention, RelayUrl,
+    RelayUsage, Rumor, ShatteredContent, Signature, SignatureHex, Signer, SimpleRelayList,
+    SimpleRelayUsage, Span, SubscriptionId, Tag, UncheckedUrl, Unixtime, Url, XOnlyPublicKey,
+    ZapData,
 };
 
 mod versioned;

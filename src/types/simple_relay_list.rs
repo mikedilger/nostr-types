@@ -8,6 +8,8 @@ use std::collections::HashMap;
 use std::fmt;
 
 /// When and how to use a Relay
+///
+/// This is used only for `SimpleRelayList`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct SimpleRelayUsage {
@@ -28,6 +30,9 @@ impl Default for SimpleRelayUsage {
 }
 
 /// A list of relays with SimpleRelayUsage
+///
+/// This is only used for handling the contents of a kind-3 contact list.
+/// For normal relay lists, consider using `RelayList` instead.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct SimpleRelayList(pub HashMap<UncheckedUrl, SimpleRelayUsage>);

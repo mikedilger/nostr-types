@@ -55,13 +55,16 @@ pub use profile::Profile;
 mod public_key;
 pub use public_key::{PublicKey, PublicKeyHex, XOnlyPublicKey};
 
-mod relay_message;
-pub use relay_message::RelayMessage;
-
 mod relay_information_document;
 pub use relay_information_document::{
     Fee, RelayFees, RelayInformationDocument, RelayLimitation, RelayRetention,
 };
+
+mod relay_list;
+pub use relay_list::{RelayList, RelayUsage};
+
+mod relay_message;
+pub use relay_message::RelayMessage;
 
 mod satoshi;
 pub use satoshi::MilliSatoshi;
