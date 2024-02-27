@@ -27,9 +27,6 @@ pub use relay_information_document::{
     FeeV1, RelayFeesV1, RelayInformationDocumentV1, RelayLimitationV1, RelayRetentionV1,
 };
 
-pub(crate) mod relay_list;
-pub use relay_list::{SimpleRelayListV1, SimpleRelayUsageV1};
-
 pub(crate) mod relay_message1;
 pub use relay_message1::RelayMessageV1;
 

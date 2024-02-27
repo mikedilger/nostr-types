@@ -60,8 +60,7 @@ pub use versioned::{
     ClientMessageV1, ClientMessageV2, ClientMessageV3, EventV1, EventV2, EventV3, FeeV1,
     MetadataV1, Nip05V1, PreEventV1, PreEventV2, PreEventV3, RelayFeesV1,
     RelayInformationDocumentV1, RelayLimitationV1, RelayMessageV1, RelayMessageV2, RelayMessageV3,
-    RelayMessageV4, RelayRetentionV1, RumorV1, RumorV2, RumorV3, SimpleRelayListV1,
-    SimpleRelayUsageV1, TagV1, TagV2, TagV3, Why,
+    RelayMessageV4, RelayRetentionV1, RumorV1, RumorV2, RumorV3, TagV1, TagV2, TagV3, Why,
 };
 
 #[inline]
