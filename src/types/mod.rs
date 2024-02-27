@@ -72,8 +72,8 @@ pub use signature::{Signature, SignatureHex};
 mod signer;
 pub use signer::Signer;
 
-mod relay_list;
-pub use relay_list::{SimpleRelayList, SimpleRelayUsage};
+mod simple_relay_list;
+pub use simple_relay_list::{SimpleRelayList, SimpleRelayUsage};
 
 mod subscription_id;
 pub use subscription_id::SubscriptionId;
