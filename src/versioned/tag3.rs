@@ -187,6 +187,32 @@ impl TagV3 {
         Ok((id, url, marker))
     }
 
+    /// Create a "q" tag
+    pub fn new_quote(id: Id, recommended_relay_url: Option<UncheckedUrl>) -> TagV3 {
+        let mut v: Vec<String> = vec!["q".to_owned(), id.as_hex_string()];
+        if let Some(rurl) = recommended_relay_url {
+            v.push(rurl.0);
+        }
+        TagV3(v)
+    }
+
+    /// Parse a "q" tag
+    pub fn parse_quote(&self) -> Result<(Id, Option<UncheckedUrl>), Error> {
+        if self.0.len() < 2 {
+            return Err(Error::TagMismatch);
+        }
+        if &self.0[0] != "q" {
+            return Err(Error::TagMismatch);
+        }
+        let id = Id::try_from_hex_string(&self.0[1])?;
+        let url = if self.0.len() >= 3 {
+            Some(UncheckedUrl(self.0[2].to_owned()))
+        } else {
+            None
+        };
+        Ok((id, url))
+    }
+
     /// Create a "p" tag
     pub fn new_pubkey(
         pubkey: PublicKey,
