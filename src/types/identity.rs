@@ -44,6 +44,12 @@ impl Identity {
         Self::Signer(Box::new(key_signer))
     }
 
+    /// New `Identity` from an encrypted private key and its password
+    pub fn from_encrypted_private_key(epk: EncryptedPrivateKey, pass: &str) -> Result<Self, Error> {
+        let key_signer = KeySigner::from_encrypted_private_key(epk, pass)?;
+        Ok(Self::Signer(Box::new(key_signer)))
+    }
+
     /// Generate a new `Identity`
     pub fn generate(password: &str, log_n: u8) -> Result<Self, Error> {
         let key_signer = KeySigner::generate(password, log_n)?;

@@ -40,6 +40,13 @@ impl KeySigner {
         })
     }
 
+    /// Create a Signer from an `EncryptedPrivateKey` and a password to unlock it
+    pub fn from_encrypted_private_key(epk: EncryptedPrivateKey, pass: &str) -> Result<Self, Error> {
+        let priv_key = epk.decrypt(pass)?;
+        let pub_key = priv_key.public_key();
+        Ok(Self::from_locked_parts(epk, pub_key))
+    }
+
     /// Create a Signer by generating a new `PrivateKey`
     pub fn generate(password: &str, log_n: u8) -> Result<Self, Error> {
         let privk = PrivateKey::generate();
