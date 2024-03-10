@@ -106,7 +106,13 @@ impl EventPointer {
                     }
                     2 => {
                         // author
-                        author = Some(PublicKey::from_bytes(raw, true)?);
+                        //
+                        // Don't fail if the pubkey is bad, just don't include it.
+                        // Some client is generating these, and we want to tolerate it
+                        // as much as we can.
+                        if let Ok(pk) = PublicKey::from_bytes(raw, true) {
+                            author = Some(pk);
+                        }
                     }
                     3 => {
                         // kind
@@ -234,5 +240,12 @@ mod test {
             event_pointer,
             EventPointer::try_from_bech32_string(bech32).unwrap()
         );
+    }
+
+    #[test]
+    fn test_ones_that_were_failing() {
+        let bech32 = "nevent1qqswrqr63ddwk8l3zfqrgdxh2lxh2jlcxl36k3h33g25gtchzchx8agpp4mhxue69uhkummn9ekx7mqpz3mhxue69uhhyetvv9ujuerpd46hxtnfduq3yamnwvaz7tm0venxx6rpd9hzuur4vgpyqdmyxs6rzdmyx4jxvdpnx4snjdmz8pnr2dtr8pnryefhv5ex2e34xvek2v3nxuckxef4v5ckxenxvs6njdtrxymnjcfnv4skvvekvs6qfe99uy";
+
+        let ep = EventPointer::try_from_bech32_string(bech32).unwrap();
     }
 }

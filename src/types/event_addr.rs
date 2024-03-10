@@ -93,7 +93,13 @@ impl EventAddr {
                     }
                     2 => {
                         // author
-                        maybe_author = Some(PublicKey::from_bytes(raw, true)?);
+                        //
+                        // Don't fail if the pubkey is bad, just don't include it.
+                        // Some client is generating these, and we want to tolerate it
+                        // as much as we can.
+                        if let Ok(pk) = PublicKey::from_bytes(raw, true) {
+                            maybe_author = Some(pk);
+                        }
                     }
                     3 => {
                         // kind
