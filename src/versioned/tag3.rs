@@ -246,7 +246,11 @@ impl TagV3 {
             None
         };
         let petname = if self.0.len() >= 4 {
-            Some(self.0[3].to_owned())
+            if self.0[3].is_empty() {
+                None
+            } else {
+                Some(self.0[3].to_owned())
+            }
         } else {
             None
         };
