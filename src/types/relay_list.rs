@@ -4,11 +4,11 @@ use std::collections::HashMap;
 /// Relay Usage
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum RelayUsage {
-    /// The relay is used as an inbox
-    Read,
+    /// The relay is used as an inbox (called 'read' in kind-10002)
+    Inbox,
 
-    /// The relay is used as an outbox
-    Write,
+    /// The relay is used as an outbox (called 'write' in kind-10002)
+    Outbox,
 
     /// The relay is used both as an inbox and an outbox
     #[default]
@@ -19,8 +19,8 @@ impl RelayUsage {
     /// A string marker used in a kind-10002 RelayList event for the variant
     pub fn marker(&self) -> Option<&'static str> {
         match self {
-            RelayUsage::Read => Some("read"),
-            RelayUsage::Write => Some("write"),
+            RelayUsage::Inbox => Some("read"),
+            RelayUsage::Outbox => Some("write"),
             RelayUsage::Both => None,
         }
     }
@@ -44,10 +44,10 @@ impl RelayList {
                     if let Some(m) = optmarker {
                         match &*m.trim().to_lowercase() {
                             "read" => {
-                                let _ = relay_list.0.insert(relay_url, RelayUsage::Read);
+                                let _ = relay_list.0.insert(relay_url, RelayUsage::Inbox);
                             }
                             "write" => {
-                                let _ = relay_list.0.insert(relay_url, RelayUsage::Write);
+                                let _ = relay_list.0.insert(relay_url, RelayUsage::Outbox);
                             }
                             _ => {} // ignore unknown marker
                         }
