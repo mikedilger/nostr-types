@@ -10,7 +10,7 @@ use std::fmt;
 macro_rules! define_event_kinds {
     ($($comment:expr, $name:ident = $value:expr),*) => {
         /// A kind of Event
-        #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+        #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
         #[repr(u32)]
         pub enum EventKind {
             $(
