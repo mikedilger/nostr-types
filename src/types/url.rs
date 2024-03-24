@@ -103,13 +103,13 @@ impl Url {
                     }
                 }
                 url::Host::Ipv4(addr) => {
-                    let addrx: core_net::Ipv4Addr = unsafe { std::mem::transmute(addr) };
+                    let addrx = core_net::Ipv4Addr::from(addr.octets());
                     if !addrx.is_global() {
                         return Err(Error::InvalidUrlHost(format!("{host}")));
                     }
                 }
                 url::Host::Ipv6(addr) => {
-                    let addrx: core_net::Ipv6Addr = unsafe { std::mem::transmute(addr) };
+                    let addrx = core_net::Ipv6Addr::from(addr.octets());
                     if !addrx.is_global() {
                         return Err(Error::InvalidUrlHost(format!("{host}")));
                     }
