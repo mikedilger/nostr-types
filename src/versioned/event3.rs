@@ -3,7 +3,7 @@ use crate::types::{
     EventDelegation, EventKind, EventReference, Id, KeySigner, MilliSatoshi, NostrBech32, NostrUrl,
     PrivateKey, PublicKey, RelayUrl, Signature, Signer, Unixtime, ZapData,
 };
-use crate::Error;
+use crate::{Error, IntoVec};
 use lightning_invoice::Invoice;
 #[cfg(feature = "speedy")]
 use regex::Regex;
@@ -276,12 +276,15 @@ impl EventV3 {
         // Collect every 'e' tag and 'a' tag
         for tag in self.tags.iter() {
             if let Ok((id, rurl, marker)) = tag.parse_event() {
-                output.push(EventReference::Id(
+                output.push(EventReference::Id {
                     id,
-                    rurl.as_ref()
-                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                    marker.clone(),
-                ));
+                    author: None,
+                    relays: rurl
+                        .as_ref()
+                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                        .into_vec(),
+                    marker,
+                });
             } else if let Ok((ea, _optmarker)) = tag.parse_address() {
                 output.push(EventReference::Addr(ea))
             }
@@ -317,12 +320,15 @@ impl EventV3 {
         for tag in self.tags.iter() {
             if let Ok((id, rurl, marker)) = tag.parse_event() {
                 if marker.is_some() && marker.as_deref().unwrap() == "reply" {
-                    return Some(EventReference::Id(
+                    return Some(EventReference::Id {
                         id,
-                        rurl.as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                        Some("reply".to_owned()),
-                    ));
+                        author: None,
+                        relays: rurl
+                            .as_ref()
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                            .into_vec(),
+                        marker,
+                    });
                 }
             }
         }
@@ -331,12 +337,15 @@ impl EventV3 {
         for tag in self.tags.iter() {
             if let Ok((id, rurl, marker)) = tag.parse_event() {
                 if marker.is_some() && marker.as_deref().unwrap() == "root" {
-                    return Some(EventReference::Id(
+                    return Some(EventReference::Id {
                         id,
-                        rurl.as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                        Some("root".to_owned()),
-                    ));
+                        author: None,
+                        relays: rurl
+                            .as_ref()
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                            .into_vec(),
+                        marker,
+                    });
                 }
             }
         }
@@ -354,12 +363,15 @@ impl EventV3 {
         for tag in self.tags.iter().rev() {
             if let Ok((id, rurl, marker)) = tag.parse_event() {
                 if marker.is_none() {
-                    return Some(EventReference::Id(
-                        id,
-                        rurl.as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                        marker.to_owned(),
-                    ));
+                    return Some(EventReference::Id {
+                        id: id,
+                        author: None,
+                        relays: rurl
+                            .as_ref()
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                            .into_vec(),
+                        marker: None,
+                    });
                 }
             }
         }
@@ -378,12 +390,15 @@ impl EventV3 {
         for tag in self.tags.iter() {
             if let Ok((id, rurl, optmarker)) = tag.parse_event() {
                 if optmarker.is_some() && optmarker.as_deref().unwrap() == "root" {
-                    return Some(EventReference::Id(
+                    return Some(EventReference::Id {
                         id,
-                        rurl.as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                        optmarker.to_owned(),
-                    ));
+                        author: None,
+                        relays: rurl
+                            .as_ref()
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                            .into_vec(),
+                        marker: optmarker,
+                    });
                 }
             }
         }
@@ -391,12 +406,15 @@ impl EventV3 {
         for tag in self.tags.iter() {
             if let Ok((id, rurl, optmarker)) = tag.parse_event() {
                 if optmarker.is_none() {
-                    return Some(EventReference::Id(
+                    return Some(EventReference::Id {
                         id,
-                        rurl.as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                        optmarker.to_owned(),
-                    ));
+                        author: None,
+                        relays: rurl
+                            .as_ref()
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                            .into_vec(),
+                        marker: None,
+                    });
                 }
             } else if let Ok((ea, optmarker)) = tag.parse_address() {
                 if optmarker.is_none() {
@@ -421,12 +439,15 @@ impl EventV3 {
         if self.kind == EventKind::Repost || self.kind == EventKind::GenericRepost {
             for tag in self.tags.iter() {
                 if let Ok((id, rurl, optmarker)) = tag.parse_event() {
-                    output.push(EventReference::Id(
+                    output.push(EventReference::Id {
                         id,
-                        rurl.as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                        optmarker.to_owned(),
-                    ));
+                        author: None,
+                        relays: rurl
+                            .as_ref()
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                            .into_vec(),
+                        marker: optmarker,
+                    });
                 } else if let Ok((ea, _optmarker)) = tag.parse_address() {
                     output.push(EventReference::Addr(ea));
                 }
@@ -441,12 +462,15 @@ impl EventV3 {
         for tag in self.tags.iter() {
             if let Ok((id, rurl, optmarker)) = tag.parse_event() {
                 if optmarker.is_some() && optmarker.as_deref().unwrap() == "mention" {
-                    output.push(EventReference::Id(
+                    output.push(EventReference::Id {
                         id,
-                        rurl.as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                        Some("mention".to_owned()),
-                    ));
+                        author: None,
+                        relays: rurl
+                            .as_ref()
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                            .into_vec(),
+                        marker: optmarker,
+                    });
                 }
             }
         }
@@ -461,12 +485,15 @@ impl EventV3 {
             // mentions are everything other than first and last
             for tag in &e_tags[1..e_tags.len() - 1] {
                 if let Ok((id, rurl, optmarker)) = tag.parse_event() {
-                    output.push(EventReference::Id(
-                        id,
-                        rurl.as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                        optmarker.to_owned(),
-                    ));
+                    output.push(EventReference::Id {
+                        id: id,
+                        author: None,
+                        relays: rurl
+                            .as_ref()
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                            .into_vec(),
+                        marker: optmarker,
+                    });
                 } else if let Ok((ea, _optmarker)) = tag.parse_address() {
                     output.push(EventReference::Addr(ea));
                 }
@@ -510,7 +537,12 @@ impl EventV3 {
         for tag in self.tags.iter() {
             if let Ok((id, _rurl, _optmarker)) = tag.parse_event() {
                 // All 'e' tags are deleted
-                erefs.push(EventReference::Id(id, None, None));
+                erefs.push(EventReference::Id {
+                    id,
+                    author: None,
+                    relays: vec![],
+                    marker: None,
+                });
             } else if let Ok((ea, _optmarker)) = tag.parse_address() {
                 erefs.push(EventReference::Addr(ea));
             }

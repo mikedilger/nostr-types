@@ -3,7 +3,7 @@ use crate::types::{
     EventAddr, EventDelegation, EventKind, EventReference, Id, MilliSatoshi, NostrBech32, NostrUrl,
     PublicKey, PublicKeyHex, RelayUrl, Signature, Unixtime, ZapData,
 };
-use crate::Error;
+use crate::{Error, IntoVec};
 use lightning_invoice::Invoice;
 #[cfg(feature = "speedy")]
 use regex::Regex;
@@ -268,13 +268,15 @@ impl EventV1 {
                 ..
             } = tag
             {
-                output.push(EventReference::Id(
-                    *id,
-                    recommended_relay_url
+                output.push(EventReference::Id {
+                    id: *id,
+                    author: None,
+                    relays: recommended_relay_url
                         .as_ref()
-                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                    marker.clone(),
-                ));
+                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                        .into_vec(),
+                    marker: marker.clone(),
+                });
             } else if let TagV1::Address {
                 kind,
                 pubkey,
@@ -330,13 +332,15 @@ impl EventV1 {
             } = tag
             {
                 if marker.is_some() && marker.as_deref().unwrap() == "reply" {
-                    return Some(EventReference::Id(
-                        *id,
-                        recommended_relay_url
+                    return Some(EventReference::Id {
+                        id: *id,
+                        author: None,
+                        relays: recommended_relay_url
                             .as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                        Some("reply".to_owned()),
-                    ));
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                            .into_vec(),
+                        marker: marker.clone(),
+                    });
                 }
             }
         }
@@ -351,13 +355,15 @@ impl EventV1 {
             } = tag
             {
                 if marker.is_some() && marker.as_deref().unwrap() == "root" {
-                    return Some(EventReference::Id(
-                        *id,
-                        recommended_relay_url
+                    return Some(EventReference::Id {
+                        id: *id,
+                        author: None,
+                        relays: recommended_relay_url
                             .as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                        Some("root".to_owned()),
-                    ));
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                            .into_vec(),
+                        marker: marker.clone(),
+                    });
                 }
             }
         }
@@ -373,13 +379,15 @@ impl EventV1 {
                 ..
             } = tag
             {
-                return Some(EventReference::Id(
-                    *id,
-                    recommended_relay_url
+                return Some(EventReference::Id {
+                    id: *id,
+                    author: None,
+                    relays: recommended_relay_url
                         .as_ref()
-                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                    marker.to_owned(),
-                ));
+                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                        .into_vec(),
+                    marker: marker.to_owned(),
+                });
             } else if let TagV1::Address {
                 kind,
                 pubkey,
@@ -419,13 +427,15 @@ impl EventV1 {
             } = tag
             {
                 if marker.is_some() && marker.as_deref().unwrap() == "root" {
-                    return Some(EventReference::Id(
-                        *id,
-                        recommended_relay_url
+                    return Some(EventReference::Id {
+                        id: *id,
+                        author: None,
+                        relays: recommended_relay_url
                             .as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                        marker.to_owned(),
-                    ));
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                            .into_vec(),
+                        marker: marker.to_owned(),
+                    });
                 }
             }
         }
@@ -442,13 +452,15 @@ impl EventV1 {
                 ..
             } = tag
             {
-                return Some(EventReference::Id(
-                    *id,
-                    recommended_relay_url
+                return Some(EventReference::Id {
+                    id: *id,
+                    author: None,
+                    relays: recommended_relay_url
                         .as_ref()
-                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                    marker.to_owned(),
-                ));
+                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                        .into_vec(),
+                    marker: marker.to_owned(),
+                });
             } else if let TagV1::Address {
                 kind,
                 pubkey,
@@ -490,13 +502,15 @@ impl EventV1 {
                     ..
                 } = tag
                 {
-                    output.push(EventReference::Id(
-                        *id,
-                        recommended_relay_url
+                    output.push(EventReference::Id {
+                        id: *id,
+                        author: None,
+                        relays: recommended_relay_url
                             .as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                        marker.to_owned(),
-                    ));
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                            .into_vec(),
+                        marker: marker.to_owned(),
+                    });
                 } else if let TagV1::Address {
                     kind,
                     pubkey,
@@ -531,13 +545,15 @@ impl EventV1 {
             } = tag
             {
                 if marker.is_some() && marker.as_deref().unwrap() == "mention" {
-                    output.push(EventReference::Id(
-                        *id,
-                        recommended_relay_url
+                    output.push(EventReference::Id {
+                        id: *id,
+                        author: None,
+                        relays: recommended_relay_url
                             .as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                        Some("mention".to_owned()),
-                    ));
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                            .into_vec(),
+                        marker: marker.clone(),
+                    });
                 }
             }
         }
@@ -560,13 +576,15 @@ impl EventV1 {
                     ..
                 } = tag
                 {
-                    output.push(EventReference::Id(
-                        *id,
-                        recommended_relay_url
+                    output.push(EventReference::Id {
+                        id: *id,
+                        author: None,
+                        relays: recommended_relay_url
                             .as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
-                        marker.to_owned(),
-                    ));
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                            .into_vec(),
+                        marker: marker.to_owned(),
+                    });
                 } else if let TagV1::Address {
                     kind,
                     pubkey,

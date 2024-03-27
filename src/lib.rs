@@ -77,3 +77,16 @@ pub(crate) fn get_leading_zero_bits(bytes: &[u8]) -> u8 {
     }
     res
 }
+
+trait IntoVec<T> {
+    fn into_vec(self) -> Vec<T>;
+}
+
+impl<T> IntoVec<T> for Option<T> {
+    fn into_vec(self) -> Vec<T> {
+        match self {
+            None => vec![],
+            Some(t) => vec![t],
+        }
+    }
+}
