@@ -22,10 +22,12 @@ pub use metadata::MetadataV1;
 pub(crate) mod nip05;
 pub use nip05::Nip05V1;
 
-pub(crate) mod relay_information_document;
-pub use relay_information_document::{
+pub(crate) mod relay_information_document1;
+pub use relay_information_document1::{
     FeeV1, RelayFeesV1, RelayInformationDocumentV1, RelayLimitationV1, RelayRetentionV1,
 };
+pub(crate) mod relay_information_document2;
+pub use relay_information_document2::{RelayInformationDocumentV2, RelayLimitationV2};
 
 pub(crate) mod relay_message1;
 pub use relay_message1::RelayMessageV1;
