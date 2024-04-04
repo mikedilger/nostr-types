@@ -1,4 +1,4 @@
-use super::{Event, EventKind, IdHex, PublicKeyHex, Unixtime};
+use super::{Event, EventKind, IdHex, PublicKeyHex, Tag, Unixtime};
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
@@ -132,6 +132,19 @@ impl Filter {
     /// Remove all Tag values of a given kind from a filter
     pub fn clear_tag_values(&mut self, letter: char) {
         let _ = self.tags.remove(&letter);
+    }
+
+    /// Convert filter tags into a `Vec<Tag>`
+    pub fn tags_as_tags(&self) -> Vec<Tag> {
+        let mut buffer: [u8; 4] = [0; 4];
+        let mut tags: Vec<Tag> = Vec::with_capacity(self.tags.len());
+        for (letter, values) in self.tags.iter() {
+            let mut strings: Vec<String> = Vec::with_capacity(1 + values.len());
+            strings.push(letter.encode_utf8(&mut buffer).to_owned());
+            strings.extend(values.to_owned());
+            tags.push(Tag::from_strings(strings));
+        }
+        tags
     }
 
     /// Does the event match the filter?

@@ -19,6 +19,11 @@ impl TagV3 {
         TagV3(fields.iter().map(|f| (*f).to_owned()).collect())
     }
 
+    /// Create a new tag without copying
+    pub fn from_strings(fields: Vec<String>) -> TagV3 {
+        TagV3(fields)
+    }
+
     /// Get the string at the given index
     pub fn get_index(&self, index: usize) -> &str {
         if self.0.len() > index {
