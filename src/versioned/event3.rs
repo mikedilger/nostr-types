@@ -365,7 +365,7 @@ impl EventV3 {
             if let Ok((id, rurl, marker)) = tag.parse_event() {
                 if marker.is_none() {
                     return Some(EventReference::Id {
-                        id: id,
+                        id,
                         author: None,
                         relays: rurl
                             .as_ref()
@@ -487,7 +487,7 @@ impl EventV3 {
             for tag in &e_tags[1..e_tags.len() - 1] {
                 if let Ok((id, rurl, optmarker)) = tag.parse_event() {
                     output.push(EventReference::Id {
-                        id: id,
+                        id,
                         author: None,
                         relays: rurl
                             .as_ref()

@@ -183,9 +183,9 @@ impl Filter {
             let mut matched_one = false;
             for (letter, value) in &self.tags {
                 for tag in &e.tags {
-                    if tag.tagname().chars().next() == Some(*letter)
+                    if tag.tagname().starts_with(*letter)
                         && !value.is_empty()
-                        && tag.value() == &value[0]
+                        && tag.value() == value[0]
                     {
                         matched_one = true;
                         break;
@@ -193,7 +193,7 @@ impl Filter {
                 }
             }
 
-            if matched_one == false {
+            if !matched_one {
                 return false;
             }
         }
