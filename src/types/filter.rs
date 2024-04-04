@@ -134,11 +134,8 @@ impl Filter {
         let _ = self.tags.remove(&letter);
     }
 
-    /// This is an INCOMPLETE matching of an event against the filter.
-    ///
-    /// It is only incomplete because I plan to rewrite how tags work and it makes
-    /// sense to do that first.
-    pub fn event_matches_incomplete(&self, e: &Event) -> bool {
+    /// Does the event match the filter?
+    pub fn event_matches(&self, e: &Event) -> bool {
         if !self.ids.is_empty() {
             let idhex: IdHex = e.id.into();
             if !self.ids.contains(&idhex) {
@@ -157,8 +154,6 @@ impl Filter {
             return false;
         }
 
-        // TBD - check tags
-
         if let Some(since) = self.since {
             if e.created_at < since {
                 return false;
@@ -167,6 +162,25 @@ impl Filter {
 
         if let Some(until) = self.until {
             if e.created_at > until {
+                return false;
+            }
+        }
+
+        if !self.tags.is_empty() {
+            let mut matched_one = false;
+            for (letter, value) in &self.tags {
+                for tag in &e.tags {
+                    if tag.tagname().chars().next() == Some(*letter)
+                        && !value.is_empty()
+                        && tag.value() == &value[0]
+                    {
+                        matched_one = true;
+                        break;
+                    }
+                }
+            }
+
+            if matched_one == false {
                 return false;
             }
         }
@@ -307,20 +321,20 @@ mod test {
             ..Default::default()
         };
         filter.add_tag_value('e', Id::mock().as_hex_string());
-        assert_eq!(filter.event_matches_incomplete(&event), true);
+        assert_eq!(filter.event_matches(&event), true);
 
         let filter = Filter {
             authors: vec![signer.public_key().into()],
             kinds: vec![EventKind::LongFormContent],
             ..Default::default()
         };
-        assert_eq!(filter.event_matches_incomplete(&event), false);
+        assert_eq!(filter.event_matches(&event), false);
 
         let filter = Filter {
             ids: vec![IdHex::mock()],
             authors: vec![signer.public_key().into()],
             ..Default::default()
         };
-        assert_eq!(filter.event_matches_incomplete(&event), false);
+        assert_eq!(filter.event_matches(&event), false);
     }
 }
