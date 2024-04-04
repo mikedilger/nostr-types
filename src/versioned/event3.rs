@@ -10,6 +10,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "speedy")]
 use speedy::{Readable, Writable};
+use std::cmp::Ordering;
 use std::str::FromStr;
 
 /// The main event type
@@ -828,6 +829,18 @@ impl EventV3 {
             }
         }
         None
+    }
+}
+
+impl Ord for EventV3 {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.created_at.cmp(&other.created_at)
+    }
+}
+
+impl PartialOrd for EventV3 {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
