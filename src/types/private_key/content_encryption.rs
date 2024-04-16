@@ -52,6 +52,16 @@ impl PrivateKey {
         }
     }
 
+    /// Decrypt (detects encryption version)
+    pub fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
+        if ciphertext.contains("?iv=") {
+            self.decrypt_nip04(other, ciphertext)
+                .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+        } else {
+            self.decrypt_nip44(other, ciphertext)
+        }
+    }
+
     /// Decrypt NIP-04 only
     pub fn decrypt_nip04(&self, other: &PublicKey, ciphertext: &str) -> Result<Vec<u8>, Error> {
         self.nip04_decrypt(other, ciphertext)

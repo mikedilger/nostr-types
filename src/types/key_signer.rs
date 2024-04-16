@@ -130,16 +130,9 @@ impl Signer for KeySigner {
         }
     }
 
-    fn decrypt_nip44(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
+    fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
         match &self.private_key {
-            Some(pk) => pk.decrypt_nip44(other, ciphertext),
-            None => Err(Error::SignerIsLocked),
-        }
-    }
-
-    fn decrypt_nip04(&self, other: &PublicKey, ciphertext: &str) -> Result<Vec<u8>, Error> {
-        match &self.private_key {
-            Some(pk) => pk.decrypt_nip04(other, ciphertext),
+            Some(pk) => pk.decrypt(other, ciphertext),
             None => Err(Error::SignerIsLocked),
         }
     }

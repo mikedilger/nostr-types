@@ -155,21 +155,12 @@ impl Identity {
         }
     }
 
-    /// Decrypt NIP-44
-    pub fn decrypt_nip44(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
+    /// Decrypt
+    pub fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.decrypt_nip44(other, ciphertext),
-        }
-    }
-
-    /// Decrypt NIP-04
-    pub fn decrypt_nip04(&self, other: &PublicKey, ciphertext: &str) -> Result<Vec<u8>, Error> {
-        match self {
-            Identity::None => Err(Error::NoPublicKey),
-            Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.decrypt_nip04(other, ciphertext),
+            Identity::Signer(boxed_signer) => boxed_signer.decrypt(other, ciphertext),
         }
     }
 

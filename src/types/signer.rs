@@ -50,10 +50,7 @@ pub trait Signer: fmt::Debug {
     ) -> Result<String, Error>;
 
     /// Decrypt NIP-44
-    fn decrypt_nip44(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error>;
-
-    /// Decrypt NIP-04
-    fn decrypt_nip04(&self, other: &PublicKey, ciphertext: &str) -> Result<Vec<u8>, Error>;
+    fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error>;
 
     /// Get NIP-44 conversation key
     fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error>;
@@ -437,10 +434,7 @@ pub trait Signer: fmt::Debug {
             event.pubkey
         };
 
-        let decrypted_bytes = self.decrypt_nip04(&pubkey, &event.content)?;
-
-        let s: String = String::from_utf8_lossy(&decrypted_bytes).into();
-        Ok(s)
+        self.decrypt(&pubkey, &event.content)
     }
 
     /// If a gift wrap event, unwrap and return the inner Rumor
@@ -463,7 +457,7 @@ pub trait Signer: fmt::Debug {
         }
 
         // Decrypt the content
-        let content = self.decrypt_nip44(&event.pubkey, &event.content)?;
+        let content = self.decrypt(&event.pubkey, &event.content)?;
 
         // Translate into a seal Event
         let seal: Event = serde_json::from_str(&content)?;
@@ -477,7 +471,7 @@ pub trait Signer: fmt::Debug {
         let author = seal.pubkey;
 
         // Decrypt the content
-        let content = self.decrypt_nip44(&seal.pubkey, &seal.content)?;
+        let content = self.decrypt(&seal.pubkey, &seal.content)?;
 
         // Translate into a Rumor
         let rumor: Rumor = serde_json::from_str(&content)?;
@@ -513,7 +507,7 @@ pub trait Signer: fmt::Debug {
         }
 
         // Decrypt the content
-        let content = self.decrypt_nip44(&event.pubkey, &event.content)?;
+        let content = self.decrypt(&event.pubkey, &event.content)?;
 
         // Translate into a seal Event
         let seal: EventV2 = serde_json::from_str(&content)?;
@@ -527,7 +521,7 @@ pub trait Signer: fmt::Debug {
         let author = seal.pubkey;
 
         // Decrypt the content
-        let content = self.decrypt_nip44(&seal.pubkey, &seal.content)?;
+        let content = self.decrypt(&seal.pubkey, &seal.content)?;
 
         // Translate into a Rumor
         let rumor: RumorV2 = serde_json::from_str(&content)?;
@@ -563,7 +557,7 @@ pub trait Signer: fmt::Debug {
         }
 
         // Decrypt the content
-        let content = self.decrypt_nip44(&event.pubkey, &event.content)?;
+        let content = self.decrypt(&event.pubkey, &event.content)?;
 
         // Translate into a seal Event
         let seal: EventV1 = serde_json::from_str(&content)?;
@@ -577,7 +571,7 @@ pub trait Signer: fmt::Debug {
         let author = seal.pubkey;
 
         // Decrypt the content
-        let content = self.decrypt_nip44(&seal.pubkey, &seal.content)?;
+        let content = self.decrypt(&seal.pubkey, &seal.content)?;
 
         // Translate into a Rumor
         let rumor: RumorV1 = serde_json::from_str(&content)?;
