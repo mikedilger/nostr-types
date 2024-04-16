@@ -11,6 +11,10 @@ pub enum Error {
     #[error("Bad Encrypted Message")]
     BadEncryptedMessage,
 
+    /// Bad Encrypted Message due to bad Base64
+    #[error("Bad Encrypted Message due to invalid base64")]
+    BadEncryptedMessageBase64(base64::DecodeError),
+
     /// Base64 error
     #[error("Base64 Decoding Error: {0}")]
     Base64(#[from] base64::DecodeError),
