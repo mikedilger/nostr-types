@@ -834,7 +834,9 @@ impl EventV3 {
 
 impl Ord for EventV3 {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.created_at.cmp(&other.created_at)
+        self.created_at
+            .cmp(&other.created_at)
+            .then(self.id.cmp(&other.id))
     }
 }
 
