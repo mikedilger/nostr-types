@@ -427,6 +427,31 @@ impl EventV3 {
         None
     }
 
+    /// If this event quotes others, get those other events
+    pub fn quotes(&self) -> Vec<EventReference> {
+        if self.kind != EventKind::TextNote {
+            return vec![];
+        }
+
+        let mut output: Vec<EventReference> = Vec::new();
+
+        for tag in self.tags.iter() {
+            if let Ok((id, rurl)) = tag.parse_quote() {
+                output.push(EventReference::Id {
+                    id,
+                    author: None,
+                    relays: rurl
+                        .as_ref()
+                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                        .into_vec(),
+                    marker: None,
+                });
+            }
+        }
+
+        output
+    }
+
     /// If this event mentions others, get those other event Ids
     /// and optional recommended relay Urls
     pub fn mentions(&self) -> Vec<EventReference> {
