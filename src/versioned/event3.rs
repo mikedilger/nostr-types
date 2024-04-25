@@ -702,6 +702,16 @@ impl EventV3 {
         None
     }
 
+    /// Is this event an annotation
+    pub fn is_annotation(&self) -> bool {
+        for tag in self.tags.iter() {
+            if tag.get_index(0) == "annotation" {
+                return true;
+            }
+        }
+        false
+    }
+
     /// If this event specifies a content warning, return that content warning
     pub fn content_warning(&self) -> Option<Option<String>> {
         for tag in self.tags.iter() {
