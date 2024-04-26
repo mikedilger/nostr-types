@@ -43,7 +43,7 @@ thiserror = "1.0"
 thread-priority = "1.0"
 unicode-normalization = "0.1"
 url = "2.5"
-zeroize = "1.6"
+zeroize = "1.7"
 
 # Force scrypt to build with release-like speed even in dev mode
 [profile.dev.package.scrypt]
