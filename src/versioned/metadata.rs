@@ -1,4 +1,3 @@
-use bech32::FromBase32;
 use serde::de::{Deserialize, Deserializer, MapAccess, Visitor};
 use serde::ser::{Serialize, SerializeMap, Serializer};
 use serde_json::{json, Map, Value};
@@ -66,10 +65,8 @@ impl MetadataV1 {
     pub fn lnurl(&self) -> Option<String> {
         if let Some(serde_json::Value::String(lud06)) = self.other.get("lud06") {
             if let Ok(data) = bech32::decode(lud06) {
-                if data.0 == "lnurl" {
-                    if let Ok(decoded) = Vec::<u8>::from_base32(&data.1) {
-                        return Some(String::from_utf8_lossy(&decoded).to_string());
-                    }
+                if data.0 == *crate::HRP_LNURL {
+                    return Some(String::from_utf8_lossy(&data.1).to_string());
                 }
             }
         }

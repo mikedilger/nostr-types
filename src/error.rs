@@ -19,9 +19,17 @@ pub enum Error {
     #[error("Base64 Decoding Error: {0}")]
     Base64(#[from] base64::DecodeError),
 
-    /// Bech32 error
+    /// Bech32 decode error
     #[error("Bech32 Error: {0}")]
-    Bech32(#[from] bech32::Error),
+    Bech32Decode(#[from] bech32::DecodeError),
+
+    /// Bech32 encode error
+    #[error("Bech32 Error: {0}")]
+    Bech32Encode(#[from] bech32::EncodeError),
+
+    /// Bech32 HRP error
+    #[error("Bech32 Error: {0}")]
+    Bech32Hrp(#[from] bech32::primitives::hrp::Error),
 
     /// Crypto error
     #[error("Crypto Error: {0}")]

@@ -1,5 +1,4 @@
 use crate::Error;
-use bech32::{FromBase32, ToBase32};
 use derive_more::{AsMut, AsRef, Deref, Display, From, FromStr, Into};
 use serde::de::{Deserializer, Visitor};
 use serde::ser::Serializer;
@@ -33,23 +32,23 @@ impl Id {
 
     /// Export as a bech32 encoded string ("note")
     pub fn as_bech32_string(&self) -> String {
-        bech32::encode("note", self.0.to_vec().to_base32(), bech32::Variant::Bech32).unwrap()
+        bech32::encode::<bech32::Bech32>(*crate::HRP_NOTE, &self.0).unwrap()
     }
 
     /// Import from a bech32 encoded string ("note")
     pub fn try_from_bech32_string(s: &str) -> Result<Id, Error> {
         let data = bech32::decode(s)?;
-        if data.0 != "note" {
-            Err(Error::WrongBech32("note".to_string(), data.0))
+        if data.0 != *crate::HRP_NOTE {
+            Err(Error::WrongBech32(
+                crate::HRP_NOTE.to_lowercase(),
+                data.0.to_lowercase(),
+            ))
+        } else if data.1.len() != 32 {
+            Err(Error::InvalidId)
         } else {
-            let decoded = Vec::<u8>::from_base32(&data.1)?;
-            if decoded.len() != 32 {
-                Err(Error::InvalidId)
-            } else {
-                match <[u8; 32]>::try_from(decoded) {
-                    Ok(array) => Ok(Id(array)),
-                    _ => Err(Error::InvalidId),
-                }
+            match <[u8; 32]>::try_from(data.1) {
+                Ok(array) => Ok(Id(array)),
+                _ => Err(Error::InvalidId),
             }
         }
     }

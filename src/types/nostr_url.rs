@@ -1,6 +1,5 @@
 use super::{EventAddr, EventPointer, Id, Profile, PublicKey, RelayUrl, UncheckedUrl};
 use crate::Error;
-use bech32::{FromBase32, ToBase32};
 use lazy_static::lazy_static;
 
 /// A bech32 sequence representing a nostr object (or set of objects)
@@ -112,17 +111,20 @@ impl NostrBech32 {
         tlv.push(0); // special for nrelay
         tlv.push(url.0.len() as u8); // length
         tlv.extend(url.0.as_bytes());
-        bech32::encode("nrelay", tlv.to_base32(), bech32::Variant::Bech32).unwrap()
+        bech32::encode::<bech32::Bech32>(*crate::HRP_NRELAY, &tlv).unwrap()
     }
 
     // Because nrelay uses TLV, we can't just use UncheckedUrl::try_from_bech32_string
     fn nrelay_try_from_bech32_string(s: &str) -> Result<UncheckedUrl, Error> {
         let data = bech32::decode(s)?;
-        if data.0 != "nrelay" {
-            Err(Error::WrongBech32("nrelay".to_string(), data.0))
+        if data.0 != *crate::HRP_NRELAY {
+            Err(Error::WrongBech32(
+                crate::HRP_NRELAY.to_lowercase(),
+                data.0.to_lowercase(),
+            ))
         } else {
             let mut url: Option<UncheckedUrl> = None;
-            let tlv = Vec::<u8>::from_base32(&data.1)?;
+            let tlv = data.1;
             let mut pos = 0;
             loop {
                 // we need at least 2 more characters for anything meaningful

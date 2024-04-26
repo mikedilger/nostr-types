@@ -1,5 +1,4 @@
 use crate::{Error, Id, PublicKey, Signature};
-use bech32::{FromBase32, ToBase32};
 use rand_core::OsRng;
 use std::convert::TryFrom;
 
@@ -113,12 +112,8 @@ impl PrivateKey {
     /// with `KeySecurity::Weak` if you execute this.
     pub fn as_bech32_string(&mut self) -> String {
         self.1 = KeySecurity::Weak;
-        bech32::encode(
-            "nsec",
-            self.0.secret_bytes().as_slice().to_base32(),
-            bech32::Variant::Bech32,
-        )
-        .unwrap()
+        bech32::encode::<bech32::Bech32>(*crate::HRP_NSEC, self.0.secret_bytes().as_slice())
+            .unwrap()
     }
 
     /// Import from a bech32 encoded string
@@ -127,12 +122,14 @@ impl PrivateKey {
     /// `import_encrypted()` for `KeySecurity::Medium`
     pub fn try_from_bech32_string(s: &str) -> Result<PrivateKey, Error> {
         let data = bech32::decode(s)?;
-        if data.0 != "nsec" {
-            Err(Error::WrongBech32("nsec".to_string(), data.0))
+        if data.0 != *crate::HRP_NSEC {
+            Err(Error::WrongBech32(
+                crate::HRP_NSEC.to_lowercase(),
+                data.0.to_lowercase(),
+            ))
         } else {
-            let decoded = Vec::<u8>::from_base32(&data.1)?;
             Ok(PrivateKey(
-                secp256k1::SecretKey::from_slice(&decoded)?,
+                secp256k1::SecretKey::from_slice(&data.1)?,
                 KeySecurity::Weak,
             ))
         }

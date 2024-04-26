@@ -1,6 +1,5 @@
 use super::{PublicKey, UncheckedUrl};
 use crate::Error;
-use bech32::{FromBase32, ToBase32};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "speedy")]
 use speedy::{Readable, Writable};
@@ -34,7 +33,7 @@ impl Profile {
             tlv.extend(relay.0.as_bytes());
         }
 
-        bech32::encode("nprofile", tlv.to_base32(), bech32::Variant::Bech32).unwrap()
+        bech32::encode::<bech32::Bech32>(*crate::HRP_NPROFILE, &tlv).unwrap()
     }
 
     /// Import from a bech32 encoded string ("nprofile")
@@ -43,12 +42,15 @@ impl Profile {
     /// has a performance cost.
     pub fn try_from_bech32_string(s: &str, verify: bool) -> Result<Profile, Error> {
         let data = bech32::decode(s)?;
-        if data.0 != "nprofile" {
-            Err(Error::WrongBech32("nprofile".to_string(), data.0))
+        if data.0 != *crate::HRP_NPROFILE {
+            Err(Error::WrongBech32(
+                crate::HRP_NPROFILE.to_lowercase(),
+                data.0.to_lowercase(),
+            ))
         } else {
             let mut relays: Vec<UncheckedUrl> = Vec::new();
             let mut pubkey: Option<PublicKey> = None;
-            let tlv = Vec::<u8>::from_base32(&data.1)?;
+            let tlv = data.1;
             let mut pos = 0;
             loop {
                 // we need at least 2 more characters for anything meaningful

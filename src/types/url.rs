@@ -1,5 +1,4 @@
 use crate::error::Error;
-use bech32::{FromBase32, ToBase32};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "speedy")]
 use speedy::{Readable, Writable};
@@ -37,22 +36,19 @@ impl UncheckedUrl {
 
     /// As nrelay
     pub fn as_bech32_string(&self) -> String {
-        bech32::encode(
-            "nrelay",
-            self.0.as_bytes().to_base32(),
-            bech32::Variant::Bech32,
-        )
-        .unwrap()
+        bech32::encode::<bech32::Bech32>(*crate::HRP_NRELAY, self.0.as_bytes()).unwrap()
     }
 
     /// Import from a bech32 encoded string ("nrelay")
     pub fn try_from_bech32_string(s: &str) -> Result<UncheckedUrl, Error> {
         let data = bech32::decode(s)?;
-        if data.0 != "nrelay" {
-            Err(Error::WrongBech32("nrelay".to_string(), data.0))
+        if data.0 != *crate::HRP_NRELAY {
+            Err(Error::WrongBech32(
+                crate::HRP_NRELAY.to_lowercase(),
+                data.0.to_lowercase(),
+            ))
         } else {
-            let decoded = Vec::<u8>::from_base32(&data.1)?;
-            let s = std::str::from_utf8(&decoded)?.to_owned();
+            let s = std::str::from_utf8(&data.1)?.to_owned();
             Ok(UncheckedUrl(s))
         }
     }
@@ -213,12 +209,7 @@ impl RelayUrl {
 
     /// As nrelay
     pub fn as_bech32_string(&self) -> String {
-        bech32::encode(
-            "nrelay",
-            self.0.as_bytes().to_base32(),
-            bech32::Variant::Bech32,
-        )
-        .unwrap()
+        bech32::encode::<bech32::Bech32>(*crate::HRP_NRELAY, self.0.as_bytes()).unwrap()
     }
 
     /// Convert into a UncheckedUrl

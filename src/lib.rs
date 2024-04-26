@@ -91,3 +91,16 @@ impl<T> IntoVec<T> for Option<T> {
         }
     }
 }
+
+use bech32::Hrp;
+lazy_static::lazy_static! {
+    static ref HRP_LNURL: Hrp = Hrp::parse("lnurl").expect("HRP error on lnurl");
+    static ref HRP_NADDR: Hrp = Hrp::parse("naddr").expect("HRP error on naddr");
+    static ref HRP_NCRYPTSEC: Hrp = Hrp::parse("ncryptsec").expect("HRP error on ncryptsec");
+    static ref HRP_NEVENT: Hrp = Hrp::parse("nevent").expect("HRP error on nevent");
+    static ref HRP_NOTE: Hrp = Hrp::parse("note").expect("HRP error on note");
+    static ref HRP_NPROFILE: Hrp = Hrp::parse("nprofile").expect("HRP error on nprofile");
+    static ref HRP_NPUB: Hrp = Hrp::parse("npub").expect("HRP error on npub");
+    static ref HRP_NRELAY: Hrp = Hrp::parse("nrelay").expect("HRP error on nrelay");
+    static ref HRP_NSEC: Hrp = Hrp::parse("nsec").expect("HRP error on nsec");
+}

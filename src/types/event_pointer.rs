@@ -1,6 +1,5 @@
 use super::{EventKind, Id, PublicKey, UncheckedUrl};
 use crate::Error;
-use bech32::{FromBase32, ToBase32};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "speedy")]
 use speedy::{Readable, Writable};
@@ -60,21 +59,24 @@ impl EventPointer {
             tlv.extend(pubkey.as_bytes());
         }
 
-        bech32::encode("nevent", tlv.to_base32(), bech32::Variant::Bech32).unwrap()
+        bech32::encode::<bech32::Bech32>(*crate::HRP_NEVENT, &tlv).unwrap()
     }
 
     /// Import from a bech32 encoded string ("nevent")
     pub fn try_from_bech32_string(s: &str) -> Result<EventPointer, Error> {
         let data = bech32::decode(s)?;
-        if data.0 != "nevent" {
-            Err(Error::WrongBech32("nevent".to_string(), data.0))
+        if data.0 != *crate::HRP_NEVENT {
+            Err(Error::WrongBech32(
+                crate::HRP_NEVENT.to_lowercase(),
+                data.0.to_lowercase(),
+            ))
         } else {
             let mut relays: Vec<UncheckedUrl> = Vec::new();
             let mut id: Option<Id> = None;
             let mut kind: Option<EventKind> = None;
             let mut author: Option<PublicKey> = None;
 
-            let tlv = Vec::<u8>::from_base32(&data.1)?;
+            let tlv = data.1;
             let mut pos = 0;
             loop {
                 // we need at least 2 more characters for anything meaningful

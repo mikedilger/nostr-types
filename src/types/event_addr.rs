@@ -1,6 +1,5 @@
 use super::{EventKind, PublicKey, UncheckedUrl};
 use crate::Error;
-use bech32::{FromBase32, ToBase32};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "speedy")]
 use speedy::{Readable, Writable};
@@ -52,21 +51,24 @@ impl EventAddr {
         tlv.push(32); // the length of the value (always 32 for public key)
         tlv.extend(self.author.as_bytes());
 
-        bech32::encode("naddr", tlv.to_base32(), bech32::Variant::Bech32).unwrap()
+        bech32::encode::<bech32::Bech32>(*crate::HRP_NADDR, &tlv).unwrap()
     }
 
     /// Import from a bech32 encoded string ("naddr")
     pub fn try_from_bech32_string(s: &str) -> Result<EventAddr, Error> {
         let data = bech32::decode(s)?;
-        if data.0 != "naddr" {
-            Err(Error::WrongBech32("naddr".to_string(), data.0))
+        if data.0 != *crate::HRP_NADDR {
+            Err(Error::WrongBech32(
+                crate::HRP_NADDR.to_lowercase(),
+                data.0.to_lowercase(),
+            ))
         } else {
             let mut maybe_d: Option<String> = None;
             let mut relays: Vec<UncheckedUrl> = Vec::new();
             let mut maybe_kind: Option<EventKind> = None;
             let mut maybe_author: Option<PublicKey> = None;
 
-            let tlv = Vec::<u8>::from_base32(&data.1)?;
+            let tlv = data.1;
             let mut pos = 0;
             loop {
                 // we need at least 2 more characters for anything meaningful

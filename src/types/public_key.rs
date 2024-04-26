@@ -1,5 +1,4 @@
 use crate::{Error, PrivateKey, Signature};
-use bech32::{FromBase32, ToBase32};
 use derive_more::{AsMut, AsRef, Deref, Display, From, FromStr, Into};
 pub use secp256k1::XOnlyPublicKey;
 use secp256k1::SECP256K1;
@@ -42,12 +41,7 @@ impl PublicKey {
 
     /// Export as a bech32 encoded string
     pub fn as_bech32_string(&self) -> String {
-        bech32::encode(
-            "npub",
-            self.0.as_slice().to_base32(),
-            bech32::Variant::Bech32,
-        )
-        .unwrap()
+        bech32::encode::<bech32::Bech32>(*crate::HRP_NPUB, self.0.as_slice()).unwrap()
     }
 
     /// Export as XOnlyPublicKey
@@ -61,18 +55,18 @@ impl PublicKey {
     /// has a performance cost.
     pub fn try_from_bech32_string(s: &str, verify: bool) -> Result<PublicKey, Error> {
         let data = bech32::decode(s)?;
-        if data.0 != "npub" {
-            Err(Error::WrongBech32("npub".to_string(), data.0))
+        if data.0 != *crate::HRP_NPUB {
+            Err(Error::WrongBech32(
+                crate::HRP_NPUB.to_lowercase(),
+                data.0.to_lowercase(),
+            ))
+        } else if data.1.len() != 32 {
+            Err(Error::InvalidPublicKey)
         } else {
-            let decoded = Vec::<u8>::from_base32(&data.1)?;
-            if decoded.len() != 32 {
-                Err(Error::InvalidPublicKey)
-            } else {
-                if verify {
-                    let _ = XOnlyPublicKey::from_slice(&decoded)?;
-                }
-                Ok(PublicKey(decoded.try_into().unwrap()))
+            if verify {
+                let _ = XOnlyPublicKey::from_slice(&data.1)?;
             }
+            Ok(PublicKey(data.1.try_into().unwrap()))
         }
     }
 
@@ -236,7 +230,7 @@ impl PublicKeyHex {
     /// Export as a bech32 encoded string
     pub fn as_bech32_string(&self) -> String {
         let vec: Vec<u8> = hex::decode(&self.0).unwrap();
-        bech32::encode("npub", vec.to_base32(), bech32::Variant::Bech32).unwrap()
+        bech32::encode::<bech32::Bech32>(*crate::HRP_NPUB, &vec).unwrap()
     }
 
     /// Try from &str

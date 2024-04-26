@@ -2,7 +2,6 @@ use super::{KeySecurity, PrivateKey};
 use crate::Error;
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, KeyIvInit};
 use base64::Engine;
-use bech32::{FromBase32, ToBase32};
 use chacha20poly1305::{
     aead::{Aead, AeadCore, KeyInit, Payload},
     XChaCha20Poly1305,
@@ -75,11 +74,13 @@ impl EncryptedPrivateKey {
     pub fn version(&self) -> Result<i8, Error> {
         if self.0.starts_with("ncryptsec1") {
             let data = bech32::decode(&self.0)?;
-            if data.0 != "ncryptsec" {
-                return Err(Error::WrongBech32("ncryptsec".to_string(), data.0));
+            if data.0 != *crate::HRP_NCRYPTSEC {
+                return Err(Error::WrongBech32(
+                    crate::HRP_NCRYPTSEC.to_lowercase(),
+                    data.0.to_lowercase(),
+                ));
             }
-            let data = Vec::<u8>::from_base32(&data.1)?;
-            Ok(data[0] as i8)
+            Ok(data.1[0] as i8)
         } else if self.0.len() == 64 {
             Ok(-1)
         } else {
@@ -156,10 +157,9 @@ impl PrivateKey {
                                           // Total length is 91 = 1 + 1 + 16 + 24 + 1 + 48
 
         // bech32 encode
-        Ok(EncryptedPrivateKey(bech32::encode(
-            "ncryptsec",
-            concatenation.to_base32(),
-            bech32::Variant::Bech32,
+        Ok(EncryptedPrivateKey(bech32::encode::<bech32::Bech32>(
+            *crate::HRP_NCRYPTSEC,
+            &concatenation,
         )?))
     }
 
@@ -189,13 +189,15 @@ impl PrivateKey {
     ) -> Result<PrivateKey, Error> {
         // bech32 decode
         let data = bech32::decode(&encrypted.0)?;
-        if data.0 != "ncryptsec" {
-            return Err(Error::WrongBech32("ncryptsec".to_string(), data.0));
+        if data.0 != *crate::HRP_NCRYPTSEC {
+            return Err(Error::WrongBech32(
+                crate::HRP_NCRYPTSEC.to_lowercase(),
+                data.0.to_lowercase(),
+            ));
         }
-        let data = Vec::<u8>::from_base32(&data.1)?;
-        match data[0] {
-            1 => Self::import_encrypted_v1(data, password),
-            2 => Self::import_encrypted_v2(data, password),
+        match data.1[0] {
+            1 => Self::import_encrypted_v1(data.1, password),
+            2 => Self::import_encrypted_v2(data.1, password),
             _ => Err(Error::InvalidEncryptedPrivateKey),
         }
     }
