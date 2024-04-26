@@ -42,7 +42,7 @@ speedy = { version = "0.8.7", optional = true }
 thiserror = "1.0"
 thread-priority = "1.0"
 unicode-normalization = "0.1"
-url = "2.4"
+url = "2.5"
 zeroize = "1.6"
 
 # Force scrypt to build with release-like speed even in dev mode
