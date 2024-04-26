@@ -27,7 +27,7 @@ hmac = "0.12"
 lazy_static = "1.4"
 lightning-invoice = "0.30"
 linkify = "0.10"
-nip44 = { git = "https://github.com/mikedilger/nip44", rev="e6ab1bc4480fd53aa854814bbacacf200c51af14" }
+nip44 = { git = "https://github.com/mikedilger/nip44", rev="a55cd3850634d7e462c107a37a068f829670d6a2" }
 num_cpus = "1"
 pbkdf2 = { version = "0.12", default-features = false, features = [ "hmac", "sha2", "std" ] }
 rand_core = "0.6"
