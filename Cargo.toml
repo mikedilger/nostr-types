@@ -25,7 +25,7 @@ derive_more = "0.99"
 hex = "0.4"
 hmac = "0.12"
 lazy_static = "1.4"
-lightning-invoice = "0.30"
+lightning-invoice = { git = "https://github.com/mikedilger/rust-lightning", rev = "7a62cb4106d449bc4d1724920b73918d501bb3a9" }
 linkify = "0.10"
 nip44 = { git = "https://github.com/mikedilger/nip44", rev="a55cd3850634d7e462c107a37a068f829670d6a2" }
 num_cpus = "1"
