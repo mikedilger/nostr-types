@@ -110,6 +110,9 @@ impl TagV3 {
         }
         let kindnum: u32 = parts[0].parse::<u32>()?;
         let kind: EventKind = From::from(kindnum);
+        if !kind.is_replaceable() {
+            return Err(Error::NonReplaceableAddr);
+        }
         let author: PublicKey = PublicKey::try_from_hex_string(parts[1], true)?;
         let relays: Vec<UncheckedUrl> = if self.0.len() > 2 {
             vec![UncheckedUrl(self.0[2].clone())]

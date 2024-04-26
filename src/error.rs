@@ -127,6 +127,10 @@ pub enum Error {
     #[error("Missing URL Authority")]
     InvalidUrlMissingAuthority,
 
+    /// Addr to a non-replaceable event kind
+    #[error("Event kind is not replaceable")]
+    NonReplaceableAddr,
+
     /// No Private Key
     #[error("No private key")]
     NoPrivateKey,

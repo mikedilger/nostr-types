@@ -114,12 +114,18 @@ impl EventAddr {
             }
 
             match (maybe_d, maybe_kind, maybe_author) {
-                (Some(d), Some(kind), Some(author)) => Ok(EventAddr {
-                    d,
-                    relays,
-                    kind,
-                    author,
-                }),
+                (Some(d), Some(kind), Some(author)) => {
+                    if !kind.is_replaceable() {
+                        Err(Error::NonReplaceableAddr)
+                    } else {
+                        Ok(EventAddr {
+                            d,
+                            relays,
+                            kind,
+                            author,
+                        })
+                    }
+                }
                 _ => Err(Error::InvalidEventAddr),
             }
         }
