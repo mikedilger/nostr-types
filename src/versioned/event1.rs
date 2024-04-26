@@ -4,7 +4,7 @@ use crate::types::{
     PublicKey, PublicKeyHex, RelayUrl, Signature, Unixtime, ZapData,
 };
 use crate::{Error, IntoVec};
-use lightning_invoice::Invoice;
+use lightning_invoice::Bolt11Invoice;
 #[cfg(feature = "speedy")]
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -688,7 +688,7 @@ impl EventV1 {
                 }
 
                 // Extract as an Invoice
-                let result = Invoice::from_str(&data[0]);
+                let result = Bolt11Invoice::from_str(&data[0]);
                 if let Err(e) = result {
                     return Err(Error::ZapReceipt(format!("bolt11 failed to parse: {}", e)));
                 }
