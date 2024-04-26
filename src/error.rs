@@ -151,10 +151,6 @@ pub enum Error {
     #[error("Out of Range")]
     OutOfRange(usize),
 
-    /// Pad error
-    #[error("Encryption/Decryption padding error")]
-    Pad(#[from] inout::PadError),
-
     /// Parse integer error
     #[error("Parse integer error")]
     ParseInt(#[from] std::num::ParseIntError),
