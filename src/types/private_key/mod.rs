@@ -149,9 +149,10 @@ impl PrivateKey {
 
     /// Sign a message (this hashes with SHA-256 first internally)
     pub fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
-        use secp256k1::hashes::sha256;
+        use secp256k1::hashes::{sha256, Hash};
         let keypair = secp256k1::Keypair::from_secret_key(secp256k1::SECP256K1, &self.0);
-        let message = secp256k1::Message::from_hashed_data::<sha256::Hash>(message);
+        let hash = sha256::Hash::hash(message).to_byte_array();
+        let message = secp256k1::Message::from_digest(hash);
         Ok(Signature(keypair.sign_schnorr(message)))
     }
 

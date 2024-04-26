@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "speedy")]
 use speedy::{Context, Readable, Reader, Writable, Writer};
 use std::fmt;
-use std::hash::{Hash, Hasher};
 
 /// This is a public key, which identifies an actor (usually a person) and is shared.
 #[derive(AsMut, AsRef, Copy, Clone, Debug, Deref, Eq, From, Into, PartialEq, PartialOrd, Ord)]
@@ -96,9 +95,10 @@ impl PublicKey {
 
     /// Verify a signed message
     pub fn verify(&self, message: &[u8], signature: &Signature) -> Result<(), Error> {
-        use secp256k1::hashes::sha256;
+        use secp256k1::hashes::{sha256, Hash};
         let pk = XOnlyPublicKey::from_slice(self.0.as_slice())?;
-        let message = secp256k1::Message::from_hashed_data::<sha256::Hash>(message);
+        let hash = sha256::Hash::hash(message).to_byte_array();
+        let message = secp256k1::Message::from_digest(hash);
         Ok(SECP256K1.verify_schnorr(&signature.0, &message, &pk)?)
     }
 
@@ -159,8 +159,8 @@ impl Visitor<'_> for PublicKeyVisitor {
     }
 }
 
-impl Hash for PublicKey {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+impl std::hash::Hash for PublicKey {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.as_hex_string().hash(state);
     }
 }
