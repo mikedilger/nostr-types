@@ -1,6 +1,6 @@
 [package]
 name = "nostr-types"
-version = "0.7.0"
+version = "0.8.0-unstable"
 edition = "2021"
 authors = ["Mike Dilger <mike@mikedilger.com>"]
 description = "Types for nostr protocol handling"
