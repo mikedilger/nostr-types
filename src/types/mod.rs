@@ -88,7 +88,7 @@ mod unixtime;
 pub use unixtime::Unixtime;
 
 mod url;
-pub use self::url::{RelayUrl, UncheckedUrl, Url};
+pub use self::url::{RelayOrigin, RelayUrl, UncheckedUrl, Url};
 
 #[cfg(test)]
 mod test {

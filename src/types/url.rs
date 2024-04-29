@@ -261,6 +261,57 @@ impl From<RelayUrl> for Url {
     }
 }
 
+/// A canonical URL representing just a relay's origin
+/// (without path/query/fragment or username/password)
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, PartialOrd, Serialize, Ord)]
+#[cfg_attr(feature = "speedy", derive(Readable, Writable))]
+pub struct RelayOrigin(String);
+
+impl RelayOrigin {
+    /// Convert a RelayUrl into a RelayOrigin
+    pub fn from_relay_url(url: RelayUrl) -> RelayOrigin {
+        let mut xurl = url::Url::parse(url.as_str()).unwrap();
+        xurl.set_fragment(None);
+        xurl.set_query(None);
+        xurl.set_path("/");
+        let _ = xurl.set_username("");
+        let _ = xurl.set_password(None);
+        RelayOrigin(xurl.into())
+    }
+
+    /// Convert this RelayOrigin into a RelayUrl
+    pub fn into_relay_url(self) -> RelayUrl {
+        RelayUrl(self.0)
+    }
+
+    /// Get a RelayUrl matching this RelayOrigin
+    pub fn as_relay_url(&self) -> RelayUrl {
+        RelayUrl(self.0.clone())
+    }
+
+    /// As &str
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Into String
+    pub fn into_string(self) -> String {
+        self.0
+    }
+}
+
+impl From<RelayUrl> for RelayOrigin {
+    fn from(ru: RelayUrl) -> RelayOrigin {
+        RelayOrigin::from_relay_url(ru)
+    }
+}
+
+impl From<RelayOrigin> for RelayUrl {
+    fn from(ru: RelayOrigin) -> RelayUrl {
+        ru.into_relay_url()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -278,5 +329,13 @@ mod test {
         let input = "Wss://MyRelay.example.COM";
         let url = RelayUrl::try_from_str(input).unwrap();
         assert_eq!(url.as_str(), "wss://myrelay.example.com/");
+    }
+
+    #[test]
+    fn test_relay_origin() {
+        let input = "wss://user:pass@filter.nostr.wine:444/npub1234?x=y#z";
+        let relay_url = RelayUrl::try_from_str(input).unwrap();
+        let origin: RelayOrigin = relay_url.into();
+        assert_eq!(origin.as_str(), "wss://filter.nostr.wine:444/");
     }
 }
