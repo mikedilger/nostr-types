@@ -193,7 +193,7 @@ pub enum TagV2 {
     Empty = 15,
 
     /// Direct parent of an event, 'E' tag
-    /// This is from https://github.com/nostr-protocol/nips/pull/830 which may not happen
+    /// This is from <https://github.com/nostr-protocol/nips/pull/830> which may not happen
     /// We should not create these, but we can support them if we encounter them.
     EventParent {
         /// The id of some other event that is the direct parent to this event

@@ -96,7 +96,7 @@ impl TagV3 {
     }
 
     /// Parse an 'a' tag
-    /// ['a', '30023:pubkeyhex:opturl', <optmarker>]
+    /// `['a', '30023:pubkeyhex:opturl', <optmarker>]`
     pub fn parse_address(&self) -> Result<(EventAddr, Option<String>), Error> {
         if self.0.len() < 2 {
             return Err(Error::TagMismatch);
@@ -173,7 +173,7 @@ impl TagV3 {
     }
 
     /// Parse an "e" tag
-    /// ['e', <id>, <rurl>, <marker>]
+    /// `['e', <id>, <rurl>, <marker>]`
     pub fn parse_event(&self) -> Result<(Id, Option<UncheckedUrl>, Option<String>), Error> {
         if self.0.len() < 2 {
             return Err(Error::TagMismatch);
