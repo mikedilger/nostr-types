@@ -3,9 +3,10 @@ use crate::Error;
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "speedy")]
 use speedy::{Readable, Writable};
+use std::hash::{Hash, Hasher};
 
 /// An 'naddr': data to address a possibly parameterized replaceable event (d-tag, kind, author, and relays)
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct EventAddr {
     /// the 'd' tag of the Event, or an empty string if the kind is not parameterized
@@ -147,6 +148,24 @@ impl EventAddr {
             kind: EventKind::LongFormContent,
             author: PublicKey::mock_deterministic(),
         }
+    }
+}
+
+impl PartialEq for EventAddr {
+    fn eq(&self, other: &Self) -> bool {
+        self.d == other.d && self.kind == other.kind && self.author == other.author
+        // We do not compare the relays field!
+    }
+}
+
+impl Eq for EventAddr {}
+
+impl Hash for EventAddr {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.d.hash(state);
+        self.kind.hash(state);
+        self.author.hash(state);
+        // We do not hash relays field!
     }
 }
 
