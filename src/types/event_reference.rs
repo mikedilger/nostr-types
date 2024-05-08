@@ -25,6 +25,49 @@ pub enum EventReference {
     Addr(EventAddr),
 }
 
+impl EventReference {
+    /// Get the author
+    pub fn author(&self) -> Option<PublicKey> {
+        match self {
+            EventReference::Id { author, .. } => *author,
+            EventReference::Addr(eaddr) => Some(eaddr.author),
+        }
+    }
+
+    /// Set the author
+    pub fn set_author(&mut self, new_author: PublicKey) {
+        match self {
+            EventReference::Id { ref mut author, .. } => *author = Some(new_author),
+            EventReference::Addr(ref mut eaddr) => eaddr.author = new_author,
+        }
+    }
+
+    /// Copy the relays
+    pub fn copy_relays(&self) -> Vec<RelayUrl> {
+        match self {
+            EventReference::Id { relays, .. } => relays.clone(),
+            EventReference::Addr(eaddr) => eaddr
+                .relays
+                .iter()
+                .filter_map(|r| RelayUrl::try_from_unchecked_url(r).ok())
+                .collect(),
+        }
+    }
+
+    /// Extend relays
+    pub fn extend_relays(&mut self, relays: Vec<RelayUrl>) {
+        let mut new_relays = self.copy_relays();
+        new_relays.extend(relays);
+
+        match self {
+            EventReference::Id { ref mut relays, .. } => *relays = new_relays,
+            EventReference::Addr(ref mut eaddr) => {
+                eaddr.relays = new_relays.iter().map(|r| r.to_unchecked_url()).collect()
+            }
+        }
+    }
+}
+
 impl PartialEq for EventReference {
     fn eq(&self, other: &Self) -> bool {
         match self {
