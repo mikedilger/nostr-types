@@ -300,6 +300,12 @@ impl RelayOrigin {
     }
 }
 
+impl fmt::Display for RelayOrigin {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 impl From<RelayUrl> for RelayOrigin {
     fn from(ru: RelayUrl) -> RelayOrigin {
         RelayOrigin::from_relay_url(ru)
