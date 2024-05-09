@@ -279,6 +279,12 @@ impl RelayOrigin {
         RelayOrigin(xurl.into())
     }
 
+    /// Create a new Url from an UncheckedUrl
+    pub fn try_from_unchecked_url(u: &UncheckedUrl) -> Result<RelayOrigin, Error> {
+        let relay_url = RelayUrl::try_from_str(&u.0)?;
+        Ok(relay_url.into())
+    }
+
     /// Convert this RelayOrigin into a RelayUrl
     pub fn into_relay_url(self) -> RelayUrl {
         RelayUrl(self.0)
@@ -287,6 +293,11 @@ impl RelayOrigin {
     /// Get a RelayUrl matching this RelayOrigin
     pub fn as_relay_url(&self) -> RelayUrl {
         RelayUrl(self.0.clone())
+    }
+
+    /// Convert into a UncheckedUrl
+    pub fn to_unchecked_url(&self) -> UncheckedUrl {
+        UncheckedUrl(self.0.clone())
     }
 
     /// As &str
