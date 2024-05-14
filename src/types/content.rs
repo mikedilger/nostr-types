@@ -63,14 +63,14 @@ impl ShatteredContent {
     /// View a slice of the original content as specified in a Span
     #[allow(clippy::string_slice)] // the Span is trusted
     pub fn slice<'a>(&'a self, span: &Span) -> Option<&'a str> {
-        if self.allocated.is_char_boundary(span.start) && self.allocated.is_char_boundary(span.end) {
+        if self.allocated.is_char_boundary(span.start) && self.allocated.is_char_boundary(span.end)
+        {
             Some(&self.allocated[span.start..span.end])
         } else {
             None
         }
     }
 }
-
 
 /// Break content into a linear sequence of `ContentSegment`s
 #[allow(clippy::string_slice)] // start/end from find_nostr_url_pos is trusted
@@ -190,7 +190,8 @@ And referencing this person nostr:npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc
 
     #[test]
     fn test_shatter_content_2() {
-        let content_str = "Ein wunderschönes langes Wochenende auf der #zitadelle2024 geht zu Ende...
+        let content_str =
+            "Ein wunderschönes langes Wochenende auf der #zitadelle2024 geht zu Ende...
 🏰 #einundzwanzig
 Hier einige Impressionen mit opsec gewährten Bildern.
 Wonderful Long Weekend at a Zitadelle, Here Impressions opsec included
@@ -204,5 +205,4 @@ Wonderful Long Weekend at a Zitadelle, Here Impressions opsec included
             let _slice = pieces.slice(&span);
         }
     }
-
 }
