@@ -71,6 +71,7 @@ impl ShatteredContent {
     }
 }
 
+
 /// Break content into a linear sequence of `ContentSegment`s
 #[allow(clippy::string_slice)] // start/end from find_nostr_url_pos is trusted
 fn shatter_content_1(mut content: &str) -> Vec<ContentSegment> {
@@ -186,4 +187,22 @@ And referencing this person nostr:npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc
         let pieces = ShatteredContent::new(content);
         assert_eq!(pieces.segments.len(), 9);
     }
+
+    #[test]
+    fn test_shatter_content_2() {
+        let content_str = "Ein wunderschönes langes Wochenende auf der #zitadelle2024 geht zu Ende...
+🏰 #einundzwanzig
+Hier einige Impressionen mit opsec gewährten Bildern.
+Wonderful Long Weekend at a Zitadelle, Here Impressions opsec included
+ nostr:npub1vwf2mytkyk22x2gcmr9d7k";
+        let content = content_str.to_string();
+        let pieces = ShatteredContent::new(content);
+        assert_eq!(pieces.segments.len(), 2);
+        assert!(matches!(pieces.segments[0], ContentSegment::Plain(..)));
+        assert!(matches!(pieces.segments[1], ContentSegment::Plain(..))); // 223 - 256
+        if let ContentSegment::Plain(span) = pieces.segments[1] {
+            let _slice = pieces.slice(&span);
+        }
+    }
+
 }
