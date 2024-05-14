@@ -55,7 +55,8 @@ impl PrivateKey {
     /// Decrypt (detects encryption version)
     pub fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
         let cbytes = ciphertext.as_bytes();
-        if cbytes[ciphertext.len() - 28] == b'?'
+        if cbytes.len() >= 28
+            && cbytes[ciphertext.len() - 28] == b'?'
             && cbytes[ciphertext.len() - 27] == b'i'
             && cbytes[ciphertext.len() - 26] == b'v'
             && cbytes[ciphertext.len() - 25] == b'='
