@@ -63,7 +63,7 @@ impl ShatteredContent {
     /// View a slice of the original content as specified in a Span
     #[allow(clippy::string_slice)] // the Span is trusted
     pub fn slice<'a>(&'a self, span: &Span) -> Option<&'a str> {
-        if span.end <= self.allocated.len() {
+        if self.allocated.is_char_boundary(span.start) && self.allocated.is_char_boundary(span.end) {
             Some(&self.allocated[span.start..span.end])
         } else {
             None
