@@ -327,6 +327,7 @@ impl EventKind {
                 | ChannelMessage
                 | FileMetadata
                 | LiveChatMessage
+                | Patches
                 | GitIssue
                 | GitReply
                 | GitStatusOpen
