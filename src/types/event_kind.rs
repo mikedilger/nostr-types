@@ -21,10 +21,14 @@ macro_rules! define_event_kinds {
             JobRequest(u32),
             /// Job Result (NIP-90) 6000-6999
             JobResult(u32),
+            /// Group control events (NIP-29) 9000-9030
+            GroupControl(u32),
             /// Relay-specific replaceable event
             Replaceable(u32),
             /// Ephemeral event, sent to all clients with matching filters and should not be stored
             Ephemeral(u32),
+            /// Group Metadata events
+            GroupMetadata(u32),
             /// Something else?
             Other(u32),
         }
@@ -39,8 +43,10 @@ macro_rules! define_event_kinds {
                     $($value => $name,)*
                     x if (5_000..5_999).contains(&x) => JobRequest(x),
                     x if (6_000..6_999).contains(&x) => JobResult(x),
+                    x if (9_000..9_030).contains(&x) => GroupControl(x),
                     x if (10_000..20_000).contains(&x) => Replaceable(x),
                     x if (20_000..30_000).contains(&x) => Ephemeral(x),
+                    x if (39_000..39_009).contains(&x) => GroupMetadata(x),
                     x => Other(x),
                 }
             }
@@ -52,8 +58,10 @@ macro_rules! define_event_kinds {
                     $($name => $value,)*
                     JobRequest(u) => u,
                     JobResult(u) => u,
+                    GroupControl(u) => u,
                     Replaceable(u) => u,
                     Ephemeral(u) => u,
+                    GroupMetadata(u) => u,
                     Other(u) => u,
                 }
             }
@@ -80,6 +88,14 @@ define_event_kinds!(
     Reaction = 7,
     "Badge Award (NIP-58)",
     BadgeAward = 8,
+    "Group Chat Message (NIP-29)",
+    GroupChatMessage = 9,
+    "Group Chat Threaded Reply (NIP-29)",
+    GroupChatThreadedReply = 10,
+    "Group Chat Thread (NIP-29)",
+    GroupChatThread = 11,
+    "Group Chat Reply (NIP-29)",
+    GroupChatReply = 12,
     "Seal (NIP-59 PR 716)",
     Seal = 13,
     "Chat Message / DM (NIP-24 PR 686)",
@@ -96,16 +112,10 @@ define_event_kinds!(
     ChannelHideMessage = 43,
     "Event mutes a user on a public channel (NIP-28)",
     ChannelMuteUser = 44,
-    "Reserved for future public channel usage",
-    PublicChatReserved45 = 45,
-    "Reserved for future public channel usage",
-    PublicChatReserved46 = 46,
-    "Reserved for future public channel usage",
-    PublicChatReserved47 = 47,
-    "Reserved for future public channel usage",
-    PublicChatReserved48 = 48,
-    "Reserved for future public channel usage",
-    PublicChatReserved49 = 49,
+    "Bid (NIP-15)",
+    Bid = 1021,
+    "Bid Confirmation (NIP-15)",
+    BidConfirmation = 1022,
     "Timestamps",
     Timestamp = 1040,
     "Gift Wrap (NIP-59 PR 716)",
@@ -114,6 +124,20 @@ define_event_kinds!(
     FileMetadata = 1063,
     "Live Chat Message (NIP-53)",
     LiveChatMessage = 1311,
+    "Patches (NIP-34)",
+    Patches = 1617,
+    "Issue (NIP-34)",
+    GitIssue = 1621,
+    "Replies (NIP-34)",
+    GitReply = 1622,
+    "Status Open  (NIP-34)",
+    GitStatusOpen = 1630,
+    "Status Applied (NIP-34)",
+    GitStatusApplied = 1631,
+    "Status Closed (NIP-34)",
+    GitStatusClosed = 1632,
+    "Status Draft (NIP-34)",
+    GitStatusDraft = 1633,
     "Problem Tracker (nostrocket-1971)",
     ProblemTracker = 1971,
     "Reporting (NIP-56)",
@@ -150,12 +174,20 @@ define_event_kinds!(
     BlockedRelaysList = 10006,
     "Search Relays List (NIP-51)",
     SearchRelaysList = 10007,
+    "User Groups (NIP-51, NIP-29)",
+    UserGroups = 10009,
     "Interests List (NIP-51)",
     InterestsList = 10015,
-    "USer Emoji List (NIP-51)",
+    "User Emoji List (NIP-51)",
     UserEmojiList = 10030,
+    "Relay list to receive DMs (NIP-17)",
+    DmRelayList = 10050,
+    "File storage server list (NIP-96)",
+    FileStorageServerList = 10096,
     "Wallet Info (NIP-47)",
     WalletInfo = 13194,
+    "Lightning Pub RPC (Lightning.Pub)",
+    LightningPubRpc = 21000,
     "Client Authentication (NIP-42)",
     Auth = 22242,
     "Wallet Request (NIP-47)",
@@ -186,12 +218,18 @@ define_event_kinds!(
     CreateUpdateStall = 30017,
     "Create or update a product (NIP-15)",
     CreateUpdateProduct = 30018,
+    "Marketplace UI/UX (NIP-15)",
+    MarketplaceUi = 30019,
+    "Product sold as auction (NIP-15)",
+    ProductSoldAuction = 30020,
     "Long-form Content (NIP-23)",
     LongFormContent = 30023,
     "Draft Long-form Content (NIP-23)",
     DraftLongFormContent = 30024,
     "Emoji Sets (NIP-51)",
     EmojiSets = 30030,
+    "Release artifact sets (NIP-51)",
+    ReleaseArtifactSets = 30063,
     "Application Specific Data, (NIP-78)",
     AppSpecificData = 30078,
     "Live Event (NIP-53)",
@@ -202,6 +240,10 @@ define_event_kinds!(
     ClassifiedListing = 30402,
     "Draft Classified Listing (NIP-99)",
     DraftClassifiedListing = 30403,
+    "Repository Announcement (NIP-34)",
+    RepositoryAnnouncement = 30617,
+    "Wiki Article (NIP-54)",
+    WikiArticle = 30818,
     "Date-Based Calendar Event (NIP-52)",
     DateBasedCalendarEvent = 31922,
     "Time-Based Calendar Event (NIP-52)",
@@ -274,6 +316,10 @@ impl EventKind {
         matches!(
             *self,
             TextNote
+                | GroupChatMessage
+                | GroupChatThreadedReply
+                | GroupChatThread
+                | GroupChatReply
                 | EncryptedDirectMessage
                 | Repost
                 | DmChat
@@ -281,6 +327,12 @@ impl EventKind {
                 | ChannelMessage
                 | FileMetadata
                 | LiveChatMessage
+                | GitIssue
+                | GitReply
+                | GitStatusOpen
+                | GitStatusApplied
+                | GitStatusClosed
+                | GitStatusDraft
                 | CommunityPost
                 | LongFormContent
                 | DraftLongFormContent

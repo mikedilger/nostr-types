@@ -251,7 +251,6 @@ impl RelayInformationDocumentV2 {
                         ]),
                         EventKindOrRange::Range(vec![
                             EventKind::ChannelCreation,
-                            EventKind::PublicChatReserved49,
                         ]),
                     ],
                     time: Some(3600),
