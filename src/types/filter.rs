@@ -179,12 +179,9 @@ impl Filter {
             }
         }
 
-        'tags:
-        for (letter, values) in &self.tags {
+        'tags: for (letter, values) in &self.tags {
             for tag in &e.tags {
-                if tag.tagname().starts_with(*letter)
-                    && values.iter().any(|v| v==tag.value())
-                {
+                if tag.tagname().starts_with(*letter) && values.iter().any(|v| v == tag.value()) {
                     continue 'tags;
                 }
             }
@@ -286,9 +283,7 @@ mod test {
         };
         filter.set_tag_values(
             'p',
-            vec![
-                "a723805cda67251191c8786f4da58f797e6977582301354ba8e91bcb0342dc9c".to_owned()
-            ]
+            vec!["a723805cda67251191c8786f4da58f797e6977582301354ba8e91bcb0342dc9c".to_owned()],
         );
 
         assert!(filter.event_matches(&event));

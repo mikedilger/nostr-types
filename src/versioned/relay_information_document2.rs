@@ -249,9 +249,7 @@ impl RelayInformationDocumentV2 {
                             EventKind::EventDeletion,
                             EventKind::Reaction,
                         ]),
-                        EventKindOrRange::Range(vec![
-                            EventKind::ChannelCreation,
-                        ]),
+                        EventKindOrRange::Range(vec![EventKind::ChannelCreation]),
                     ],
                     time: Some(3600),
                     count: None,
