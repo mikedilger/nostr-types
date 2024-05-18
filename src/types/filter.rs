@@ -179,23 +179,17 @@ impl Filter {
             }
         }
 
-        if !self.tags.is_empty() {
-            let mut matched_one = false;
-            for (letter, value) in &self.tags {
-                for tag in &e.tags {
-                    if tag.tagname().starts_with(*letter)
-                        && !value.is_empty()
-                        && tag.value() == value[0]
-                    {
-                        matched_one = true;
-                        break;
-                    }
+        'tags:
+        for (letter, values) in &self.tags {
+            for tag in &e.tags {
+                if tag.tagname().starts_with(*letter)
+                    && values.iter().any(|v| v==tag.value())
+                {
+                    continue 'tags;
                 }
             }
 
-            if !matched_one {
-                return false;
-            }
+            return false;
         }
 
         true
@@ -279,6 +273,25 @@ mod test {
             &serde_json::to_string(&Filter::mock()).unwrap(),
             r##"{"ids":["3ab7b776cb547707a7497f209be799710ce7eb0801e13fd3c4e7b9261ac29084"],"kinds":[1,0],"#e":["5df64b33303d62afc799bdc36d178c07b2e1f0d824f31b7dc812219440affab6"],"#p":["221115830ced1ca94352002485fcc7a75dcfe30d1b07f5f6fbe9c0407cfa59a1"],"since":1668572286}"##
         );
+    }
+
+    #[test]
+    fn test_filter_example() {
+        let raw_event = r##"{"id":"dcf0f0339a9868fc5f51867f27049186fd8497816a19967ba4f03a3edf65a647","pubkey":"f647c9568d09596e323fdd0144b8e2f35aaf5daa43f9eb59b502e99d90f43673","created_at":1715996970,"kind":7,"sig":"ef592a256107217d6710ba18f8446494f0feb99df430284d1d5a36e7859b04e642f40746916ecffb98614d57d9053242c543ad05a74f2c5843dc9ba2169c5175","content":"🫂","tags":[["e","b74444aaaee395e4e76de1902d00457742eecefbd6ee329a79a6ae125f97fcbf"],["p","a723805cda67251191c8786f4da58f797e6977582301354ba8e91bcb0342dc9c"],["k","1"]]}"##;
+        let event: Event = serde_json::from_str(&raw_event).unwrap();
+
+        let mut filter = Filter {
+            kinds: vec![EventKind::Reaction],
+            ..Default::default()
+        };
+        filter.set_tag_values(
+            'p',
+            vec![
+                "a723805cda67251191c8786f4da58f797e6977582301354ba8e91bcb0342dc9c".to_owned()
+            ]
+        );
+
+        assert!(filter.event_matches(&event));
     }
 
     #[test]
