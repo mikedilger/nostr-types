@@ -267,11 +267,11 @@ pub trait Signer: fmt::Debug {
 
         let seal_backdate = Unixtime(
             input.created_at.0
-                - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 7)),
+                - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 2)),
         );
         let giftwrap_backdate = Unixtime(
             input.created_at.0
-                - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 7)),
+                - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 2)),
         );
 
         let seal = {
@@ -323,11 +323,11 @@ pub trait Signer: fmt::Debug {
 
         let seal_backdate = Unixtime(
             input.created_at.0
-                - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 7)),
+                - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 2)),
         );
         let giftwrap_backdate = Unixtime(
             input.created_at.0
-                - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 7)),
+                - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 2)),
         );
 
         let seal = {
