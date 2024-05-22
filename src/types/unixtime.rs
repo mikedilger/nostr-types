@@ -81,11 +81,11 @@ mod test {
     #[test]
     fn test_unixtime_math() {
         let now = Unixtime::now().unwrap();
-        let fut = now + std::time::Duration::from_secs(70);
+        let fut = now + Duration::from_secs(70);
         assert!(fut > now);
         assert_eq!(fut.0 - now.0, 70);
-        let back = fut - std::time::Duration::from_secs(70);
+        let back = fut - Duration::from_secs(70);
         assert_eq!(now, back);
-        assert_eq!(now - back, std::time::Duration::ZERO);
+        assert_eq!(now - back, Duration::ZERO);
     }
 }
