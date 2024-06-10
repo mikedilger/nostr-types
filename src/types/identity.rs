@@ -1,5 +1,5 @@
 use crate::{
-    ContentEncryptionAlgorithm, DelegationConditions, EncryptedPrivateKey, Error, Event, EventV1,
+    ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, Event, EventV1,
     EventV2, Id, KeySecurity, KeySigner, Metadata, PreEvent, PrivateKey, PublicKey, Rumor, RumorV1,
     RumorV2, Signature, Signer,
 };
@@ -304,21 +304,6 @@ impl Identity {
         }
     }
 
-    /// Generate delegation signature
-    pub fn generate_delegation_signature(
-        &self,
-        delegated_pubkey: PublicKey,
-        delegation_conditions: &DelegationConditions,
-    ) -> Result<Signature, Error> {
-        match self {
-            Identity::None => Err(Error::NoPublicKey),
-            Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => {
-                boxed_signer.generate_delegation_signature(delegated_pubkey, delegation_conditions)
-            }
-        }
-    }
-
     /// Giftwrap an event
     pub fn giftwrap(&self, input: PreEvent, pubkey: PublicKey) -> Result<Event, Error> {
         match self {
@@ -350,24 +335,6 @@ impl Identity {
             Identity::Signer(boxed_signer) => {
                 boxed_signer.sign_event_with_pow(input, zero_bits, work_sender)
             }
-        }
-    }
-
-    /// Verify delegation signature
-    pub fn verify_delegation_signature(
-        &self,
-        delegated_pubkey: PublicKey,
-        delegation_conditions: &DelegationConditions,
-        signature: &Signature,
-    ) -> Result<(), Error> {
-        match self {
-            Identity::None => Err(Error::NoPublicKey),
-            Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.verify_delegation_signature(
-                delegated_pubkey,
-                delegation_conditions,
-                signature,
-            ),
         }
     }
 }

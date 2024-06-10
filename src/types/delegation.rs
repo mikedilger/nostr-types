@@ -158,40 +158,9 @@ impl Visitor<'_> for DelegationConditionsVisitor {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{KeySigner, PrivateKey, Signer, Tag};
+    use crate::Tag;
 
     test_serde! {DelegationConditions, test_delegation_conditions_serde}
-
-    #[test]
-    fn test_sign_delegation_verify_delegation_signature() {
-        let delegator_private_key = PrivateKey::try_from_hex_string(
-            "ee35e8bb71131c02c1d7e73231daa48e9953d329a4b701f7133c8f46dd21139c",
-        )
-        .unwrap();
-        let delegator_public_key = delegator_private_key.public_key();
-
-        let signer = KeySigner::from_private_key(delegator_private_key, "lockme", 16).unwrap();
-
-        let delegatee_public_key = PublicKey::try_from_hex_string(
-            "477318cfb5427b9cfc66a9fa376150c1ddbc62115ae27cef72417eb959691396",
-            true,
-        )
-        .unwrap();
-
-        let dc = DelegationConditions::try_from_str(
-            "kind=1&created_at>1674834236&created_at<1677426236",
-        )
-        .unwrap();
-
-        let signature = signer
-            .generate_delegation_signature(delegatee_public_key, &dc)
-            .unwrap();
-
-        // signature is changing, validate by verify method
-        let sig = Signature::try_from(signature).unwrap();
-        let verify_result = dc.verify_signature(&delegator_public_key, &delegatee_public_key, &sig);
-        assert!(verify_result.is_ok());
-    }
 
     #[test]
     fn test_delegation_tag_parse_and_verify() {

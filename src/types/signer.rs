@@ -1,5 +1,5 @@
 use crate::{
-    ContentEncryptionAlgorithm, DelegationConditions, EncryptedPrivateKey, Error, Event, EventKind,
+    ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, Event, EventKind,
     EventV1, EventV2, Id, KeySecurity, KeySigner, Metadata, PreEvent, PreEventV2, PrivateKey,
     PublicKey, PublicKeyHex, Rumor, RumorV1, RumorV2, Signature, Tag, TagV1, TagV2, Unixtime,
 };
@@ -80,37 +80,6 @@ pub trait Signer: fmt::Debug {
 
     /// Get the security level of the private key
     fn key_security(&self) -> Result<KeySecurity, Error>;
-
-    /// Generate delegation signature
-    fn generate_delegation_signature(
-        &self,
-        delegated_pubkey: PublicKey,
-        delegation_conditions: &DelegationConditions,
-    ) -> Result<Signature, Error> {
-        let input = format!(
-            "nostr:delegation:{}:{}",
-            delegated_pubkey.as_hex_string(),
-            delegation_conditions.as_string()
-        );
-
-        self.sign(input.as_bytes())
-    }
-
-    /// Verify delegation signature
-    fn verify_delegation_signature(
-        &self,
-        delegated_pubkey: PublicKey,
-        delegation_conditions: &DelegationConditions,
-        signature: &Signature,
-    ) -> Result<(), Error> {
-        let input = format!(
-            "nostr:delegation:{}:{}",
-            delegated_pubkey.as_hex_string(),
-            delegation_conditions.as_string()
-        );
-
-        self.public_key().verify(input.as_bytes(), signature)
-    }
 
     /// Sign an event
     fn sign_event(&self, input: PreEvent) -> Result<Event, Error> {
