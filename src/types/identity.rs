@@ -1,7 +1,7 @@
 use crate::{
-    ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, Event, EventV1,
-    EventV2, Id, KeySecurity, KeySigner, Metadata, PreEvent, PrivateKey, PublicKey, Rumor, RumorV1,
-    RumorV2, Signature, Signer,
+    ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, Event, EventV1, EventV2, Id,
+    KeySecurity, KeySigner, Metadata, PreEvent, PrivateKey, PublicKey, Rumor, RumorV1, RumorV2,
+    Signature, Signer,
 };
 use std::ops::DerefMut;
 use std::sync::mpsc::Sender;

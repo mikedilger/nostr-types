@@ -1,7 +1,7 @@
 use super::TagV3;
 use crate::types::{
-    EventKind, EventReference, Id, KeySigner, MilliSatoshi, NostrBech32, NostrUrl,
-    PrivateKey, PublicKey, RelayUrl, Signature, Signer, Unixtime, ZapData,
+    EventKind, EventReference, Id, KeySigner, MilliSatoshi, NostrBech32, NostrUrl, PrivateKey,
+    PublicKey, RelayUrl, Signature, Signer, Unixtime, ZapData,
 };
 use crate::{Error, IntoVec};
 use lightning_invoice::Bolt11Invoice;

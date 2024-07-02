@@ -1,7 +1,7 @@
 use crate::{
-    ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, Event, EventKind,
-    EventV1, EventV2, Id, KeySecurity, KeySigner, Metadata, PreEvent, PreEventV2, PrivateKey,
-    PublicKey, PublicKeyHex, Rumor, RumorV1, RumorV2, Signature, Tag, TagV1, TagV2, Unixtime,
+    ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, Event, EventKind, EventV1, EventV2, Id,
+    KeySecurity, KeySigner, Metadata, PreEvent, PreEventV2, PrivateKey, PublicKey, PublicKeyHex,
+    Rumor, RumorV1, RumorV2, Signature, Tag, TagV1, TagV2, Unixtime,
 };
 use rand::Rng;
 use rand_core::OsRng;
