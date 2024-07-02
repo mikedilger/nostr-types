@@ -104,3 +104,96 @@ lazy_static::lazy_static! {
     static ref HRP_NRELAY: Hrp = Hrp::parse("nrelay").expect("HRP error on nrelay");
     static ref HRP_NSEC: Hrp = Hrp::parse("nsec").expect("HRP error on nsec");
 }
+
+/// Add a 'p' pubkey tag to a set of tags if it doesn't already exist
+pub fn add_pubkey_to_tags(
+    existing_tags: &mut Vec<Tag>,
+    new_pubkey: PublicKey,
+    new_hint: Option<UncheckedUrl>,
+) -> usize {
+    match existing_tags.iter().position(|existing_tag| {
+        if let Ok((pubkey, _, __)) = existing_tag.parse_pubkey() {
+            pubkey == new_pubkey
+        } else {
+            false
+        }
+    }) {
+        Some(idx) => idx,
+        None => {
+            existing_tags.push(Tag::new_pubkey(new_pubkey, new_hint, None));
+            existing_tags.len() - 1
+        }
+    }
+}
+
+/// Add an 'e' id tag to a set of tags if it doesn't already exist
+pub fn add_event_to_tags(
+    existing_tags: &mut Vec<Tag>,
+    new_id: Id,
+    new_hint: Option<UncheckedUrl>,
+    new_marker: &str,
+    use_quote: bool,
+) -> usize {
+    if new_marker == "mention" && use_quote {
+        // NIP-18: "Quote reposts are kind 1 events with an embedded q tag..."
+        let newtag = Tag::new_quote(new_id, new_hint);
+
+        match existing_tags.iter().position(|existing_tag| {
+            if let Ok((id, _rurl)) = existing_tag.parse_quote() {
+                id == new_id
+            } else {
+                false
+            }
+        }) {
+            None => {
+                existing_tags.push(newtag);
+                existing_tags.len() - 1
+            }
+            Some(idx) => idx,
+        }
+    } else {
+        let newtag = Tag::new_event(new_id, new_hint, Some(new_marker.to_string()));
+
+        match existing_tags.iter().position(|existing_tag| {
+            if let Ok((id, _rurl, _optmarker)) = existing_tag.parse_event() {
+                id == new_id
+            } else {
+                false
+            }
+        }) {
+            None => {
+                existing_tags.push(newtag);
+                existing_tags.len() - 1
+            }
+            Some(idx) => idx,
+        }
+    }
+}
+
+/// Add an 'a' addr tag to a set of tags if it doesn't already exist
+pub fn add_addr_to_tags(
+    existing_tags: &mut Vec<Tag>,
+    new_addr: &EventAddr,
+    new_marker: Option<String>,
+) -> usize {
+    match existing_tags.iter().position(|existing_tag| {
+        if let Ok((ea, _optmarker)) = existing_tag.parse_address() {
+            ea.kind == new_addr.kind && ea.author == new_addr.author && ea.d == new_addr.d
+        } else {
+            false
+        }
+    }) {
+        Some(idx) => idx,
+        None => {
+            existing_tags.push(Tag::new_address(new_addr, new_marker));
+            existing_tags.len() - 1
+        }
+    }
+}
+
+/// Add an 'subject' tag to a set of tags if it doesn't already exist
+pub fn add_subject_to_tags_if_missing(existing_tags: &mut Vec<Tag>, subject: String) {
+    if !existing_tags.iter().any(|t| t.tagname() == "subject") {
+        existing_tags.push(Tag::new_subject(subject));
+    }
+}
