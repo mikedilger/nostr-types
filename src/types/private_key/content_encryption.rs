@@ -83,6 +83,9 @@ impl PrivateKey {
             let bytes = base64::engine::general_purpose::STANDARD
                 .decode(ciphertext)
                 .map_err(Error::BadEncryptedMessageBase64)?;
+            if bytes.len()==0 {
+                return Err(Error::BadEncryptedMessage);
+            }
             match bytes[0] {
                 1 => ContentEncryptionAlgorithm::Nip44v1Unpadded,
                 // Note: Nip44v1Padded cannot be detected, and there may be no events out there using it.
