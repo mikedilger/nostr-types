@@ -83,7 +83,7 @@ impl PrivateKey {
             let bytes = base64::engine::general_purpose::STANDARD
                 .decode(ciphertext)
                 .map_err(Error::BadEncryptedMessageBase64)?;
-            if bytes.len() == 0 {
+            if bytes.is_empty() {
                 return Err(Error::BadEncryptedMessage);
             }
             match bytes[0] {
