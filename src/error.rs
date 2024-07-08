@@ -180,10 +180,6 @@ pub enum Error {
     #[error("Tag mismatch")]
     TagMismatch,
 
-    /// Time error
-    #[error("System Time Error: {0}")]
-    Time(#[from] std::time::SystemTimeError),
-
     /// Unknown event kind
     #[error("Unknown event kind = {0}")]
     UnknownEventKind(u32),

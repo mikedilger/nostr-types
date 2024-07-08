@@ -1,4 +1,3 @@
-use crate::Error;
 use derive_more::{AsMut, AsRef, Deref, Display, From, Into};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "speedy")]
@@ -32,8 +31,8 @@ pub struct Unixtime(pub i64);
 
 impl Unixtime {
     /// Get the current unixtime (depends on the system clock being accurate)
-    pub fn now() -> Result<Unixtime, Error> {
-        Ok(Unixtime(std::time::UNIX_EPOCH.elapsed()?.as_secs() as i64))
+    pub fn now() -> Unixtime {
+        Unixtime(std::time::UNIX_EPOCH.elapsed().unwrap().as_secs() as i64)
     }
 
     // Mock data for testing
@@ -75,12 +74,12 @@ mod test {
 
     #[test]
     fn test_print_now() {
-        println!("NOW: {}", Unixtime::now().unwrap());
+        println!("NOW: {}", Unixtime::now());
     }
 
     #[test]
     fn test_unixtime_math() {
-        let now = Unixtime::now().unwrap();
+        let now = Unixtime::now();
         let fut = now + Duration::from_secs(70);
         assert!(fut > now);
         assert_eq!(fut.0 - now.0, 70);

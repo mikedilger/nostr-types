@@ -368,7 +368,7 @@ pub trait Signer: fmt::Debug {
 
         let mut pre_event = PreEvent {
             pubkey: self.public_key(),
-            created_at: Unixtime::now().unwrap(),
+            created_at: Unixtime::now(),
             kind: EventKind::ZapRequest,
             tags: vec![
                 Tag::new_pubkey(recipient_pubkey, None, None),
