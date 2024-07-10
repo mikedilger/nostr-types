@@ -351,28 +351,45 @@ impl EventV3 {
             }
         }
 
-        // Use any 'a' tag
+        // look for an 'a' tag marked 'reply'
         for tag in self.tags.iter() {
-            if let Ok((ea, optmarker)) = tag.parse_address() {
-                if optmarker.is_none() {
+            if let Ok((ea, marker)) = tag.parse_address() {
+                if marker.is_some() && marker.as_deref().unwrap() == "reply" {
                     return Some(EventReference::Addr(ea));
-                }
+                };
             }
         }
 
-        // Use the last unmarked 'e' tag
+        // look for an 'a' tag marked 'root'
+        for tag in self.tags.iter() {
+            if let Ok((ea, marker)) = tag.parse_address() {
+                if marker.is_some() && marker.as_deref().unwrap() == "root" {
+                    return Some(EventReference::Addr(ea));
+                };
+            }
+        }
+
+        // Use the last unmarked 'e' or 'a' tag (whichever is last)
         for tag in self.tags.iter().rev() {
-            if let Ok((id, rurl, marker)) = tag.parse_event() {
-                if marker.is_none() {
-                    return Some(EventReference::Id {
-                        id,
-                        author: None,
-                        relays: rurl
-                            .as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
-                            .into_vec(),
-                        marker: None,
-                    });
+            if tag.tagname() == "e" {
+                if let Ok((id, rurl, marker)) = tag.parse_event() {
+                    if marker.is_none() {
+                        return Some(EventReference::Id {
+                            id,
+                            author: None,
+                            relays: rurl
+                                .as_ref()
+                                .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                                .into_vec(),
+                            marker: None,
+                        });
+                    }
+                }
+            } else if tag.tagname() == "a" {
+                if let Ok((ea, marker)) = tag.parse_address() {
+                    if marker.is_some() && marker.as_deref().unwrap() == "root" {
+                        return Some(EventReference::Addr(ea));
+                    };
                 }
             }
         }
