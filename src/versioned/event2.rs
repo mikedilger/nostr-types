@@ -1,7 +1,8 @@
 use super::TagV2;
 use crate::types::{
-    EventAddr, EventKind, EventReference, Id, KeySigner, MilliSatoshi, NostrBech32, NostrUrl,
-    PrivateKey, PublicKey, PublicKeyHex, RelayUrl, Signature, Signer, Unixtime, ZapData,
+    EventAddr, EventDelegation, EventKind, EventReference, Id, KeySigner, MilliSatoshi,
+    NostrBech32, NostrUrl, PrivateKey, PublicKey, PublicKeyHex, RelayUrl, Signature, Signer,
+    Unixtime, ZapData,
 };
 use crate::{Error, IntoVec};
 use lightning_invoice::Bolt11Invoice;
@@ -939,6 +940,64 @@ impl EventV2 {
         zeroes.min(target_zeroes)
     }
 
+    /// Was this event delegated, was that valid, and if so what is the pubkey of
+    /// the delegator?
+    pub fn delegation(&self) -> EventDelegation {
+        for tag in self.tags.iter() {
+            if let TagV2::Delegation {
+                pubkey,
+                conditions,
+                sig,
+                ..
+            } = tag
+            {
+                // Convert hex strings into functional types
+                let signature = match Signature::try_from_hex_string(sig) {
+                    Ok(sig) => sig,
+                    Err(e) => return EventDelegation::InvalidDelegation(format!("{e}")),
+                };
+                let delegator_pubkey = match PublicKey::try_from_hex_string(pubkey, true) {
+                    Ok(pk) => pk,
+                    Err(e) => return EventDelegation::InvalidDelegation(format!("{e}")),
+                };
+
+                // Verify the delegation tag
+                match conditions.verify_signature(&delegator_pubkey, &self.pubkey, &signature) {
+                    Ok(_) => {
+                        // Check conditions
+                        if let Some(kind) = conditions.kind {
+                            if self.kind != kind {
+                                return EventDelegation::InvalidDelegation(
+                                    "Event Kind not delegated".to_owned(),
+                                );
+                            }
+                        }
+                        if let Some(created_after) = conditions.created_after {
+                            if self.created_at < created_after {
+                                return EventDelegation::InvalidDelegation(
+                                    "Event created before delegation started".to_owned(),
+                                );
+                            }
+                        }
+                        if let Some(created_before) = conditions.created_before {
+                            if self.created_at > created_before {
+                                return EventDelegation::InvalidDelegation(
+                                    "Event created after delegation ended".to_owned(),
+                                );
+                            }
+                        }
+                        return EventDelegation::DelegatedBy(delegator_pubkey);
+                    }
+                    Err(e) => {
+                        return EventDelegation::InvalidDelegation(format!("{e}"));
+                    }
+                }
+            }
+        }
+
+        EventDelegation::NotDelegated
+    }
+
     /// If the event came through a proxy, get the (Protocol, Id)
     pub fn proxy(&self) -> Option<(&str, &str)> {
         for t in self.tags.iter() {
@@ -1121,7 +1180,7 @@ impl TryFrom<PreEventV2> for RumorV2 {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::types::{Signer, UncheckedUrl};
+    use crate::types::{DelegationConditions, Signer, UncheckedUrl};
 
     test_serde! {EventV2, test_event_serde}
 
@@ -1164,6 +1223,111 @@ mod test {
         ]);
         let result = event.verify(None);
         assert!(result.is_err());
+    }
+
+    // helper
+    fn create_event_with_delegation<S>(created_at: Unixtime, real_signer: &S) -> EventV2
+    where
+        S: Signer,
+    {
+        let delegated_signer = {
+            let privkey = PrivateKey::mock();
+            KeySigner::from_private_key(privkey, "", 1).unwrap()
+        };
+
+        let conditions = DelegationConditions::try_from_str(
+            "kind=1&created_at>1680000000&created_at<1680050000",
+        )
+        .unwrap();
+
+        let sig = real_signer
+            .generate_delegation_signature(delegated_signer.public_key(), &conditions)
+            .unwrap();
+
+        let preevent = PreEventV2 {
+            pubkey: delegated_signer.public_key(),
+            created_at,
+            kind: EventKind::TextNote,
+            tags: vec![
+                TagV2::Event {
+                    id: Id::mock(),
+                    recommended_relay_url: Some(UncheckedUrl::mock()),
+                    marker: None,
+                    trailing: Vec::new(),
+                },
+                TagV2::Delegation {
+                    pubkey: PublicKeyHex::try_from_string(real_signer.public_key().as_hex_string())
+                        .unwrap(),
+                    conditions,
+                    sig: sig.into(),
+                    trailing: Vec::new(),
+                },
+            ],
+            content: "Hello World!".to_string(),
+        };
+        delegated_signer.sign_event2(preevent).unwrap()
+    }
+
+    #[test]
+    fn test_event_with_delegation_ok() {
+        let delegator_signer = {
+            let delegator_privkey = PrivateKey::mock();
+            KeySigner::from_private_key(delegator_privkey, "", 1).unwrap()
+        };
+        let delegator_pubkey = delegator_signer.public_key();
+
+        let event = create_event_with_delegation(Unixtime(1680000012), &delegator_signer);
+        assert!(event.verify(None).is_ok());
+
+        // check delegation
+        if let EventDelegation::DelegatedBy(pk) = event.delegation() {
+            // expected type, check returned delegator key
+            assert_eq!(pk, delegator_pubkey);
+        } else {
+            panic!("Expected DelegatedBy result, got {:?}", event.delegation());
+        }
+    }
+
+    #[test]
+    fn test_event_with_delegation_invalid_created_after() {
+        let delegator_privkey = PrivateKey::mock();
+        let signer = KeySigner::from_private_key(delegator_privkey, "", 1).unwrap();
+
+        let event = create_event_with_delegation(Unixtime(1690000000), &signer);
+        assert!(event.verify(None).is_ok());
+
+        // check delegation
+        if let EventDelegation::InvalidDelegation(reason) = event.delegation() {
+            // expected type, check returned delegator key
+            assert_eq!(reason, "Event created after delegation ended");
+        } else {
+            panic!(
+                "Expected InvalidDelegation result, got {:?}",
+                event.delegation()
+            );
+        }
+    }
+
+    #[test]
+    fn test_event_with_delegation_invalid_created_before() {
+        let signer = {
+            let delegator_privkey = PrivateKey::mock();
+            KeySigner::from_private_key(delegator_privkey, "", 1).unwrap()
+        };
+
+        let event = create_event_with_delegation(Unixtime(1610000000), &signer);
+        assert!(event.verify(None).is_ok());
+
+        // check delegation
+        if let EventDelegation::InvalidDelegation(reason) = event.delegation() {
+            // expected type, check returned delegator key
+            assert_eq!(reason, "Event created before delegation started");
+        } else {
+            panic!(
+                "Expected InvalidDelegation result, got {:?}",
+                event.delegation()
+            );
+        }
     }
 
     #[test]

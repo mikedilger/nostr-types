@@ -1,7 +1,7 @@
 use super::TagV1;
 use crate::types::{
-    EventAddr, EventKind, EventReference, Id, MilliSatoshi, NostrBech32, NostrUrl, PublicKey,
-    PublicKeyHex, RelayUrl, Signature, Unixtime, ZapData,
+    EventAddr, EventDelegation, EventKind, EventReference, Id, MilliSatoshi, NostrBech32, NostrUrl,
+    PublicKey, PublicKeyHex, RelayUrl, Signature, Unixtime, ZapData,
 };
 use crate::{Error, IntoVec};
 use lightning_invoice::Bolt11Invoice;
@@ -875,6 +875,64 @@ impl EventV1 {
         }
 
         zeroes.min(target_zeroes)
+    }
+
+    /// Was this event delegated, was that valid, and if so what is the pubkey of
+    /// the delegator?
+    pub fn delegation(&self) -> EventDelegation {
+        for tag in self.tags.iter() {
+            if let TagV1::Delegation {
+                pubkey,
+                conditions,
+                sig,
+                ..
+            } = tag
+            {
+                // Convert hex strings into functional types
+                let signature = match Signature::try_from_hex_string(sig) {
+                    Ok(sig) => sig,
+                    Err(e) => return EventDelegation::InvalidDelegation(format!("{e}")),
+                };
+                let delegator_pubkey = match PublicKey::try_from_hex_string(pubkey, true) {
+                    Ok(pk) => pk,
+                    Err(e) => return EventDelegation::InvalidDelegation(format!("{e}")),
+                };
+
+                // Verify the delegation tag
+                match conditions.verify_signature(&delegator_pubkey, &self.pubkey, &signature) {
+                    Ok(_) => {
+                        // Check conditions
+                        if let Some(kind) = conditions.kind {
+                            if self.kind != kind {
+                                return EventDelegation::InvalidDelegation(
+                                    "Event Kind not delegated".to_owned(),
+                                );
+                            }
+                        }
+                        if let Some(created_after) = conditions.created_after {
+                            if self.created_at < created_after {
+                                return EventDelegation::InvalidDelegation(
+                                    "Event created before delegation started".to_owned(),
+                                );
+                            }
+                        }
+                        if let Some(created_before) = conditions.created_before {
+                            if self.created_at > created_before {
+                                return EventDelegation::InvalidDelegation(
+                                    "Event created after delegation ended".to_owned(),
+                                );
+                            }
+                        }
+                        return EventDelegation::DelegatedBy(delegator_pubkey);
+                    }
+                    Err(e) => {
+                        return EventDelegation::InvalidDelegation(format!("{e}"));
+                    }
+                }
+            }
+        }
+
+        EventDelegation::NotDelegated
     }
 
     /// If the event came through a proxy, get the (Protocol, Id)
