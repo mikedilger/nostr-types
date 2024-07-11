@@ -96,37 +96,49 @@ impl TagV3 {
     }
 
     /// Parse an 'a' tag
-    /// `['a', '30023:pubkeyhex:opturl', <optmarker>]`
+    /// `['a', 'kind:pubkeyhex:d', <optrelay>, <optmarker>]`
     pub fn parse_address(&self) -> Result<(EventAddr, Option<String>), Error> {
-        if self.0.len() < 2 {
+        let strings = &self.0;
+
+        if strings.len() < 2 {
             return Err(Error::TagMismatch);
         }
-        if &self.0[0] != "a" {
+        if &strings[0] != "a" {
             return Err(Error::TagMismatch);
         }
-        let parts: Vec<&str> = self.0[1].split(':').collect();
-        if parts.len() < 3 {
-            return Err(Error::TagMismatch);
-        }
-        let kindnum: u32 = parts[0].parse::<u32>()?;
-        let kind: EventKind = From::from(kindnum);
-        if !kind.is_replaceable() {
-            return Err(Error::NonReplaceableAddr);
-        }
-        let author: PublicKey = PublicKey::try_from_hex_string(parts[1], true)?;
-        let relays: Vec<UncheckedUrl> = if self.0.len() > 2 {
-            vec![UncheckedUrl(self.0[2].clone())]
+
+        let (kind, author, d) = {
+            let parts: Vec<&str> = strings[1].split(':').collect();
+            if parts.len() < 3 {
+                return Err(Error::TagMismatch);
+            }
+            let kind: EventKind = {
+                let kindnum: u32 = parts[0].parse::<u32>()?;
+                From::from(kindnum)
+            };
+            if !kind.is_replaceable() {
+                return Err(Error::NonReplaceableAddr);
+            }
+            let author: PublicKey = PublicKey::try_from_hex_string(parts[1], true)?;
+            let d = parts[2].to_string();
+            (kind, author, d)
+        };
+
+        let relays: Vec<UncheckedUrl> = if strings.len() > 2 {
+            vec![UncheckedUrl(strings[2].clone())]
         } else {
             vec![]
         };
+
         let ea = EventAddr {
-            d: parts[2].to_string(),
+            d,
             relays,
             kind,
             author,
         };
-        let marker = if self.0.len() >= 3 {
-            Some(self.0[0].clone())
+
+        let marker = if strings.len() >= 4 {
+            Some(strings[3].clone())
         } else {
             None
         };
@@ -487,6 +499,15 @@ mod test {
             r#"["a","34550:d0debf9fb12def81f43d7c69429bb784812ac1e4d2d53a202db6aac7ea4b466c:git"]"#;
         let tag: TagV3 = serde_json::from_str(&json).unwrap();
         assert!(tag.parse_address().is_ok());
+
+        let tag = TagV3::new(&[
+            "a",
+            "30023:b12b632c887f0c871d140d37bcb6e7c1e1a80264d0b7de8255aa1951d9e1ff79:1716928135712",
+            "",
+            "root",
+        ]);
+        let (_, marker) = tag.parse_address().unwrap();
+        assert!(marker.as_deref().unwrap() == "root");
     }
 
     #[test]
