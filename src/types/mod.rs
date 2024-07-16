@@ -66,6 +66,9 @@ pub use relay_list::{RelayList, RelayListUsage};
 mod relay_message;
 pub use relay_message::RelayMessage;
 
+mod relay_usage;
+pub use relay_usage::{RelayUsage, RelayUsageSet};
+
 mod satoshi;
 pub use satoshi::MilliSatoshi;
 

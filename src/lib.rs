@@ -51,9 +51,9 @@ pub use types::{
     IdHex, Identity, KeySecurity, KeySigner, Metadata, MilliSatoshi, Nip05, NostrBech32, NostrUrl,
     PayRequestData, PreEvent, PrivateKey, Profile, PublicKey, PublicKeyHex, RelayFees,
     RelayInformationDocument, RelayLimitation, RelayList, RelayListUsage, RelayMessage,
-    RelayOrigin, RelayRetention, RelayUrl, Rumor, ShatteredContent, Signature, SignatureHex,
-    Signer, SimpleRelayList, SimpleRelayUsage, Span, SubscriptionId, Tag, UncheckedUrl, Unixtime,
-    Url, XOnlyPublicKey, ZapData,
+    RelayOrigin, RelayRetention, RelayUrl, RelayUsage, RelayUsageSet, Rumor, ShatteredContent,
+    Signature, SignatureHex, Signer, SimpleRelayList, SimpleRelayUsage, Span, SubscriptionId, Tag,
+    UncheckedUrl, Unixtime, Url, XOnlyPublicKey, ZapData,
 };
 
 mod versioned;
