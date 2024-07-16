@@ -61,7 +61,7 @@ pub use relay_information_document::{
 };
 
 mod relay_list;
-pub use relay_list::{RelayList, RelayUsage};
+pub use relay_list::{RelayList, RelayListUsage};
 
 mod relay_message;
 pub use relay_message::RelayMessage;

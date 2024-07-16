@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 /// Relay Usage
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum RelayUsage {
+pub enum RelayListUsage {
     /// The relay is used as an inbox (called 'read' in kind-10002)
     Inbox,
 
@@ -15,13 +15,13 @@ pub enum RelayUsage {
     Both,
 }
 
-impl RelayUsage {
+impl RelayListUsage {
     /// A string marker used in a kind-10002 RelayList event for the variant
     pub fn marker(&self) -> Option<&'static str> {
         match self {
-            RelayUsage::Inbox => Some("read"),
-            RelayUsage::Outbox => Some("write"),
-            RelayUsage::Both => None,
+            RelayListUsage::Inbox => Some("read"),
+            RelayListUsage::Outbox => Some("write"),
+            RelayListUsage::Both => None,
         }
     }
 }
@@ -29,7 +29,7 @@ impl RelayUsage {
 /// A relay list, indicating usage for each relay, which can be used to
 /// represent the data found in a kind 10002 RelayListMetadata event.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct RelayList(pub HashMap<RelayUrl, RelayUsage>);
+pub struct RelayList(pub HashMap<RelayUrl, RelayListUsage>);
 
 impl RelayList {
     /// Parse a kind-10002 RelayList event into a RelayList
@@ -44,15 +44,15 @@ impl RelayList {
                     if let Some(m) = optmarker {
                         match &*m.trim().to_lowercase() {
                             "read" => {
-                                let _ = relay_list.0.insert(relay_url, RelayUsage::Inbox);
+                                let _ = relay_list.0.insert(relay_url, RelayListUsage::Inbox);
                             }
                             "write" => {
-                                let _ = relay_list.0.insert(relay_url, RelayUsage::Outbox);
+                                let _ = relay_list.0.insert(relay_url, RelayListUsage::Outbox);
                             }
                             _ => {} // ignore unknown marker
                         }
                     } else {
-                        let _ = relay_list.0.insert(relay_url, RelayUsage::Both);
+                        let _ = relay_list.0.insert(relay_url, RelayListUsage::Both);
                     }
                 }
             }
