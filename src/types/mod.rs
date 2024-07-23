@@ -13,9 +13,6 @@ pub use event::{Event, PreEvent, Rumor, ZapData};
 mod event_kind;
 pub use event_kind::{EventKind, EventKindIterator, EventKindOrRange};
 
-mod event_pointer;
-pub use event_pointer::EventPointer;
-
 mod event_reference;
 pub use event_reference::EventReference;
 
@@ -36,6 +33,9 @@ pub use metadata::Metadata;
 
 mod naddr;
 pub use naddr::NAddr;
+
+mod nevent;
+pub use nevent::NEvent;
 
 mod nip05;
 pub use nip05::Nip05;

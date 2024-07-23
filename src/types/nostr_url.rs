@@ -1,4 +1,4 @@
-use super::{EventPointer, Id, NAddr, Profile, PublicKey, RelayUrl, UncheckedUrl};
+use super::{Id, NAddr, NEvent, Profile, PublicKey, RelayUrl, UncheckedUrl};
 use crate::Error;
 use lazy_static::lazy_static;
 
@@ -9,7 +9,7 @@ pub enum NostrBech32 {
     /// naddr - a NostrBech32 parameterized replaceable event coordinate
     NAddr(NAddr),
     /// nevent - a NostrBech32 representing an event and a set of relay URLs
-    EventPointer(EventPointer),
+    NEvent(NEvent),
     /// note - a NostrBech32 representing an event
     Id(Id),
     /// nprofile - a NostrBech32 representing a public key and a set of relay URLs
@@ -24,7 +24,7 @@ impl std::fmt::Display for NostrBech32 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
             NostrBech32::NAddr(na) => write!(f, "{}", na.as_bech32_string()),
-            NostrBech32::EventPointer(ep) => write!(f, "{}", ep.as_bech32_string()),
+            NostrBech32::NEvent(ep) => write!(f, "{}", ep.as_bech32_string()),
             NostrBech32::Id(i) => write!(f, "{}", i.as_bech32_string()),
             NostrBech32::Profile(p) => write!(f, "{}", p.as_bech32_string()),
             NostrBech32::Pubkey(pk) => write!(f, "{}", pk.as_bech32_string()),
@@ -49,9 +49,14 @@ impl NostrBech32 {
         NostrBech32::Id(id)
     }
 
-    /// Create from an `EventPointer`
-    pub fn new_event_pointer(ep: EventPointer) -> NostrBech32 {
-        NostrBech32::EventPointer(ep)
+    /// Create from an `NEvent`
+    pub fn new_nevent(ne: NEvent) -> NostrBech32 {
+        NostrBech32::NEvent(ne)
+    }
+
+    /// Create from an `NAddr`
+    pub fn new_naddr(na: NAddr) -> NostrBech32 {
+        NostrBech32::NAddr(na)
     }
 
     /// Create from an `UncheckedUrl`
@@ -67,8 +72,8 @@ impl NostrBech32 {
                 return Some(NostrBech32::NAddr(na));
             }
         } else if s.get(..7) == Some("nevent1") {
-            if let Ok(ep) = EventPointer::try_from_bech32_string(s) {
-                return Some(NostrBech32::EventPointer(ep));
+            if let Ok(ep) = NEvent::try_from_bech32_string(s) {
+                return Some(NostrBech32::NEvent(ep));
             }
         } else if s.get(..5) == Some("note1") {
             if let Ok(id) = Id::try_from_bech32_string(s) {
@@ -227,9 +232,9 @@ impl From<NAddr> for NostrUrl {
     }
 }
 
-impl From<EventPointer> for NostrUrl {
-    fn from(e: EventPointer) -> NostrUrl {
-        NostrUrl(NostrBech32::EventPointer(e))
+impl From<NEvent> for NostrUrl {
+    fn from(e: NEvent) -> NostrUrl {
+        NostrUrl(NostrBech32::NEvent(e))
     }
 }
 
@@ -317,7 +322,7 @@ mod test {
 
         let d = "nevent1qqstna2yrezu5wghjvswqqculvvwxsrcvu7uc0f78gan4xqhvz49d9spr3mhxue69uhkummnw3ez6un9d3shjtn4de6x2argwghx6egpr4mhxue69uhkummnw3ez6ur4vgh8wetvd3hhyer9wghxuet5nxnepm";
         let nurl = NostrBech32::try_from_string(d).unwrap();
-        assert!(matches!(nurl, NostrBech32::EventPointer(..)));
+        assert!(matches!(nurl, NostrBech32::NEvent(..)));
 
         let e = "naddr1qqxk67txd9e8xardv96x7mt9qgsgfvxyd2mfntp4avk29pj8pwz7pqwmyzrummmrjv3rdsuhg9mc9agrqsqqqa28rkfdwv";
         let nurl = NostrBech32::try_from_string(e).unwrap();

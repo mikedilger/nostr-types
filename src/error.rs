@@ -75,10 +75,6 @@ pub enum Error {
     #[error("Invalid Encrypted Event")]
     InvalidEncryptedEvent,
 
-    /// Invalid Event Pointer
-    #[error("Invalid event pointer")]
-    InvalidEventPointer,
-
     /// Invalid event Id
     #[error("Invalid event Id")]
     InvalidId,
@@ -94,6 +90,10 @@ pub enum Error {
     /// Invalid NAddr
     #[error("Invalid naddr")]
     InvalidNAddr,
+
+    /// Invalid NEvent
+    #[error("Invalid nevent")]
+    InvalidNEvent,
 
     /// Invalid Private Key
     #[error("Invalid Private Key")]
