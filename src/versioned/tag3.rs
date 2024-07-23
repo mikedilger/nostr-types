@@ -1,5 +1,5 @@
 use crate::types::{
-    DelegationConditions, EventAddr, EventKind, Id, PublicKey, Signature, UncheckedUrl,
+    DelegationConditions, EventKind, Id, NAddr, PublicKey, Signature, UncheckedUrl,
 };
 use crate::Error;
 use serde::{Deserialize, Serialize};
@@ -76,18 +76,18 @@ impl TagV3 {
     }
 
     /// Create a new 'a' address tag
-    pub fn new_address(event_addr: &EventAddr, marker: Option<String>) -> TagV3 {
+    pub fn new_address(naddr: &NAddr, marker: Option<String>) -> TagV3 {
         let mut vec = vec![
             "a".to_owned(),
             format!(
                 "{}:{}:{}",
-                Into::<u32>::into(event_addr.kind),
-                event_addr.author.as_hex_string(),
-                event_addr.d
+                Into::<u32>::into(naddr.kind),
+                naddr.author.as_hex_string(),
+                naddr.d
             ),
         ];
-        if !event_addr.relays.is_empty() {
-            vec.push(event_addr.relays[0].0.clone());
+        if !naddr.relays.is_empty() {
+            vec.push(naddr.relays[0].0.clone());
         }
         if let Some(marker) = marker {
             vec.push(marker);
@@ -97,7 +97,7 @@ impl TagV3 {
 
     /// Parse an 'a' tag
     /// `['a', 'kind:pubkeyhex:d', <optrelay>, <optmarker>]`
-    pub fn parse_address(&self) -> Result<(EventAddr, Option<String>), Error> {
+    pub fn parse_address(&self) -> Result<(NAddr, Option<String>), Error> {
         let strings = &self.0;
 
         if strings.len() < 2 {
@@ -130,7 +130,7 @@ impl TagV3 {
             vec![]
         };
 
-        let ea = EventAddr {
+        let na = NAddr {
             d,
             relays,
             kind,
@@ -143,7 +143,7 @@ impl TagV3 {
             None
         };
 
-        Ok((ea, marker))
+        Ok((na, marker))
     }
 
     /// Create a "content-warning" tag
@@ -481,18 +481,18 @@ mod test {
 
     #[test]
     fn test_a_tag() {
-        let ea = EventAddr {
+        let na = NAddr {
             d: "blog-20231029".to_owned(),
             relays: vec![UncheckedUrl("badurl".to_owned())],
             kind: EventKind::LongFormContent,
             author: PublicKey::mock_deterministic(),
         };
 
-        let tag = TagV3::new_address(&ea, None);
-        let (ea2, _optmarker) = tag.parse_address().unwrap();
+        let tag = TagV3::new_address(&na, None);
+        let (na2, _optmarker) = tag.parse_address().unwrap();
         // Equal only because there is just 1 UncheckedUrl, else might have dropped
         // the rest
-        assert_eq!(ea, ea2);
+        assert_eq!(na, na2);
 
         // Test a known JSON a tag:
         let json =

@@ -10,9 +10,6 @@ pub use delegation::{DelegationConditions, EventDelegation};
 mod event;
 pub use event::{Event, PreEvent, Rumor, ZapData};
 
-mod event_addr;
-pub use event_addr::EventAddr;
-
 mod event_kind;
 pub use event_kind::{EventKind, EventKindIterator, EventKindOrRange};
 
@@ -36,6 +33,9 @@ pub use key_signer::KeySigner;
 
 mod metadata;
 pub use metadata::Metadata;
+
+mod naddr;
+pub use naddr::NAddr;
 
 mod nip05;
 pub use nip05::Nip05;

@@ -75,10 +75,6 @@ pub enum Error {
     #[error("Invalid Encrypted Event")]
     InvalidEncryptedEvent,
 
-    /// Invalid Event Addr
-    #[error("Invalid event addr")]
-    InvalidEventAddr,
-
     /// Invalid Event Pointer
     #[error("Invalid event pointer")]
     InvalidEventPointer,
@@ -94,6 +90,10 @@ pub enum Error {
     /// Invalid digest length
     #[error("Invalid digest length")]
     InvalidLength(#[from] hmac::digest::InvalidLength),
+
+    /// Invalid NAddr
+    #[error("Invalid naddr")]
+    InvalidNAddr,
 
     /// Invalid Private Key
     #[error("Invalid Private Key")]

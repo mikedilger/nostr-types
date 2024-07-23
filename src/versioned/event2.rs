@@ -1,8 +1,7 @@
 use super::TagV2;
 use crate::types::{
-    EventAddr, EventDelegation, EventKind, EventReference, Id, KeySigner, MilliSatoshi,
-    NostrBech32, NostrUrl, PrivateKey, PublicKey, PublicKeyHex, RelayUrl, Signature, Signer,
-    Unixtime, ZapData,
+    EventDelegation, EventKind, EventReference, Id, KeySigner, MilliSatoshi, NAddr, NostrBech32,
+    NostrUrl, PrivateKey, PublicKey, PublicKeyHex, RelayUrl, Signature, Signer, Unixtime, ZapData,
 };
 use crate::{Error, IntoVec};
 use lightning_invoice::Bolt11Invoice;
@@ -299,7 +298,7 @@ impl EventV2 {
             } = tag
             {
                 if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
-                    output.push(EventReference::Addr(EventAddr {
+                    output.push(EventReference::Addr(NAddr {
                         d: d.to_string(),
                         relays: vec![rurl.clone()],
                         kind: *kind,
@@ -411,7 +410,7 @@ impl EventV2 {
             } = tag
             {
                 if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
-                    return Some(EventReference::Addr(EventAddr {
+                    return Some(EventReference::Addr(NAddr {
                         d: d.to_string(),
                         relays: vec![rurl.clone()],
                         kind: *kind,
@@ -485,7 +484,7 @@ impl EventV2 {
             } = tag
             {
                 if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
-                    return Some(EventReference::Addr(EventAddr {
+                    return Some(EventReference::Addr(NAddr {
                         d: d.to_string(),
                         relays: vec![rurl.clone()],
                         kind: *kind,
@@ -536,7 +535,7 @@ impl EventV2 {
                 } = tag
                 {
                     if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
-                        output.push(EventReference::Addr(EventAddr {
+                        output.push(EventReference::Addr(NAddr {
                             d: d.to_string(),
                             relays: vec![rurl.clone()],
                             kind: *kind,
@@ -611,7 +610,7 @@ impl EventV2 {
                 } = tag
                 {
                     if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
-                        output.push(EventReference::Addr(EventAddr {
+                        output.push(EventReference::Addr(NAddr {
                             d: d.to_string(),
                             relays: vec![rurl.clone()],
                             kind: *kind,
@@ -684,7 +683,7 @@ impl EventV2 {
             } = tag
             {
                 if let Ok(pk) = PublicKey::try_from_hex_string(pubkey, false) {
-                    let ea = EventAddr {
+                    let ea = NAddr {
                         d: d.clone(),
                         relays: match relay_url {
                             Some(url) => vec![url.clone()],

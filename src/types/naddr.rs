@@ -8,7 +8,7 @@ use std::hash::{Hash, Hasher};
 /// An 'naddr': data to address a possibly parameterized replaceable event (d-tag, kind, author, and relays)
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
-pub struct EventAddr {
+pub struct NAddr {
     /// the 'd' tag of the Event, or an empty string if the kind is not parameterized
     pub d: String,
 
@@ -22,7 +22,7 @@ pub struct EventAddr {
     pub author: PublicKey,
 }
 
-impl EventAddr {
+impl NAddr {
     /// Export as a bech32 encoded string ("naddr")
     pub fn as_bech32_string(&self) -> String {
         // Compose
@@ -56,7 +56,7 @@ impl EventAddr {
     }
 
     /// Import from a bech32 encoded string ("naddr")
-    pub fn try_from_bech32_string(s: &str) -> Result<EventAddr, Error> {
+    pub fn try_from_bech32_string(s: &str) -> Result<NAddr, Error> {
         let data = bech32::decode(s)?;
         if data.0 != *crate::HRP_NADDR {
             Err(Error::WrongBech32(
@@ -121,7 +121,7 @@ impl EventAddr {
                     if !kind.is_replaceable() {
                         Err(Error::NonReplaceableAddr)
                     } else {
-                        Ok(EventAddr {
+                        Ok(NAddr {
                             d,
                             relays,
                             kind,
@@ -129,17 +129,17 @@ impl EventAddr {
                         })
                     }
                 }
-                _ => Err(Error::InvalidEventAddr),
+                _ => Err(Error::InvalidNAddr),
             }
         }
     }
 
     // Mock data for testing
     #[allow(dead_code)]
-    pub(crate) fn mock() -> EventAddr {
+    pub(crate) fn mock() -> NAddr {
         let d = "Test D Indentifier 1lkjf23".to_string();
 
-        EventAddr {
+        NAddr {
             d,
             relays: vec![
                 UncheckedUrl::from_str("wss://relay.example.com"),
@@ -151,16 +151,16 @@ impl EventAddr {
     }
 }
 
-impl PartialEq for EventAddr {
+impl PartialEq for NAddr {
     fn eq(&self, other: &Self) -> bool {
         self.d == other.d && self.kind == other.kind && self.author == other.author
         // We do not compare the relays field!
     }
 }
 
-impl Eq for EventAddr {}
+impl Eq for NAddr {}
 
-impl Hash for EventAddr {
+impl Hash for NAddr {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.d.hash(state);
         self.kind.hash(state);
@@ -173,15 +173,15 @@ impl Hash for EventAddr {
 mod test {
     use super::*;
 
-    test_serde! {EventAddr, test_event_addr_serde}
+    test_serde! {NAddr, test_naddr_serde}
 
     #[test]
     fn test_profile_bech32() {
-        let bech32 = EventAddr::mock().as_bech32_string();
+        let bech32 = NAddr::mock().as_bech32_string();
         println!("{bech32}");
         assert_eq!(
-            EventAddr::mock(),
-            EventAddr::try_from_bech32_string(&bech32).unwrap()
+            NAddr::mock(),
+            NAddr::try_from_bech32_string(&bech32).unwrap()
         );
     }
 }

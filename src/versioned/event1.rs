@@ -1,6 +1,6 @@
 use super::TagV1;
 use crate::types::{
-    EventAddr, EventDelegation, EventKind, EventReference, Id, MilliSatoshi, NostrBech32, NostrUrl,
+    EventDelegation, EventKind, EventReference, Id, MilliSatoshi, NAddr, NostrBech32, NostrUrl,
     PublicKey, PublicKeyHex, RelayUrl, Signature, Unixtime, ZapData,
 };
 use crate::{Error, IntoVec};
@@ -286,7 +286,7 @@ impl EventV1 {
             } = tag
             {
                 if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
-                    output.push(EventReference::Addr(EventAddr {
+                    output.push(EventReference::Addr(NAddr {
                         d: d.to_string(),
                         relays: vec![rurl.clone()],
                         kind: *kind,
@@ -397,7 +397,7 @@ impl EventV1 {
             } = tag
             {
                 if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
-                    return Some(EventReference::Addr(EventAddr {
+                    return Some(EventReference::Addr(NAddr {
                         d: d.to_string(),
                         relays: vec![rurl.clone()],
                         kind: *kind,
@@ -470,7 +470,7 @@ impl EventV1 {
             } = tag
             {
                 if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
-                    return Some(EventReference::Addr(EventAddr {
+                    return Some(EventReference::Addr(NAddr {
                         d: d.to_string(),
                         relays: vec![rurl.clone()],
                         kind: *kind,
@@ -520,7 +520,7 @@ impl EventV1 {
                 } = tag
                 {
                     if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
-                        output.push(EventReference::Addr(EventAddr {
+                        output.push(EventReference::Addr(NAddr {
                             d: d.to_string(),
                             relays: vec![rurl.clone()],
                             kind: *kind,
@@ -594,7 +594,7 @@ impl EventV1 {
                 } = tag
                 {
                     if let Ok(pk) = PublicKey::try_from_hex_string(pubkey.as_str(), true) {
-                        output.push(EventReference::Addr(EventAddr {
+                        output.push(EventReference::Addr(NAddr {
                             d: d.to_string(),
                             relays: vec![rurl.clone()],
                             kind: *kind,

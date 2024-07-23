@@ -1,4 +1,4 @@
-use super::{EventAddr, EventPointer, Id, Profile, PublicKey, RelayUrl, UncheckedUrl};
+use super::{EventPointer, Id, NAddr, Profile, PublicKey, RelayUrl, UncheckedUrl};
 use crate::Error;
 use lazy_static::lazy_static;
 
@@ -7,7 +7,7 @@ use lazy_static::lazy_static;
 #[derive(Clone, Debug)]
 pub enum NostrBech32 {
     /// naddr - a NostrBech32 parameterized replaceable event coordinate
-    EventAddr(EventAddr),
+    NAddr(NAddr),
     /// nevent - a NostrBech32 representing an event and a set of relay URLs
     EventPointer(EventPointer),
     /// note - a NostrBech32 representing an event
@@ -23,7 +23,7 @@ pub enum NostrBech32 {
 impl std::fmt::Display for NostrBech32 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            NostrBech32::EventAddr(ea) => write!(f, "{}", ea.as_bech32_string()),
+            NostrBech32::NAddr(na) => write!(f, "{}", na.as_bech32_string()),
             NostrBech32::EventPointer(ep) => write!(f, "{}", ep.as_bech32_string()),
             NostrBech32::Id(i) => write!(f, "{}", i.as_bech32_string()),
             NostrBech32::Profile(p) => write!(f, "{}", p.as_bech32_string()),
@@ -63,8 +63,8 @@ impl NostrBech32 {
     /// junk for this to work.
     pub fn try_from_string(s: &str) -> Option<NostrBech32> {
         if s.get(..6) == Some("naddr1") {
-            if let Ok(ea) = EventAddr::try_from_bech32_string(s) {
-                return Some(NostrBech32::EventAddr(ea));
+            if let Ok(na) = NAddr::try_from_bech32_string(s) {
+                return Some(NostrBech32::NAddr(na));
             }
         } else if s.get(..7) == Some("nevent1") {
             if let Ok(ep) = EventPointer::try_from_bech32_string(s) {
@@ -221,9 +221,9 @@ impl NostrUrl {
     }
 }
 
-impl From<EventAddr> for NostrUrl {
-    fn from(e: EventAddr) -> NostrUrl {
-        NostrUrl(NostrBech32::EventAddr(e))
+impl From<NAddr> for NostrUrl {
+    fn from(e: NAddr) -> NostrUrl {
+        NostrUrl(NostrBech32::NAddr(e))
     }
 }
 
@@ -321,11 +321,11 @@ mod test {
 
         let e = "naddr1qqxk67txd9e8xardv96x7mt9qgsgfvxyd2mfntp4avk29pj8pwz7pqwmyzrummmrjv3rdsuhg9mc9agrqsqqqa28rkfdwv";
         let nurl = NostrBech32::try_from_string(e).unwrap();
-        assert!(matches!(nurl, NostrBech32::EventAddr(..)));
+        assert!(matches!(nurl, NostrBech32::NAddr(..)));
 
         let f = "naddr1qq9xuum9vd382mntv4eqz8nhwden5te0dehhxarj9eek2argvehhyurjd9mxzcme9e3k7mgpzamhxue69uhhyetvv9ujucm4wfex2mn59en8j6gpzfmhxue69uhhqatjwpkx2urpvuhx2ucpr9mhxue69uhkummnw3ezu7n9vfjkget99e3kcmm4vsq32amnwvaz7tm9v3jkutnwdaehgu3wd3skueqpp4mhxue69uhkummn9ekx7mqpr9mhxue69uhhqatjv9mxjerp9ehx7um5wghxcctwvsq3samnwvaz7tmjv4kxz7fwwdhx7un59eek7cmfv9kqz9rhwden5te0wfjkccte9ejxzmt4wvhxjmcpr4mhxue69uhkummnw3ezu6r0wa6x7cnfw33k76tw9eeksmmsqy2hwumn8ghj7mn0wd68ytn2v96x6tnvd9hxkqgkwaehxw309ashgmrpwvhxummnw3ezumrpdejqzynhwden5te0danxvcmgv95kutnsw43qzynhwden5te0wfjkccte9enrw73wd9hsz9rhwden5te0wfjkccte9ehx7um5wghxyecpzemhxue69uhhyetvv9ujumn0wd68ytnfdenx7qg7waehxw309ahx7um5wgkhyetvv9ujumn0ddhhgctjduhxxmmdqy28wumn8ghj7cnvv9ehgu3wvcmh5tnc09aqzymhwden5te0wfjkcctev93xcefwdaexwqgcwaehxw309akxjemgw3hxjmn8wfjkccte9e3k7mgprfmhxue69uhhyetvv9ujumn0wd68y6trdpjhxtn0wfnszyrhwden5te0dehhxarj9emkjmn9qyrkxmmjv93kcegzypl4c26wfzswnlk2vwjxky7dhqjgnaqzqwvdvz3qwz5k3j4grrt46qcyqqq823cd90lu6";
         let nurl = NostrBech32::try_from_string(f).unwrap();
-        assert!(matches!(nurl, NostrBech32::EventAddr(..)));
+        assert!(matches!(nurl, NostrBech32::NAddr(..)));
 
         let g = "nrelay1qqghwumn8ghj7mn0wd68yv339e3k7mgftj9ag";
         let nurl = NostrBech32::try_from_string(g).unwrap();

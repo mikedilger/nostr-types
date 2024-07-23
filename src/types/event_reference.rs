@@ -1,9 +1,9 @@
-use super::{EventAddr, Id, PublicKey, RelayUrl};
+use super::{Id, NAddr, PublicKey, RelayUrl};
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 
 /// A reference to another event, either by `Id` (often coming from an 'e' tag),
-/// or by `EventAddr` (often coming from an 'a' tag).
+/// or by `NAddr` (often coming from an 'a' tag).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum EventReference {
     /// Refer to a specific event by Id
@@ -21,8 +21,8 @@ pub enum EventReference {
         marker: Option<String>,
     },
 
-    /// Refer to a replaceable event by EventAddr
-    Addr(EventAddr),
+    /// Refer to a replaceable event by NAddr
+    Addr(NAddr),
 }
 
 impl EventReference {
@@ -30,7 +30,7 @@ impl EventReference {
     pub fn author(&self) -> Option<PublicKey> {
         match self {
             EventReference::Id { author, .. } => *author,
-            EventReference::Addr(eaddr) => Some(eaddr.author),
+            EventReference::Addr(naddr) => Some(naddr.author),
         }
     }
 
@@ -38,7 +38,7 @@ impl EventReference {
     pub fn set_author(&mut self, new_author: PublicKey) {
         match self {
             EventReference::Id { ref mut author, .. } => *author = Some(new_author),
-            EventReference::Addr(ref mut eaddr) => eaddr.author = new_author,
+            EventReference::Addr(ref mut naddr) => naddr.author = new_author,
         }
     }
 
@@ -46,7 +46,7 @@ impl EventReference {
     pub fn copy_relays(&self) -> Vec<RelayUrl> {
         match self {
             EventReference::Id { relays, .. } => relays.clone(),
-            EventReference::Addr(eaddr) => eaddr
+            EventReference::Addr(naddr) => naddr
                 .relays
                 .iter()
                 .filter_map(|r| RelayUrl::try_from_unchecked_url(r).ok())
@@ -61,8 +61,8 @@ impl EventReference {
 
         match self {
             EventReference::Id { ref mut relays, .. } => *relays = new_relays,
-            EventReference::Addr(ref mut eaddr) => {
-                eaddr.relays = new_relays.iter().map(|r| r.to_unchecked_url()).collect()
+            EventReference::Addr(ref mut naddr) => {
+                naddr.relays = new_relays.iter().map(|r| r.to_unchecked_url()).collect()
             }
         }
     }

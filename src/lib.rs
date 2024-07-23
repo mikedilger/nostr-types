@@ -46,9 +46,9 @@ macro_rules! test_serde {
 mod types;
 pub use types::{
     find_nostr_bech32_pos, find_nostr_url_pos, ClientMessage, ContentEncryptionAlgorithm,
-    ContentSegment, DelegationConditions, EncryptedPrivateKey, Event, EventAddr, EventDelegation,
-    EventKind, EventKindIterator, EventKindOrRange, EventPointer, EventReference, Fee, Filter, Id,
-    IdHex, Identity, KeySecurity, KeySigner, Metadata, MilliSatoshi, Nip05, NostrBech32, NostrUrl,
+    ContentSegment, DelegationConditions, EncryptedPrivateKey, Event, EventDelegation, EventKind,
+    EventKindIterator, EventKindOrRange, EventPointer, EventReference, Fee, Filter, Id, IdHex,
+    Identity, KeySecurity, KeySigner, Metadata, MilliSatoshi, NAddr, Nip05, NostrBech32, NostrUrl,
     PayRequestData, PreEvent, PrivateKey, Profile, PublicKey, PublicKeyHex, RelayFees,
     RelayInformationDocument, RelayLimitation, RelayList, RelayListUsage, RelayMessage,
     RelayOrigin, RelayRetention, RelayUrl, RelayUsage, RelayUsageSet, Rumor, ShatteredContent,
@@ -173,7 +173,7 @@ pub fn add_event_to_tags(
 /// Add an 'a' addr tag to a set of tags if it doesn't already exist
 pub fn add_addr_to_tags(
     existing_tags: &mut Vec<Tag>,
-    new_addr: &EventAddr,
+    new_addr: &NAddr,
     new_marker: Option<String>,
 ) -> usize {
     match existing_tags.iter().position(|existing_tag| {
