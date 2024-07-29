@@ -70,7 +70,15 @@ impl PrivateKey {
 
     /// Generate a new `PrivateKey` (which can be used to get the `PublicKey`)
     pub fn generate() -> PrivateKey {
-        let secret_key = secp256k1::SecretKey::new(&mut OsRng);
+        let mut secret_key;
+        loop {
+            secret_key = secp256k1::SecretKey::new(&mut OsRng);
+            let (_, parity) = secret_key.x_only_public_key(secp256k1::SECP256K1);
+            if parity == secp256k1::Parity::Even {
+                break;
+            }
+        }
+
         PrivateKey(secret_key, KeySecurity::Medium)
     }
 
