@@ -1,4 +1,4 @@
-use super::{Id, NAddr, NEvent, Profile, PublicKey, RelayUrl, UncheckedUrl};
+use super::{EncryptedPrivateKey, Id, NAddr, NEvent, Profile, PublicKey, RelayUrl, UncheckedUrl};
 use crate::Error;
 use lazy_static::lazy_static;
 
@@ -18,6 +18,8 @@ pub enum NostrBech32 {
     Pubkey(PublicKey),
     /// nrelay - a NostrBech32 representing a set of relay URLs
     Relay(UncheckedUrl),
+    /// ncryptsec - a NostrBech32 representing an encrypted private key
+    CryptSec(EncryptedPrivateKey),
 }
 
 impl std::fmt::Display for NostrBech32 {
@@ -29,6 +31,7 @@ impl std::fmt::Display for NostrBech32 {
             NostrBech32::Profile(p) => write!(f, "{}", p.as_bech32_string()),
             NostrBech32::Pubkey(pk) => write!(f, "{}", pk.as_bech32_string()),
             NostrBech32::Relay(url) => write!(f, "{}", Self::nrelay_as_bech32_string(url)),
+            NostrBech32::CryptSec(epk) => write!(f, "{}", epk.0),
         }
     }
 }
@@ -64,6 +67,11 @@ impl NostrBech32 {
         NostrBech32::Relay(url)
     }
 
+    /// Create from an `EncryptedPrivateKey`
+    pub fn new_cryptsec(epk: EncryptedPrivateKey) -> NostrBech32 {
+        NostrBech32::CryptSec(epk)
+    }
+
     /// Try to convert a string into a NostrBech32. Must not have leading or trailing
     /// junk for this to work.
     pub fn try_from_string(s: &str) -> Option<NostrBech32> {
@@ -91,6 +99,8 @@ impl NostrBech32 {
             if let Ok(urls) = Self::nrelay_try_from_bech32_string(s) {
                 return Some(NostrBech32::Relay(urls));
             }
+        } else if s.get(..10) == Some("ncryptsec1") {
+            return Some(NostrBech32::CryptSec(EncryptedPrivateKey(s.to_owned())));
         }
         None
     }

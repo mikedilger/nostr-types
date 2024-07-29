@@ -22,7 +22,7 @@ use zeroize::Zeroize;
 const V1_CHECK_VALUE: [u8; 11] = [15, 91, 241, 148, 90, 143, 101, 12, 172, 255, 103];
 const V1_HMAC_ROUNDS: u32 = 100_000;
 
-/// This is an encrypted private key.
+/// This is an encrypted private key (the string inside is the bech32 ncryptsec string)
 #[derive(Clone, Debug, Display, Serialize, Deserialize)]
 #[cfg_attr(feature = "speedy", derive(Readable, Writable))]
 pub struct EncryptedPrivateKey(pub String);
@@ -36,6 +36,16 @@ impl Deref for EncryptedPrivateKey {
 }
 
 impl EncryptedPrivateKey {
+    /// Create from a bech32 string (this just type wraps as the internal stringly already is one)
+    pub fn from_bech32_string(s: String) -> EncryptedPrivateKey {
+        EncryptedPrivateKey(s)
+    }
+
+    /// only correct for version 1 and onwards
+    pub fn as_bech32_string(&self) -> String {
+        self.0.clone()
+    }
+
     /// Decrypt into a Private Key with a passphrase.
     ///
     /// We recommend you zeroize() the password you pass in after you are
