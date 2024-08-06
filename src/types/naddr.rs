@@ -30,14 +30,16 @@ impl NAddr {
 
         // Push d tag
         tlv.push(0); // the special value, in this case the 'd' tag
-        tlv.push(self.d.len() as u8); // the length of the d tag
-        tlv.extend(self.d.as_bytes());
+        let len = self.d.len() as u8;
+        tlv.push(len); // the length of the d tag
+        tlv.extend(self.d[..len as usize].as_bytes());
 
         // Push relays
         for relay in &self.relays {
             tlv.push(1); // type 'relay'
-            tlv.push(relay.0.len() as u8); // the length of the string
-            tlv.extend(relay.0.as_bytes());
+            let len = relay.0.len() as u8;
+            tlv.push(len); // the length of the string
+            tlv.extend(relay.0[..len as usize].as_bytes());
         }
 
         // Push kind
