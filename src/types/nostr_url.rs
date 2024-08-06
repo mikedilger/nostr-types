@@ -109,8 +109,9 @@ impl NostrBech32 {
     fn nrelay_as_bech32_string(url: &UncheckedUrl) -> String {
         let mut tlv: Vec<u8> = Vec::new();
         tlv.push(0); // special for nrelay
-        tlv.push(url.0.len() as u8); // length
-        tlv.extend(url.0.as_bytes());
+        let len = url.0.len() as u8;
+        tlv.push(len); // length
+        tlv.extend(url.0[..len as usize].as_bytes());
         bech32::encode::<bech32::Bech32>(*crate::HRP_NRELAY, &tlv).unwrap()
     }
 
