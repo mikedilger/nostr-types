@@ -39,7 +39,10 @@ pub(crate) mod relay_message3;
 pub use relay_message3::RelayMessageV3;
 
 pub(crate) mod relay_message4;
-pub use relay_message4::{RelayMessageV4, Why};
+pub use relay_message4::RelayMessageV4;
+
+pub(crate) mod relay_message5;
+pub use relay_message5::{RelayMessageV5, Why};
 
 pub(crate) mod tag1;
 pub use tag1::TagV1;
