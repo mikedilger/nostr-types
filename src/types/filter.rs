@@ -317,8 +317,8 @@ mod test {
         assert!(filter.tags.get(&'t').is_some());
     }
 
-    #[test]
-    fn test_event_matches() {
+    #[tokio::test]
+    async fn test_event_matches() {
         use crate::{Id, KeySigner, PreEvent, PrivateKey, Signer, Tag, UncheckedUrl};
 
         let signer = {
@@ -335,7 +335,7 @@ mod test {
             ],
             content: "Hello World!".to_string(),
         };
-        let event = signer.sign_event(preevent).unwrap();
+        let event = signer.sign_event(preevent).await.unwrap();
 
         let mut filter = Filter {
             authors: vec![signer.public_key().into()],

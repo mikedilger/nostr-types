@@ -162,8 +162,8 @@ mod test {
 
     test_serde! {DelegationConditions, test_delegation_conditions_serde}
 
-    #[test]
-    fn test_sign_delegation_verify_delegation_signature() {
+    #[tokio::test]
+    async fn test_sign_delegation_verify_delegation_signature() {
         let delegator_private_key = PrivateKey::try_from_hex_string(
             "ee35e8bb71131c02c1d7e73231daa48e9953d329a4b701f7133c8f46dd21139c",
         )
@@ -185,6 +185,7 @@ mod test {
 
         let signature = signer
             .generate_delegation_signature(delegatee_public_key, &dc)
+            .await
             .unwrap();
 
         // signature is changing, validate by verify method

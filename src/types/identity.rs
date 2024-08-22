@@ -17,7 +17,7 @@ pub enum Identity {
     Public(PublicKey),
 
     /// Signer (locked or unlocked)
-    Signer(Box<dyn Signer>),
+    Signer(Box<dyn Signer + Send>),
 }
 
 // No one besides the Identity has the internal Signer, so we can safely Send
@@ -57,9 +57,9 @@ impl Identity {
     }
 
     /// Unlock
-    pub fn unlock(&mut self, password: &str) -> Result<(), Error> {
+    pub async fn unlock(&mut self, password: &str) -> Result<(), Error> {
         if let Identity::Signer(ref mut boxed_signer) = self {
-            boxed_signer.deref_mut().unlock(password)
+            boxed_signer.deref_mut().unlock(password).await
         } else {
             Ok(())
         }
@@ -97,11 +97,16 @@ impl Identity {
     }
 
     /// Change the passphrase used for locking access to the private key
-    pub fn change_passphrase(&mut self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
+    pub async fn change_passphrase(
+        &mut self,
+        old: &str,
+        new: &str,
+        log_n: u8,
+    ) -> Result<(), Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.change_passphrase(old, new, log_n),
+            Identity::Signer(boxed_signer) => boxed_signer.change_passphrase(old, new, log_n).await,
         }
     }
 
@@ -124,25 +129,25 @@ impl Identity {
     }
 
     /// Sign a 32-bit hash
-    pub fn sign_id(&self, id: Id) -> Result<Signature, Error> {
+    pub async fn sign_id(&self, id: Id) -> Result<Signature, Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.sign_id(id),
+            Identity::Signer(boxed_signer) => boxed_signer.sign_id(id).await,
         }
     }
 
     /// Sign a message (this hashes with SHA-256 first internally)
-    pub fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
+    pub async fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.sign(message),
+            Identity::Signer(boxed_signer) => boxed_signer.sign(message).await,
         }
     }
 
     /// Encrypt
-    pub fn encrypt(
+    pub async fn encrypt(
         &self,
         other: &PublicKey,
         plaintext: &str,
@@ -151,25 +156,25 @@ impl Identity {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.encrypt(other, plaintext, algo),
+            Identity::Signer(boxed_signer) => boxed_signer.encrypt(other, plaintext, algo).await,
         }
     }
 
     /// Decrypt
-    pub fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
+    pub async fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.decrypt(other, ciphertext),
+            Identity::Signer(boxed_signer) => boxed_signer.decrypt(other, ciphertext).await,
         }
     }
 
     /// Get NIP-44 conversation key
-    pub fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error> {
+    pub async fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.nip44_conversation_key(other),
+            Identity::Signer(boxed_signer) => boxed_signer.nip44_conversation_key(other).await,
         }
     }
 
@@ -180,7 +185,7 @@ impl Identity {
     ///
     /// We need the password and log_n parameters to possibly rebuild
     /// the EncryptedPrivateKey when downgrading key security
-    pub fn export_private_key_in_hex(
+    pub async fn export_private_key_in_hex(
         &mut self,
         pass: &str,
         log_n: u8,
@@ -188,7 +193,9 @@ impl Identity {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.export_private_key_in_hex(pass, log_n),
+            Identity::Signer(boxed_signer) => {
+                boxed_signer.export_private_key_in_hex(pass, log_n).await
+            }
         }
     }
 
@@ -199,7 +206,7 @@ impl Identity {
     ///
     /// We need the password and log_n parameters to possibly rebuild
     /// the EncryptedPrivateKey when downgrading key security
-    pub fn export_private_key_in_bech32(
+    pub async fn export_private_key_in_bech32(
         &mut self,
         pass: &str,
         log_n: u8,
@@ -208,7 +215,7 @@ impl Identity {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
             Identity::Signer(boxed_signer) => {
-                boxed_signer.export_private_key_in_bech32(pass, log_n)
+                boxed_signer.export_private_key_in_bech32(pass, log_n).await
             }
         }
     }
@@ -223,16 +230,16 @@ impl Identity {
     }
 
     /// Upgrade the encrypted private key to the latest format
-    pub fn upgrade(&mut self, pass: &str, log_n: u8) -> Result<(), Error> {
+    pub async fn upgrade(&mut self, pass: &str, log_n: u8) -> Result<(), Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.upgrade(pass, log_n),
+            Identity::Signer(boxed_signer) => boxed_signer.upgrade(pass, log_n).await,
         }
     }
 
     /// Create an event that sets Metadata
-    pub fn create_metadata_event(
+    pub async fn create_metadata_event(
         &self,
         input: PreEvent,
         metadata: Metadata,
@@ -240,12 +247,14 @@ impl Identity {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.create_metadata_event(input, metadata),
+            Identity::Signer(boxed_signer) => {
+                boxed_signer.create_metadata_event(input, metadata).await
+            }
         }
     }
 
     /// Create a ZapRequest event These events are not published to nostr, they are sent to a lnurl.
-    pub fn create_zap_request_event(
+    pub async fn create_zap_request_event(
         &self,
         recipient_pubkey: PublicKey,
         zapped_event: Option<Id>,
@@ -256,56 +265,60 @@ impl Identity {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.create_zap_request_event(
-                recipient_pubkey,
-                zapped_event,
-                millisatoshis,
-                relays,
-                content,
-            ),
+            Identity::Signer(boxed_signer) => {
+                boxed_signer
+                    .create_zap_request_event(
+                        recipient_pubkey,
+                        zapped_event,
+                        millisatoshis,
+                        relays,
+                        content,
+                    )
+                    .await
+            }
         }
     }
 
     /// Decrypt the contents of an event
-    pub fn decrypt_event_contents(&self, event: &Event) -> Result<String, Error> {
+    pub async fn decrypt_event_contents(&self, event: &Event) -> Result<String, Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.decrypt_event_contents(event),
+            Identity::Signer(boxed_signer) => boxed_signer.decrypt_event_contents(event).await,
         }
     }
 
     /// If a gift wrap event, unwrap and return the inner Rumor
-    pub fn unwrap_giftwrap(&self, event: &Event) -> Result<Rumor, Error> {
+    pub async fn unwrap_giftwrap(&self, event: &Event) -> Result<Rumor, Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.unwrap_giftwrap(event),
-        }
-    }
-
-    /// If a gift wrap event, unwrap and return the inner Rumor
-    /// @deprecated for migrations only
-    pub fn unwrap_giftwrap1(&self, event: &EventV1) -> Result<RumorV1, Error> {
-        match self {
-            Identity::None => Err(Error::NoPublicKey),
-            Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.unwrap_giftwrap1(event),
+            Identity::Signer(boxed_signer) => boxed_signer.unwrap_giftwrap(event).await,
         }
     }
 
     /// If a gift wrap event, unwrap and return the inner Rumor
     /// @deprecated for migrations only
-    pub fn unwrap_giftwrap2(&self, event: &EventV2) -> Result<RumorV2, Error> {
+    pub async fn unwrap_giftwrap1(&self, event: &EventV1) -> Result<RumorV1, Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.unwrap_giftwrap2(event),
+            Identity::Signer(boxed_signer) => boxed_signer.unwrap_giftwrap1(event).await,
+        }
+    }
+
+    /// If a gift wrap event, unwrap and return the inner Rumor
+    /// @deprecated for migrations only
+    pub async fn unwrap_giftwrap2(&self, event: &EventV2) -> Result<RumorV2, Error> {
+        match self {
+            Identity::None => Err(Error::NoPublicKey),
+            Identity::Public(_) => Err(Error::NoPrivateKey),
+            Identity::Signer(boxed_signer) => boxed_signer.unwrap_giftwrap2(event).await,
         }
     }
 
     /// Generate delegation signature
-    pub fn generate_delegation_signature(
+    pub async fn generate_delegation_signature(
         &self,
         delegated_pubkey: PublicKey,
         delegation_conditions: &DelegationConditions,
@@ -314,31 +327,33 @@ impl Identity {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
             Identity::Signer(boxed_signer) => {
-                boxed_signer.generate_delegation_signature(delegated_pubkey, delegation_conditions)
+                boxed_signer
+                    .generate_delegation_signature(delegated_pubkey, delegation_conditions)
+                    .await
             }
         }
     }
 
     /// Giftwrap an event
-    pub fn giftwrap(&self, input: PreEvent, pubkey: PublicKey) -> Result<Event, Error> {
+    pub async fn giftwrap(&self, input: PreEvent, pubkey: PublicKey) -> Result<Event, Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.giftwrap(input, pubkey),
+            Identity::Signer(boxed_signer) => boxed_signer.giftwrap(input, pubkey).await,
         }
     }
 
     /// Sign an event
-    pub fn sign_event(&self, input: PreEvent) -> Result<Event, Error> {
+    pub async fn sign_event(&self, input: PreEvent) -> Result<Event, Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.sign_event(input),
+            Identity::Signer(boxed_signer) => boxed_signer.sign_event(input).await,
         }
     }
 
     /// Sign an event with Proof-of-Work
-    pub fn sign_event_with_pow(
+    pub async fn sign_event_with_pow(
         &self,
         input: PreEvent,
         zero_bits: u8,
@@ -348,7 +363,9 @@ impl Identity {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
             Identity::Signer(boxed_signer) => {
-                boxed_signer.sign_event_with_pow(input, zero_bits, work_sender)
+                boxed_signer
+                    .sign_event_with_pow(input, zero_bits, work_sender)
+                    .await
             }
         }
     }
