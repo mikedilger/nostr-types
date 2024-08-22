@@ -15,6 +15,7 @@ default = []
 
 [dependencies]
 aes = "0.8"
+async-trait = "0.1"
 base64 = "0.22"
 bech32 = "0.11"
 cbc = { version = "0.1", features = [ "std" ] }
@@ -44,6 +45,9 @@ thread-priority = "1.0"
 unicode-normalization = "0.1"
 url = "2.5"
 zeroize = "1.7"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
 
 # Force scrypt to build with release-like speed even in dev mode
 [profile.dev.package.scrypt]

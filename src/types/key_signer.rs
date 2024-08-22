@@ -2,6 +2,7 @@ use crate::{
     ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, Id, KeySecurity, PrivateKey, PublicKey,
     Signature, Signer,
 };
+use async_trait::async_trait;
 use std::fmt;
 
 /// Signer with a local private key (and public key)
@@ -59,12 +60,13 @@ impl KeySigner {
     }
 }
 
+#[async_trait]
 impl Signer for KeySigner {
     fn is_locked(&self) -> bool {
         self.private_key.is_none()
     }
 
-    fn unlock(&mut self, password: &str) -> Result<(), Error> {
+    async fn unlock(&mut self, password: &str) -> Result<(), Error> {
         if !self.is_locked() {
             return Ok(());
         }
@@ -83,14 +85,14 @@ impl Signer for KeySigner {
         self.private_key = None;
     }
 
-    fn change_passphrase(&mut self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
+    async fn change_passphrase(&mut self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
         let private_key = self.encrypted_private_key.decrypt(old)?;
         self.encrypted_private_key = private_key.export_encrypted(new, log_n)?;
         self.private_key = Some(private_key);
         Ok(())
     }
 
-    fn upgrade(&mut self, pass: &str, log_n: u8) -> Result<(), Error> {
+    async fn upgrade(&mut self, pass: &str, log_n: u8) -> Result<(), Error> {
         let private_key = self.encrypted_private_key.decrypt(pass)?;
         self.encrypted_private_key = private_key.export_encrypted(pass, log_n)?;
         Ok(())
@@ -104,21 +106,21 @@ impl Signer for KeySigner {
         Some(&self.encrypted_private_key)
     }
 
-    fn sign_id(&self, id: Id) -> Result<Signature, Error> {
+    async fn sign_id(&self, id: Id) -> Result<Signature, Error> {
         match &self.private_key {
             Some(pk) => pk.sign_id(id),
             None => Err(Error::SignerIsLocked),
         }
     }
 
-    fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
+    async fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
         match &self.private_key {
             Some(pk) => pk.sign(message),
             None => Err(Error::SignerIsLocked),
         }
     }
 
-    fn encrypt(
+    async fn encrypt(
         &self,
         other: &PublicKey,
         plaintext: &str,
@@ -130,14 +132,14 @@ impl Signer for KeySigner {
         }
     }
 
-    fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
+    async fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
         match &self.private_key {
             Some(pk) => pk.decrypt(other, ciphertext),
             None => Err(Error::SignerIsLocked),
         }
     }
 
-    fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error> {
+    async fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error> {
         let xpub = other.as_xonly_public_key();
         match &self.private_key {
             Some(pk) => Ok(nip44::get_conversation_key(pk.as_secret_key(), xpub)),
@@ -145,7 +147,7 @@ impl Signer for KeySigner {
         }
     }
 
-    fn export_private_key_in_hex(
+    async fn export_private_key_in_hex(
         &mut self,
         pass: &str,
         log_n: u8,
@@ -169,7 +171,7 @@ impl Signer for KeySigner {
         }
     }
 
-    fn export_private_key_in_bech32(
+    async fn export_private_key_in_bech32(
         &mut self,
         pass: &str,
         log_n: u8,

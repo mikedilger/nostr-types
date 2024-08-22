@@ -308,8 +308,8 @@ impl FileMetadata {
 mod test {
     use super::*;
 
-    #[test]
-    fn test_nip94_event() {
+    #[tokio::test]
+    async fn test_nip94_event() {
         let mut fm = FileMetadata::new(UncheckedUrl("https://nostr.build/blahblahblah".to_owned()));
         fm.x = Some("12345".to_owned());
         fm.service = Some("http".to_owned());
@@ -321,7 +321,7 @@ mod test {
         let public_key = private_key.public_key();
 
         let pre_event = fm.to_nip94_preevent(public_key);
-        let event = private_key.sign_event(pre_event).unwrap();
+        let event = private_key.sign_event(pre_event).await.unwrap();
         let fm2 = FileMetadata::from_nip94_event(&event).unwrap();
 
         assert_eq!(fm, fm2);

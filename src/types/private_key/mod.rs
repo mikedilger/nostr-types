@@ -1,4 +1,5 @@
 use crate::{Error, Id, PublicKey, Signature, Signer};
+use async_trait::async_trait;
 use rand_core::OsRng;
 use std::convert::TryFrom;
 use std::fmt;
@@ -189,22 +190,23 @@ impl Drop for PrivateKey {
     }
 }
 
+#[async_trait]
 impl Signer for PrivateKey {
     fn is_locked(&self) -> bool {
         false
     }
 
-    fn unlock(&mut self, _password: &str) -> Result<(), Error> {
+    async fn unlock(&mut self, _password: &str) -> Result<(), Error> {
         Ok(())
     }
 
     fn lock(&mut self) {}
 
-    fn change_passphrase(&mut self, _old: &str, _new: &str, _log_n: u8) -> Result<(), Error> {
+    async fn change_passphrase(&mut self, _old: &str, _new: &str, _log_n: u8) -> Result<(), Error> {
         Err(Error::InvalidOperation)
     }
 
-    fn upgrade(&mut self, _pass: &str, _log_n: u8) -> Result<(), Error> {
+    async fn upgrade(&mut self, _pass: &str, _log_n: u8) -> Result<(), Error> {
         Err(Error::InvalidOperation)
     }
 
@@ -216,7 +218,7 @@ impl Signer for PrivateKey {
         None
     }
 
-    fn export_private_key_in_hex(
+    async fn export_private_key_in_hex(
         &mut self,
         _pass: &str,
         _log_n: u8,
@@ -224,7 +226,7 @@ impl Signer for PrivateKey {
         Ok((self.as_hex_string(), false))
     }
 
-    fn export_private_key_in_bech32(
+    async fn export_private_key_in_bech32(
         &mut self,
         _pass: &str,
         _log_n: u8,
@@ -232,15 +234,15 @@ impl Signer for PrivateKey {
         Ok((self.as_bech32_string(), false))
     }
 
-    fn sign_id(&self, id: Id) -> Result<Signature, Error> {
+    async fn sign_id(&self, id: Id) -> Result<Signature, Error> {
         self.sign_id(id)
     }
 
-    fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
+    async fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
         self.sign(message)
     }
 
-    fn encrypt(
+    async fn encrypt(
         &self,
         other: &PublicKey,
         plaintext: &str,
@@ -250,12 +252,12 @@ impl Signer for PrivateKey {
     }
 
     /// Decrypt NIP-44
-    fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
+    async fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
         self.decrypt(other, ciphertext)
     }
 
     /// Get NIP-44 conversation key
-    fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error> {
+    async fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error> {
         Ok(nip44::get_conversation_key(
             self.0,
             other.as_xonly_public_key(),
