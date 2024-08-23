@@ -42,12 +42,10 @@ sha2 = "0.10"
 speedy = { version = "0.8.7", optional = true }
 thiserror = "1.0"
 thread-priority = "1.0"
+tokio = { version = "1", features = ["full"] }
 unicode-normalization = "0.1"
 url = "2.5"
 zeroize = "1.7"
-
-[dev-dependencies]
-tokio = { version = "1", features = ["full"] }
 
 # Force scrypt to build with release-like speed even in dev mode
 [profile.dev.package.scrypt]

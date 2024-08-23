@@ -1079,7 +1079,7 @@ mod test {
     async fn test_event_new_and_verify() {
         let signer = {
             let privkey = PrivateKey::mock();
-            KeySigner::from_private_key(privkey, "", 1).unwrap()
+            KeySigner::from_private_key(privkey, "", 1).await.unwrap()
         };
         let pubkey = signer.public_key();
         let preevent = PreEventV3 {
@@ -1133,7 +1133,7 @@ mod test {
     {
         let delegated_signer = {
             let privkey = PrivateKey::mock();
-            KeySigner::from_private_key(privkey, "", 1).unwrap()
+            KeySigner::from_private_key(privkey, "", 1).await.unwrap()
         };
 
         let conditions = DelegationConditions::try_from_str(
@@ -1173,7 +1173,7 @@ mod test {
     async fn test_event_with_delegation_ok() {
         let delegator_signer = {
             let delegator_privkey = PrivateKey::mock();
-            KeySigner::from_private_key(delegator_privkey, "", 1).unwrap()
+            KeySigner::from_private_key(delegator_privkey, "", 1).await.unwrap()
         };
         let delegator_pubkey = delegator_signer.public_key();
 
@@ -1192,7 +1192,7 @@ mod test {
     #[tokio::test]
     async fn test_event_with_delegation_invalid_created_after() {
         let delegator_privkey = PrivateKey::mock();
-        let signer = KeySigner::from_private_key(delegator_privkey, "", 1).unwrap();
+        let signer = KeySigner::from_private_key(delegator_privkey, "", 1).await.unwrap();
 
         let event = create_event_with_delegation(Unixtime(1690000000), &signer).await;
         assert!(event.verify(None).is_ok());
@@ -1213,7 +1213,7 @@ mod test {
     async fn test_event_with_delegation_invalid_created_before() {
         let signer = {
             let delegator_privkey = PrivateKey::mock();
-            KeySigner::from_private_key(delegator_privkey, "", 1).unwrap()
+            KeySigner::from_private_key(delegator_privkey, "", 1).await.unwrap()
         };
 
         let event = create_event_with_delegation(Unixtime(1610000000), &signer).await;
@@ -1304,7 +1304,7 @@ mod test {
                 "0000000000000000000000000000000000000000000000000000000000000001",
             )
             .unwrap();
-            KeySigner::from_private_key(sec1, "", 1).unwrap()
+            KeySigner::from_private_key(sec1, "", 1).await.unwrap()
         };
 
         let signer2 = {
@@ -1312,7 +1312,7 @@ mod test {
                 "0000000000000000000000000000000000000000000000000000000000000002",
             )
             .unwrap();
-            KeySigner::from_private_key(sec2, "", 1).unwrap()
+            KeySigner::from_private_key(sec2, "", 1).await.unwrap()
         };
 
         let pre = PreEventV3 {

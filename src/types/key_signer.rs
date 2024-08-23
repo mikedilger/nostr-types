@@ -32,8 +32,8 @@ impl KeySigner {
     }
 
     /// Create a Signer from a `PrivateKey`
-    pub fn from_private_key(privk: PrivateKey, password: &str, log_n: u8) -> Result<Self, Error> {
-        let epk = privk.export_encrypted(password, log_n)?;
+    pub async fn from_private_key(privk: PrivateKey, password: &str, log_n: u8) -> Result<Self, Error> {
+        let epk = privk.export_encrypted(password, log_n).await?;
         Ok(Self {
             encrypted_private_key: epk,
             public_key: privk.public_key(),
@@ -42,16 +42,16 @@ impl KeySigner {
     }
 
     /// Create a Signer from an `EncryptedPrivateKey` and a password to unlock it
-    pub fn from_encrypted_private_key(epk: EncryptedPrivateKey, pass: &str) -> Result<Self, Error> {
-        let priv_key = epk.decrypt(pass)?;
+    pub async fn from_encrypted_private_key(epk: EncryptedPrivateKey, pass: &str) -> Result<Self, Error> {
+        let priv_key = epk.decrypt(pass).await?;
         let pub_key = priv_key.public_key();
         Ok(Self::from_locked_parts(epk, pub_key))
     }
 
     /// Create a Signer by generating a new `PrivateKey`
-    pub fn generate(password: &str, log_n: u8) -> Result<Self, Error> {
+    pub async fn generate(password: &str, log_n: u8) -> Result<Self, Error> {
         let privk = PrivateKey::generate();
-        let epk = privk.export_encrypted(password, log_n)?;
+        let epk = privk.export_encrypted(password, log_n).await?;
         Ok(Self {
             encrypted_private_key: epk,
             public_key: privk.public_key(),
@@ -71,7 +71,7 @@ impl Signer for KeySigner {
             return Ok(());
         }
 
-        let private_key = match self.encrypted_private_key.decrypt(password) {
+        let private_key = match self.encrypted_private_key.decrypt(password).await {
             Ok(pk) => pk,
             Err(e) => return Err(e),
         };
@@ -86,15 +86,15 @@ impl Signer for KeySigner {
     }
 
     async fn change_passphrase(&mut self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
-        let private_key = self.encrypted_private_key.decrypt(old)?;
-        self.encrypted_private_key = private_key.export_encrypted(new, log_n)?;
+        let private_key = self.encrypted_private_key.decrypt(old).await?;
+        self.encrypted_private_key = private_key.export_encrypted(new, log_n).await?;
         self.private_key = Some(private_key);
         Ok(())
     }
 
     async fn upgrade(&mut self, pass: &str, log_n: u8) -> Result<(), Error> {
-        let private_key = self.encrypted_private_key.decrypt(pass)?;
-        self.encrypted_private_key = private_key.export_encrypted(pass, log_n)?;
+        let private_key = self.encrypted_private_key.decrypt(pass).await?;
+        self.encrypted_private_key = private_key.export_encrypted(pass, log_n).await?;
         Ok(())
     }
 
@@ -154,7 +154,7 @@ impl Signer for KeySigner {
     ) -> Result<(String, bool), Error> {
         if let Some(pk) = &mut self.private_key {
             // Test password and check key security
-            let pkcheck = self.encrypted_private_key.decrypt(pass)?;
+            let pkcheck = self.encrypted_private_key.decrypt(pass).await?;
 
             // side effect: this may downgrade the key security of self.private_key
             let output = pk.as_hex_string();
@@ -163,7 +163,7 @@ impl Signer for KeySigner {
             let mut downgraded = false;
             if pk.key_security() != pkcheck.key_security() {
                 downgraded = true;
-                self.encrypted_private_key = pk.export_encrypted(pass, log_n)?;
+                self.encrypted_private_key = pk.export_encrypted(pass, log_n).await?;
             }
             Ok((output, downgraded))
         } else {
@@ -178,7 +178,7 @@ impl Signer for KeySigner {
     ) -> Result<(String, bool), Error> {
         if let Some(pk) = &mut self.private_key {
             // Test password and check key security
-            let pkcheck = self.encrypted_private_key.decrypt(pass)?;
+            let pkcheck = self.encrypted_private_key.decrypt(pass).await?;
 
             // side effect: this may downgrade the key security of self.private_key
             let output = pk.as_bech32_string();
@@ -187,7 +187,7 @@ impl Signer for KeySigner {
             let mut downgraded = false;
             if pk.key_security() != pkcheck.key_security() {
                 downgraded = true;
-                self.encrypted_private_key = pk.export_encrypted(pass, log_n)?;
+                self.encrypted_private_key = pk.export_encrypted(pass, log_n).await?;
             }
 
             Ok((output, downgraded))
