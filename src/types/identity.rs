@@ -33,8 +33,8 @@ impl Identity {
     }
 
     /// New `Identity` from a private key
-    pub fn from_private_key(pk: PrivateKey, pass: &str, log_n: u8) -> Result<Self, Error> {
-        let key_signer = KeySigner::from_private_key(pk, pass, log_n)?;
+    pub async fn from_private_key(pk: PrivateKey, pass: &str, log_n: u8) -> Result<Self, Error> {
+        let key_signer = KeySigner::from_private_key(pk, pass, log_n).await?;
         Ok(Self::Signer(Box::new(key_signer)))
     }
 
@@ -45,14 +45,14 @@ impl Identity {
     }
 
     /// New `Identity` from an encrypted private key and its password
-    pub fn from_encrypted_private_key(epk: EncryptedPrivateKey, pass: &str) -> Result<Self, Error> {
-        let key_signer = KeySigner::from_encrypted_private_key(epk, pass)?;
+    pub async fn from_encrypted_private_key(epk: EncryptedPrivateKey, pass: &str) -> Result<Self, Error> {
+        let key_signer = KeySigner::from_encrypted_private_key(epk, pass).await?;
         Ok(Self::Signer(Box::new(key_signer)))
     }
 
     /// Generate a new `Identity`
-    pub fn generate(password: &str, log_n: u8) -> Result<Self, Error> {
-        let key_signer = KeySigner::generate(password, log_n)?;
+    pub async fn generate(password: &str, log_n: u8) -> Result<Self, Error> {
+        let key_signer = KeySigner::generate(password, log_n).await?;
         Ok(Self::Signer(Box::new(key_signer)))
     }
 

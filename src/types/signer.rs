@@ -300,7 +300,7 @@ pub trait Signer: fmt::Debug + Sync {
         // Generate a random keypair for the gift wrap
         let random_signer = {
             let random_private_key = PrivateKey::generate();
-            KeySigner::from_private_key(random_private_key, "", 1)
+            KeySigner::from_private_key(random_private_key, "", 1).await
         }?;
 
         let seal_json = serde_json::to_string(&seal)?;
@@ -358,7 +358,7 @@ pub trait Signer: fmt::Debug + Sync {
         // Generate a random keypair for the gift wrap
         let random_signer = {
             let random_private_key = PrivateKey::generate();
-            KeySigner::from_private_key(random_private_key, "", 1)
+            KeySigner::from_private_key(random_private_key, "", 1).await
         }?;
 
         let seal_json = serde_json::to_string(&seal)?;

@@ -50,8 +50,8 @@ impl EncryptedPrivateKey {
     ///
     /// We recommend you zeroize() the password you pass in after you are
     /// done with it.
-    pub fn decrypt(&self, password: &str) -> Result<PrivateKey, Error> {
-        PrivateKey::import_encrypted(self, password)
+    pub async fn decrypt(&self, password: &str) -> Result<PrivateKey, Error> {
+        PrivateKey::import_encrypted(self, password).await
     }
 
     /// Version
@@ -110,7 +110,7 @@ impl PrivateKey {
     ///
     /// We recommend you zeroize() the password you pass in after you are
     /// done with it.
-    pub fn export_encrypted(
+    pub async fn export_encrypted(
         &self,
         password: &str,
         log2_rounds: u8,
@@ -135,7 +135,7 @@ impl PrivateKey {
 
         let ciphertext = {
             let cipher = {
-                let symmetric_key = Self::password_to_key_v2(password, &salt, log2_rounds)?;
+                let symmetric_key = Self::password_to_key_v2(password, &salt, log2_rounds).await?;
                 XChaCha20Poly1305::new((&symmetric_key).into())
             };
 
@@ -180,21 +180,21 @@ impl PrivateKey {
     /// done with it.
     ///
     /// This is backwards-compatible with keys that were exported with older code.
-    pub fn import_encrypted(
+    pub async fn import_encrypted(
         encrypted: &EncryptedPrivateKey,
         password: &str,
     ) -> Result<PrivateKey, Error> {
         if encrypted.0.starts_with("ncryptsec1") {
             // Versioned
-            Self::import_encrypted_bech32(encrypted, password)
+            Self::import_encrypted_bech32(encrypted, password).await
         } else {
             // Pre-versioned, deprecated
-            Self::import_encrypted_base64(encrypted, password)
+            Self::import_encrypted_base64(encrypted, password).await
         }
     }
 
     // Current
-    fn import_encrypted_bech32(
+    async fn import_encrypted_bech32(
         encrypted: &EncryptedPrivateKey,
         password: &str,
     ) -> Result<PrivateKey, Error> {
@@ -207,14 +207,14 @@ impl PrivateKey {
             ));
         }
         match data.1[0] {
-            1 => Self::import_encrypted_v1(data.1, password),
-            2 => Self::import_encrypted_v2(data.1, password),
+            1 => Self::import_encrypted_v1(data.1, password).await,
+            2 => Self::import_encrypted_v2(data.1, password).await,
             _ => Err(Error::InvalidEncryptedPrivateKey),
         }
     }
 
     // current
-    fn import_encrypted_v2(concatenation: Vec<u8>, password: &str) -> Result<PrivateKey, Error> {
+    async fn import_encrypted_v2(concatenation: Vec<u8>, password: &str) -> Result<PrivateKey, Error> {
         if concatenation.len() < 91 {
             return Err(Error::InvalidEncryptedPrivateKey);
         }
@@ -229,7 +229,7 @@ impl PrivateKey {
         let ciphertext = &concatenation[2 + 16 + 24 + 1..];
 
         let cipher = {
-            let symmetric_key = Self::password_to_key_v2(password, &salt, log2_rounds)?;
+            let symmetric_key = Self::password_to_key_v2(password, &salt, log2_rounds).await?;
             XChaCha20Poly1305::new((&symmetric_key).into())
         };
 
@@ -260,28 +260,28 @@ impl PrivateKey {
     }
 
     // deprecated
-    fn import_encrypted_base64(
+    async fn import_encrypted_base64(
         encrypted: &EncryptedPrivateKey,
         password: &str,
     ) -> Result<PrivateKey, Error> {
         let concatenation = base64::engine::general_purpose::STANDARD.decode(&encrypted.0)?; // 64 or 80 bytes
         if concatenation.len() == 64 {
-            Self::import_encrypted_pre_v1(concatenation, password)
+            Self::import_encrypted_pre_v1(concatenation, password).await
         } else if concatenation.len() == 80 {
-            Self::import_encrypted_v1(concatenation, password)
+            Self::import_encrypted_v1(concatenation, password).await
         } else {
             Err(Error::InvalidEncryptedPrivateKey)
         }
     }
 
     // deprecated
-    fn import_encrypted_v1(concatenation: Vec<u8>, password: &str) -> Result<PrivateKey, Error> {
+    async fn import_encrypted_v1(concatenation: Vec<u8>, password: &str) -> Result<PrivateKey, Error> {
         // Break into parts
         let salt: [u8; 16] = concatenation[..16].try_into()?;
         let iv: [u8; 16] = concatenation[16..32].try_into()?;
         let ciphertext = &concatenation[32..]; // 48 bytes
 
-        let key = Self::password_to_key_v1(password, &salt, V1_HMAC_ROUNDS)?;
+        let key = Self::password_to_key_v1(password, &salt, V1_HMAC_ROUNDS).await?;
 
         // AES-256-CBC decrypt
         let mut plaintext = cbc::Decryptor::<aes::Aes256>::new(&key.into(), &iv.into())
@@ -310,11 +310,11 @@ impl PrivateKey {
     }
 
     // deprecated
-    fn import_encrypted_pre_v1(
+    async fn import_encrypted_pre_v1(
         iv_plus_ciphertext: Vec<u8>,
         password: &str,
     ) -> Result<PrivateKey, Error> {
-        let key = Self::password_to_key_v1(password, b"nostr", 4096)?;
+        let key = Self::password_to_key_v1(password, b"nostr", 4096).await?;
 
         if iv_plus_ciphertext.len() < 48 {
             // Should be 64 from padding, but we pushed in 48
@@ -345,24 +345,38 @@ impl PrivateKey {
     }
 
     // Hash/Stretch password with pbkdf2 into a 32-byte (256-bit) key
-    fn password_to_key_v1(password: &str, salt: &[u8], rounds: u32) -> Result<[u8; 32], Error> {
-        let mut key: [u8; 32] = [0; 32];
-        pbkdf2::<Hmac<Sha256>>(password.as_bytes(), salt, rounds, &mut key)?;
+    async fn password_to_key_v1(password: &str, salt: &[u8], rounds: u32) -> Result<[u8; 32], Error> {
+        let password = password.to_owned();
+        let salt = salt.to_owned();
+        let (res, key) = tokio::task::spawn_blocking(move || {
+            let mut key: [u8; 32] = [0; 32];
+            let res = pbkdf2::<Hmac<Sha256>>(password.as_bytes(), &salt, rounds, &mut key);
+            (res, key)
+        }).await?;
+
+        res?;
         Ok(key)
     }
 
     // Hash/Stretch password with scrypt into a 32-byte (256-bit) key
-    fn password_to_key_v2(password: &str, salt: &[u8; 16], log_n: u8) -> Result<[u8; 32], Error> {
+    async fn password_to_key_v2(password: &str, salt: &[u8; 16], log_n: u8) -> Result<[u8; 32], Error> {
         // Normalize unicode (NFKC)
         let password = password.nfkc().collect::<String>();
+        let salt = salt.to_owned();
 
         let params = match scrypt::Params::new(log_n, 8, 1, 32) {
             // r=8, p=1
             Ok(p) => p,
             Err(_) => return Err(Error::Scrypt),
         };
-        let mut key: [u8; 32] = [0; 32];
-        if scrypt::scrypt(password.as_bytes(), salt, &params, &mut key).is_err() {
+
+        let (res, key) = tokio::task::spawn_blocking(move || {
+            let mut key: [u8; 32] = [0; 32];
+            let res = scrypt::scrypt(password.as_bytes(), &salt, &params, &mut key);
+            (res, key)
+        }).await?;
+
+        if res.is_err() {
             return Err(Error::Scrypt);
         }
         Ok(key)
@@ -373,13 +387,13 @@ impl PrivateKey {
 mod test {
     use super::*;
 
-    #[test]
-    fn test_export_import() {
+    #[tokio::test]
+    async fn test_export_import() {
         let pk = PrivateKey::generate();
         // we use a low log_n here because this is run slowly in debug mode
-        let exported = pk.export_encrypted("secret", 13).unwrap();
+        let exported = pk.export_encrypted("secret", 13).await.unwrap();
         println!("{exported}");
-        let imported_pk = PrivateKey::import_encrypted(&exported, "secret").unwrap();
+        let imported_pk = PrivateKey::import_encrypted(&exported, "secret").await.unwrap();
 
         // Be sure the keys generate identical public keys
         assert_eq!(pk.public_key(), imported_pk.public_key());
@@ -388,21 +402,21 @@ mod test {
         assert_eq!(pk.key_security(), KeySecurity::Medium)
     }
 
-    #[test]
-    fn test_import_old_formats() {
+    #[tokio::test]
+    async fn test_import_old_formats() {
         let decrypted = "a28129ab0b70c8d5e75aaf510ec00bff47fde7ca4ab9e3d9315c77edc86f037f";
 
         // pre-salt base64 (-2?)
         let encrypted = EncryptedPrivateKey("F+VYIvTCtIZn4c6owPMZyu4Zn5DH9T5XcgZWmFG/3ma4C3PazTTQxQcIF+G+daeFlkqsZiNIh9bcmZ5pfdRPyg==".to_owned());
         assert_eq!(
-            encrypted.decrypt("nostr").unwrap().as_hex_string(),
+            encrypted.decrypt("nostr").await.unwrap().as_hex_string(),
             decrypted
         );
 
         // Version -1: post-salt base64
         let encrypted = EncryptedPrivateKey("AZQYNwAGULWyKweTtw6WCljV+1cil8IMRxfZ7Rs3nCfwbVQBV56U6eV9ps3S1wU7ieCx6EraY9Uqdsw71TY5Yv/Ep6yGcy9m1h4YozuxWQE=".to_owned());
         assert_eq!(
-            encrypted.decrypt("nostr").unwrap().as_hex_string(),
+            encrypted.decrypt("nostr").await.unwrap().as_hex_string(),
             decrypted
         );
 
@@ -411,28 +425,28 @@ mod test {
         // Version -1
         let encrypted = EncryptedPrivateKey("KlmfCiO+Tf8A/8bm/t+sXWdb1Op4IORdghC7n/9uk/vgJXIcyW7PBAx1/K834azuVmQnCzGq1pmFMF9rNPWQ9Q==".to_owned());
         assert_eq!(
-            encrypted.decrypt("nostr").unwrap().as_hex_string(),
+            encrypted.decrypt("nostr").await.unwrap().as_hex_string(),
             decrypted
         );
 
         // Version 0:
         let encrypted = EncryptedPrivateKey("AZ/2MU2igqP0keoW08Z/rxm+/3QYcZn3oNbVhY6DSUxSDkibNp+bFN/WsRQxP7yBKwyEJVu/YSBtm2PI9DawbYOfXDqfmpA3NTPavgXwUrw=".to_owned());
         assert_eq!(
-            encrypted.decrypt("nostr").unwrap().as_hex_string(),
+            encrypted.decrypt("nostr").await.unwrap().as_hex_string(),
             decrypted
         );
 
         // Version 1:
         let encrypted = EncryptedPrivateKey("ncryptsec1q9hnc06cs5tuk7znrxmetj4q9q2mjtccg995kp86jf3dsp3jykv4fhak730wds4s0mja6c9v2fvdr5dhzrstds8yks5j9ukvh25ydg6xtve6qvp90j0c8a2s5tv4xn7kvulg88".to_owned());
         assert_eq!(
-            encrypted.decrypt("nostr").unwrap().as_hex_string(),
+            encrypted.decrypt("nostr").await.unwrap().as_hex_string(),
             decrypted
         );
 
         // Version 2:
         let encrypted = EncryptedPrivateKey("ncryptsec1qgg9947rlpvqu76pj5ecreduf9jxhselq2nae2kghhvd5g7dgjtcxfqtd67p9m0w57lspw8gsq6yphnm8623nsl8xn9j4jdzz84zm3frztj3z7s35vpzmqf6ksu8r89qk5z2zxfmu5gv8th8wclt0h4p".to_owned());
         assert_eq!(
-            encrypted.decrypt("nostr").unwrap().as_hex_string(),
+            encrypted.decrypt("nostr").await.unwrap().as_hex_string(),
             decrypted
         );
     }

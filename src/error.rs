@@ -143,6 +143,10 @@ pub enum Error {
     #[error("Missing URL Authority")]
     InvalidUrlMissingAuthority,
 
+    /// Task Join
+    #[error("Task join: \"{0}\"")]
+    JoinError(#[from] tokio::task::JoinError),
+
     /// Addr to a non-replaceable event kind
     #[error("Event kind is not replaceable")]
     NonReplaceableAddr,

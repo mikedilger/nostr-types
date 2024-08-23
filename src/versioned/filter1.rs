@@ -365,7 +365,7 @@ mod test {
 
         let signer = {
             let privkey = PrivateKey::mock();
-            KeySigner::from_private_key(privkey, "", 1).unwrap()
+            KeySigner::from_private_key(privkey, "", 1).await.unwrap()
         };
         let preevent = PreEvent {
             pubkey: signer.public_key(),
