@@ -95,6 +95,10 @@ pub enum Error {
     #[error("Invalid nevent")]
     InvalidNEvent,
 
+    /// Invalid Operation
+    #[error("Invalid Operation")]
+    InvalidOperation,
+
     /// Invalid Private Key
     #[error("Invalid Private Key")]
     InvalidPrivateKey,

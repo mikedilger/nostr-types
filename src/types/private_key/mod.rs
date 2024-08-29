@@ -1,6 +1,7 @@
-use crate::{Error, Id, PublicKey, Signature};
+use crate::{Error, Id, PublicKey, Signature, Signer};
 use rand_core::OsRng;
 use std::convert::TryFrom;
+use std::fmt;
 
 mod encrypted_private_key;
 pub use encrypted_private_key::*;
@@ -58,6 +59,12 @@ pub struct PrivateKey(secp256k1::SecretKey, KeySecurity);
 impl Default for PrivateKey {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl fmt::Debug for PrivateKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "PRIVATE-KEY-ELIDED")
     }
 }
 
@@ -174,6 +181,84 @@ impl PrivateKey {
 impl Drop for PrivateKey {
     fn drop(&mut self) {
         self.0.non_secure_erase();
+    }
+}
+
+impl Signer for PrivateKey {
+    fn is_locked(&self) -> bool {
+        false
+    }
+
+    fn unlock(&mut self, _password: &str) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn lock(&mut self) {}
+
+    fn change_passphrase(&mut self, _old: &str, _new: &str, _log_n: u8) -> Result<(), Error> {
+        Err(Error::InvalidOperation)
+    }
+
+    fn upgrade(&mut self, _pass: &str, _log_n: u8) -> Result<(), Error> {
+        Err(Error::InvalidOperation)
+    }
+
+    fn public_key(&self) -> PublicKey {
+        self.public_key()
+    }
+
+    fn encrypted_private_key(&self) -> Option<&EncryptedPrivateKey> {
+        None
+    }
+
+    fn export_private_key_in_hex(
+        &mut self,
+        _pass: &str,
+        _log_n: u8,
+    ) -> Result<(String, bool), Error> {
+        Ok((self.as_hex_string(), false))
+    }
+
+    fn export_private_key_in_bech32(
+        &mut self,
+        _pass: &str,
+        _log_n: u8,
+    ) -> Result<(String, bool), Error> {
+        Ok((self.as_bech32_string(), false))
+    }
+
+    fn sign_id(&self, id: Id) -> Result<Signature, Error> {
+        self.sign_id(id)
+    }
+
+    fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
+        self.sign(message)
+    }
+
+    fn encrypt(
+        &self,
+        other: &PublicKey,
+        plaintext: &str,
+        algo: ContentEncryptionAlgorithm,
+    ) -> Result<String, Error> {
+        self.encrypt(other, plaintext, algo)
+    }
+
+    /// Decrypt NIP-44
+    fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
+        self.decrypt(other, ciphertext)
+    }
+
+    /// Get NIP-44 conversation key
+    fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error> {
+        Ok(nip44::get_conversation_key(
+            self.0,
+            other.as_xonly_public_key(),
+        ))
+    }
+
+    fn key_security(&self) -> Result<KeySecurity, Error> {
+        Ok(KeySecurity::Weak)
     }
 }
 
