@@ -618,9 +618,6 @@ impl EventV3 {
 
     /// If this event zaps another event, get data about that.
     ///
-    /// That includes the Id, the amount, and the public key of the provider,
-    /// all of which should be verified by the caller.
-    ///
     /// Errors returned from this are not fatal, but may be useful for
     /// explaining to a user why a zap receipt is invalid.
     pub fn zaps(&self) -> Result<Option<ZapData>, Error> {
@@ -628,74 +625,167 @@ impl EventV3 {
             return Ok(None);
         }
 
-        let mut zapped_id: Option<Id> = None;
-        let mut zapped_amount: Option<MilliSatoshi> = None;
-        let mut zapped_pubkey: Option<PublicKey> = None;
+        let (zap_request, bolt11invoice, payer_p_tag, target_event_from_tags): (
+            EventV3,
+            Bolt11Invoice,
+            Option<PublicKey>,
+            Option<EventReference>,
+        ) = {
+            let mut zap_request: Option<EventV3> = None;
+            let mut bolt11invoice: Option<Bolt11Invoice> = None;
+            let mut payer_p_tag: Option<PublicKey> = None;
+            let mut target_event_from_tags: Option<EventReference> = None;
 
-        for tag in self.tags.iter() {
-            if tag.tagname() == "bolt11" {
-                if tag.value() == "" {
-                    return Err(Error::ZapReceipt("missing bolt11 tag value".to_string()));
-                }
-
-                // Extract as an Invoice
-                let invoice = match Bolt11Invoice::from_str(tag.value()) {
-                    Ok(inv) => inv,
-                    Err(e) => {
-                        return Err(Error::ZapReceipt(format!("bolt11 failed to parse: {}", e)))
+            for tag in self.tags.iter() {
+                if tag.tagname() == "description" {
+                    let request_string = tag.value();
+                    if let Ok(e) = serde_json::from_str::<EventV3>(&request_string) {
+                        zap_request = Some(e);
                     }
-                };
-
-                // Verify the signature
-                if let Err(e) = invoice.check_signature() {
-                    return Err(Error::ZapReceipt(format!(
-                        "bolt11 signature check failed: {}",
-                        e
-                    )));
                 }
-
-                // Get the public key
-                let secpk = match invoice.payee_pub_key() {
-                    Some(pubkey) => pubkey.to_owned(),
-                    None => invoice.recover_payee_pub_key(),
-                };
-                let (xonlypk, _) = secpk.x_only_public_key();
-                let pubkeybytes = xonlypk.serialize();
-                let pubkey = match PublicKey::from_bytes(&pubkeybytes, false) {
-                    Ok(pubkey) => pubkey,
-                    Err(e) => {
-                        return Err(Error::ZapReceipt(format!("payee public key error: {}", e)))
+                // we ignore the "p" tag, we have that data from two other places (invoice and request)
+                else if tag.tagname() == "P" {
+                    if let Ok((pk, _, _)) = tag.parse_pubkey() {
+                        payer_p_tag = Some(pk);
                     }
-                };
-                zapped_pubkey = Some(pubkey);
+                } else if tag.tagname() == "bolt11" {
+                    if tag.value() == "" {
+                        return Err(Error::ZapReceipt("missing bolt11 tag value".to_string()));
+                    }
 
-                if let Some(u) = invoice.amount_milli_satoshis() {
-                    zapped_amount = Some(MilliSatoshi(u));
-                } else {
-                    return Err(Error::ZapReceipt(
-                        "Amount missing from zap receipt".to_string(),
-                    ));
+                    // Extract as an Invoice
+                    let invoice = match Bolt11Invoice::from_str(tag.value()) {
+                        Ok(inv) => inv,
+                        Err(e) => {
+                            return Err(Error::ZapReceipt(format!("bolt11 failed to parse: {}", e)))
+                        }
+                    };
+
+                    // Verify the signature
+                    if let Err(e) = invoice.check_signature() {
+                        return Err(Error::ZapReceipt(format!(
+                            "bolt11 signature check failed: {}",
+                            e
+                        )));
+                    }
+
+                    bolt11invoice = Some(invoice);
                 }
-            } else if let Ok((id, _, _)) = tag.parse_event() {
-                zapped_id = Some(id);
+            }
+
+            let re = self.referred_events();
+            if re.len() == 1 {
+                target_event_from_tags = Some(re[0].clone());
+            }
+
+            // "The zap receipt MUST contain a description tag which is the JSON-encoded zap request."
+            if zap_request.is_none() {
+                return Ok(None);
+            }
+            let zap_request = zap_request.unwrap();
+
+            // "The zap receipt MUST have a bolt11 tag containing the description hash bolt11 invoice."
+            if bolt11invoice.is_none() {
+                return Ok(None);
+            }
+            let bolt11invoice = bolt11invoice.unwrap();
+
+            (
+                zap_request,
+                bolt11invoice,
+                payer_p_tag,
+                target_event_from_tags,
+            )
+        };
+
+        // Extract data from the invoice
+        let (payee_from_invoice, amount_from_invoice): (PublicKey, MilliSatoshi) = {
+            // Get the public key
+            let secpk = match bolt11invoice.payee_pub_key() {
+                Some(pubkey) => pubkey.to_owned(),
+                None => bolt11invoice.recover_payee_pub_key(),
+            };
+            let (xonlypk, _) = secpk.x_only_public_key();
+            let pubkeybytes = xonlypk.serialize();
+            let pubkey = match PublicKey::from_bytes(&pubkeybytes, false) {
+                Ok(pubkey) => pubkey,
+                Err(e) => return Err(Error::ZapReceipt(format!("payee public key error: {}", e))),
+            };
+
+            if let Some(u) = bolt11invoice.amount_milli_satoshis() {
+                (pubkey, MilliSatoshi(u))
+            } else {
+                return Err(Error::ZapReceipt(
+                    "Amount missing from zap receipt".to_string(),
+                ));
+            }
+        };
+
+        // Extract data from request
+        let (payer_from_request, amount_from_request, target_event_from_request): (
+            PublicKey,
+            MilliSatoshi,
+            EventReference,
+        ) = {
+            let mut amount_from_request: Option<MilliSatoshi> = None;
+            let mut target_event_from_request: Option<EventReference> = None;
+            for tag in zap_request.tags.iter() {
+                if tag.tagname() == "amount" {
+                    if let Ok(m) = tag.value().parse::<u64>() {
+                        amount_from_request = Some(MilliSatoshi(m));
+                    }
+                }
+            }
+
+            let re = zap_request.referred_events();
+            if re.len() == 1 {
+                target_event_from_request = Some(re[0].clone());
+            }
+
+            if amount_from_request.is_none() {
+                return Err(Error::ZapReceipt("zap request had no amount".to_owned()));
+            }
+            let amount_from_request = amount_from_request.unwrap();
+
+            if target_event_from_request.is_none() {
+                return Ok(None);
+            }
+            let target_event_from_request = target_event_from_request.unwrap();
+
+            (
+                zap_request.pubkey,
+                amount_from_request,
+                target_event_from_request,
+            )
+        };
+
+        if let Some(p) = payer_p_tag {
+            if p != payer_from_request {
+                return Err(Error::ZapReceipt(
+                    "Payer Mismatch between receipt P-tag and invoice".to_owned(),
+                ));
             }
         }
 
-        if zapped_id.is_none() {
-            // This probably means a person was zapped, not a note. So not an error.
-            return Ok(None);
+        if amount_from_invoice != amount_from_request {
+            return Err(Error::ZapReceipt(
+                "Amount Mismatch between request and invoice".to_owned(),
+            ));
         }
-        if zapped_amount.is_none() {
-            return Err(Error::ZapReceipt("Missing amount".to_string()));
-        }
-        if zapped_pubkey.is_none() {
-            return Err(Error::ZapReceipt("Missing payee public key".to_string()));
+
+        if let Some(te) = target_event_from_tags {
+            if te != target_event_from_request {
+                return Err(Error::ZapReceipt(
+                    "Zapped event Mismatch receipt and request".to_owned(),
+                ));
+            }
         }
 
         Ok(Some(ZapData {
-            id: zapped_id.unwrap(),
-            amount: zapped_amount.unwrap(),
-            pubkey: zapped_pubkey.unwrap(),
+            zapped_event: target_event_from_request,
+            amount: amount_from_invoice,
+            payee: payee_from_invoice,
+            payer: payer_from_request,
             provider_pubkey: self.pubkey,
         }))
     }

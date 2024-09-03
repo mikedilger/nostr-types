@@ -1,7 +1,7 @@
-use super::TagV2;
+use super::{TagV2, ZapDataV1};
 use crate::types::{
     EventDelegation, EventKind, EventReference, Id, KeySigner, MilliSatoshi, NAddr, NostrBech32,
-    NostrUrl, PrivateKey, PublicKey, PublicKeyHex, RelayUrl, Signature, Signer, Unixtime, ZapData,
+    NostrUrl, PrivateKey, PublicKey, PublicKeyHex, RelayUrl, Signature, Signer, Unixtime,
 };
 use crate::{Error, IntoVec};
 use lightning_invoice::Bolt11Invoice;
@@ -730,7 +730,7 @@ impl EventV2 {
     ///
     /// Errors returned from this are not fatal, but may be useful for
     /// explaining to a user why a zap receipt is invalid.
-    pub fn zaps(&self) -> Result<Option<ZapData>, Error> {
+    pub fn zaps(&self) -> Result<Option<ZapDataV1>, Error> {
         if self.kind != EventKind::Zap {
             return Ok(None);
         }
@@ -803,7 +803,7 @@ impl EventV2 {
             return Err(Error::ZapReceipt("Missing payee public key".to_string()));
         }
 
-        Ok(Some(ZapData {
+        Ok(Some(ZapDataV1 {
             id: zapped_id.unwrap(),
             amount: zapped_amount.unwrap(),
             pubkey: zapped_pubkey.unwrap(),

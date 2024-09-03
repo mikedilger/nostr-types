@@ -52,3 +52,6 @@ pub use tag2::TagV2;
 
 pub(crate) mod tag3;
 pub use tag3::TagV3;
+
+pub(crate) mod zap_data;
+pub use zap_data::{ZapDataV1, ZapDataV2};
