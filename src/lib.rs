@@ -9,7 +9,7 @@
     trivial_casts,
     trivial_numeric_casts,
     unused_import_braces,
-    unused_qualifications,
+    //unused_qualifications,
     unused_results,
     unused_lifetimes,
     unused_labels,
