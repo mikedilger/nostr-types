@@ -36,6 +36,9 @@ pub enum KeySecurity {
     /// scan memory. Additionally, more advanced techniques can get at your key such
     /// as hardware attacks like spectre, rowhammer, and power analysis.
     Medium = 1,
+
+    /// Not tracked
+    NotTracked = 2,
 }
 
 impl TryFrom<u8> for KeySecurity {
@@ -46,6 +49,8 @@ impl TryFrom<u8> for KeySecurity {
             Ok(KeySecurity::Weak)
         } else if i == 1 {
             Ok(KeySecurity::Medium)
+        } else if i == 2 {
+            Ok(KeySecurity::NotTracked)
         } else {
             Err(Error::UnknownKeySecurity(i))
         }
@@ -258,7 +263,7 @@ impl Signer for PrivateKey {
     }
 
     fn key_security(&self) -> Result<KeySecurity, Error> {
-        Ok(KeySecurity::Weak)
+        Ok(KeySecurity::NotTracked)
     }
 }
 

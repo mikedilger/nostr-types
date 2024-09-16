@@ -128,6 +128,7 @@ impl PrivateKey {
             let key_security: u8 = match self.1 {
                 KeySecurity::Weak => 0,
                 KeySecurity::Medium => 1,
+                KeySecurity::NotTracked => 2,
             };
             vec![key_security]
         };
@@ -248,6 +249,7 @@ impl PrivateKey {
         let key_security = match associated_data[0] {
             0 => KeySecurity::Weak,
             1 => KeySecurity::Medium,
+            2 => KeySecurity::NotTracked,
             _ => return Err(Error::InvalidEncryptedPrivateKey),
         };
 
