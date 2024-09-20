@@ -24,6 +24,11 @@ impl TagV3 {
         TagV3(fields)
     }
 
+    /// Into a `Vec<String>`
+    pub fn into_inner(self) -> Vec<String> {
+        self.0
+    }
+
     /// Get the string at the given index
     pub fn get_index(&self, index: usize) -> &str {
         if self.0.len() > index {
