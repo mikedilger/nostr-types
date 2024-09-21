@@ -911,14 +911,14 @@ impl EventV3 {
         let zeroes: u8 = crate::get_leading_zero_bits(&self.id.0);
 
         // Check that they meant it
-        let mut target_zeroes: u8 = 0;
         for tag in self.tags.iter() {
-            if let Ok((target, _)) = tag.parse_nonce() {
-                target_zeroes = target as u8;
+            if let Ok((_nonce, Some(target))) = tag.parse_nonce() {
+                let target_zeroes = target as u8;
+                return zeroes.min(target_zeroes);
             }
         }
 
-        zeroes.min(target_zeroes)
+        0
     }
 
     /// Was this event delegated, was that valid, and if so what is the pubkey of

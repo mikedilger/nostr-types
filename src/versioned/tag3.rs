@@ -366,14 +366,14 @@ impl TagV3 {
     }
 
     /// Parse a "nonce" tag
-    pub fn parse_nonce(&self) -> Result<(u32, Option<u32>), Error> {
+    pub fn parse_nonce(&self) -> Result<(u64, Option<u32>), Error> {
         if self.0.len() < 2 {
             return Err(Error::TagMismatch);
         }
         if &self.0[0] != "nonce" {
             return Err(Error::TagMismatch);
         }
-        let nonce = self.0[1].parse::<u32>()?;
+        let nonce = self.0[1].parse::<u64>()?;
         let target = if self.0.len() >= 3 {
             Some(self.0[2].parse::<u32>()?)
         } else {
