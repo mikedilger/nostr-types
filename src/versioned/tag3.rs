@@ -24,6 +24,13 @@ impl TagV3 {
         TagV3(fields)
     }
 
+    /// Remove empty fields from the end
+    pub fn trim(&mut self) {
+        while self.0[self.0.len() - 1].is_empty() {
+            let _ = self.0.pop();
+        }
+    }
+
     /// Into a `Vec<String>`
     pub fn into_inner(self) -> Vec<String> {
         self.0

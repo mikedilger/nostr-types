@@ -111,18 +111,28 @@ pub fn add_pubkey_to_tags(
     new_pubkey: PublicKey,
     new_hint: Option<UncheckedUrl>,
 ) -> usize {
-    match existing_tags.iter().position(|existing_tag| {
+    let index = existing_tags.iter().position(|existing_tag| {
         if let Ok((pubkey, _, __)) = existing_tag.parse_pubkey() {
             pubkey == new_pubkey
         } else {
             false
         }
-    }) {
-        Some(idx) => idx,
-        None => {
-            existing_tags.push(Tag::new_pubkey(new_pubkey, new_hint, None));
-            existing_tags.len() - 1
-        }
+    });
+
+    if let Some(idx) = index {
+        // force additional data to match
+        existing_tags[idx].set_index(
+            2,
+            match new_hint {
+                Some(u) => u.as_str().to_owned(),
+                None => "".to_owned(),
+            },
+        );
+        existing_tags[idx].trim();
+        idx
+    } else {
+        existing_tags.push(Tag::new_pubkey(new_pubkey, new_hint, None));
+        existing_tags.len() - 1
     }
 }
 
@@ -135,38 +145,71 @@ pub fn add_event_to_tags(
     new_pubkey: Option<PublicKey>,
     use_quote: bool,
 ) -> usize {
+    // NIP-18: "Quote reposts are kind 1 events with an embedded q tag..."
     if new_marker == "mention" && use_quote {
-        // NIP-18: "Quote reposts are kind 1 events with an embedded q tag..."
-        let newtag = Tag::new_quote(new_id, new_hint, new_pubkey);
-
-        match existing_tags.iter().position(|existing_tag| {
+        let index = existing_tags.iter().position(|existing_tag| {
             if let Ok((id, _rurl, _optpk)) = existing_tag.parse_quote() {
                 id == new_id
             } else {
                 false
             }
-        }) {
-            None => {
-                existing_tags.push(newtag);
-                existing_tags.len() - 1
-            }
-            Some(idx) => idx,
+        });
+
+        if let Some(idx) = index {
+            // force additional data to match
+            existing_tags[idx].set_index(
+                2,
+                match new_hint {
+                    Some(u) => u.as_str().to_owned(),
+                    None => "".to_owned(),
+                },
+            );
+            existing_tags[idx].set_index(
+                3,
+                match new_pubkey {
+                    Some(pk) => pk.as_hex_string(),
+                    None => "".to_owned(),
+                },
+            );
+            existing_tags[idx].trim();
+            idx
+        } else {
+            let newtag = Tag::new_quote(new_id, new_hint, new_pubkey);
+            existing_tags.push(newtag);
+            existing_tags.len() - 1
         }
     } else {
-        let newtag = Tag::new_event(new_id, new_hint, Some(new_marker.to_string()), new_pubkey);
-
-        match existing_tags.iter().position(|existing_tag| {
+        let index = existing_tags.iter().position(|existing_tag| {
             if let Ok((id, _rurl, _optmarker, _optpk)) = existing_tag.parse_event() {
                 id == new_id
             } else {
                 false
             }
-        }) {
-            None => {
-                existing_tags.push(newtag);
-                existing_tags.len() - 1
-            }
-            Some(idx) => idx,
+        });
+
+        if let Some(idx) = index {
+            // force additional data to match
+            existing_tags[idx].set_index(
+                2,
+                match new_hint {
+                    Some(u) => u.as_str().to_owned(),
+                    None => "".to_owned(),
+                },
+            );
+            existing_tags[idx].set_index(3, new_marker.to_owned());
+            existing_tags[idx].set_index(
+                4,
+                match new_pubkey {
+                    Some(pk) => pk.as_hex_string(),
+                    None => "".to_owned(),
+                },
+            );
+            existing_tags[idx].trim();
+            idx
+        } else {
+            let newtag = Tag::new_event(new_id, new_hint, Some(new_marker.to_string()), new_pubkey);
+            existing_tags.push(newtag);
+            existing_tags.len() - 1
         }
     }
 }
@@ -177,18 +220,28 @@ pub fn add_addr_to_tags(
     new_addr: &NAddr,
     new_marker: Option<String>,
 ) -> usize {
-    match existing_tags.iter().position(|existing_tag| {
+    let index = existing_tags.iter().position(|existing_tag| {
         if let Ok((ea, _optmarker)) = existing_tag.parse_address() {
             ea.kind == new_addr.kind && ea.author == new_addr.author && ea.d == new_addr.d
         } else {
             false
         }
-    }) {
-        Some(idx) => idx,
-        None => {
-            existing_tags.push(Tag::new_address(new_addr, new_marker));
-            existing_tags.len() - 1
-        }
+    });
+
+    if let Some(idx) = index {
+        // force additional data to match
+        existing_tags[idx].set_index(
+            2,
+            match new_marker {
+                Some(s) => s,
+                None => "".to_owned(),
+            },
+        );
+        existing_tags[idx].trim();
+        idx
+    } else {
+        existing_tags.push(Tag::new_address(new_addr, new_marker));
+        existing_tags.len() - 1
     }
 }
 
