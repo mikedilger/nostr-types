@@ -132,14 +132,15 @@ pub fn add_event_to_tags(
     new_id: Id,
     new_hint: Option<UncheckedUrl>,
     new_marker: &str,
+    new_pubkey: Option<PublicKey>,
     use_quote: bool,
 ) -> usize {
     if new_marker == "mention" && use_quote {
         // NIP-18: "Quote reposts are kind 1 events with an embedded q tag..."
-        let newtag = Tag::new_quote(new_id, new_hint);
+        let newtag = Tag::new_quote(new_id, new_hint, new_pubkey);
 
         match existing_tags.iter().position(|existing_tag| {
-            if let Ok((id, _rurl)) = existing_tag.parse_quote() {
+            if let Ok((id, _rurl, _optpk)) = existing_tag.parse_quote() {
                 id == new_id
             } else {
                 false
@@ -152,10 +153,10 @@ pub fn add_event_to_tags(
             Some(idx) => idx,
         }
     } else {
-        let newtag = Tag::new_event(new_id, new_hint, Some(new_marker.to_string()));
+        let newtag = Tag::new_event(new_id, new_hint, Some(new_marker.to_string()), new_pubkey);
 
         match existing_tags.iter().position(|existing_tag| {
-            if let Ok((id, _rurl, _optmarker)) = existing_tag.parse_event() {
+            if let Ok((id, _rurl, _optmarker, _optpk)) = existing_tag.parse_event() {
                 id == new_id
             } else {
                 false

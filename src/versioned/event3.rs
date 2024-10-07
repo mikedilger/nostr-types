@@ -276,10 +276,10 @@ impl EventV3 {
 
         // Collect every 'e' tag and 'a' tag
         for tag in self.tags.iter() {
-            if let Ok((id, rurl, marker)) = tag.parse_event() {
+            if let Ok((id, rurl, marker, optpk)) = tag.parse_event() {
                 output.push(EventReference::Id {
                     id,
-                    author: None,
+                    author: optpk,
                     relays: rurl
                         .as_ref()
                         .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
@@ -319,11 +319,11 @@ impl EventV3 {
 
         // look for an 'e' tag with marker 'reply'
         for tag in self.tags.iter() {
-            if let Ok((id, rurl, marker)) = tag.parse_event() {
+            if let Ok((id, rurl, marker, optpk)) = tag.parse_event() {
                 if marker.is_some() && marker.as_deref().unwrap() == "reply" {
                     return Some(EventReference::Id {
                         id,
-                        author: None,
+                        author: optpk,
                         relays: rurl
                             .as_ref()
                             .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
@@ -336,11 +336,11 @@ impl EventV3 {
 
         // look for an 'e' tag with marker 'root'
         for tag in self.tags.iter() {
-            if let Ok((id, rurl, marker)) = tag.parse_event() {
+            if let Ok((id, rurl, marker, optpk)) = tag.parse_event() {
                 if marker.is_some() && marker.as_deref().unwrap() == "root" {
                     return Some(EventReference::Id {
                         id,
-                        author: None,
+                        author: optpk,
                         relays: rurl
                             .as_ref()
                             .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
@@ -372,11 +372,11 @@ impl EventV3 {
         // Use the last unmarked 'e' or 'a' tag (whichever is last)
         for tag in self.tags.iter().rev() {
             if tag.tagname() == "e" {
-                if let Ok((id, rurl, marker)) = tag.parse_event() {
+                if let Ok((id, rurl, marker, optpk)) = tag.parse_event() {
                     if marker.is_none() {
                         return Some(EventReference::Id {
                             id,
-                            author: None,
+                            author: optpk,
                             relays: rurl
                                 .as_ref()
                                 .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
@@ -406,11 +406,11 @@ impl EventV3 {
 
         // look for an 'e' tag with marker 'root'
         for tag in self.tags.iter() {
-            if let Ok((id, rurl, optmarker)) = tag.parse_event() {
+            if let Ok((id, rurl, optmarker, optpk)) = tag.parse_event() {
                 if optmarker.is_some() && optmarker.as_deref().unwrap() == "root" {
                     return Some(EventReference::Id {
                         id,
-                        author: None,
+                        author: optpk,
                         relays: rurl
                             .as_ref()
                             .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
@@ -422,11 +422,11 @@ impl EventV3 {
         }
 
         for tag in self.tags.iter() {
-            if let Ok((id, rurl, optmarker)) = tag.parse_event() {
+            if let Ok((id, rurl, optmarker, optpk)) = tag.parse_event() {
                 if optmarker.is_none() {
                     return Some(EventReference::Id {
                         id,
-                        author: None,
+                        author: optpk,
                         relays: rurl
                             .as_ref()
                             .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
@@ -453,10 +453,10 @@ impl EventV3 {
         let mut output: Vec<EventReference> = Vec::new();
 
         for tag in self.tags.iter() {
-            if let Ok((id, rurl)) = tag.parse_quote() {
+            if let Ok((id, rurl, optpk)) = tag.parse_quote() {
                 output.push(EventReference::Id {
                     id,
-                    author: None,
+                    author: optpk,
                     relays: rurl
                         .as_ref()
                         .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
@@ -481,10 +481,10 @@ impl EventV3 {
         // For kind=6 and kind=16, all 'e' and 'a' tags are mentions
         if self.kind == EventKind::Repost || self.kind == EventKind::GenericRepost {
             for tag in self.tags.iter() {
-                if let Ok((id, rurl, optmarker)) = tag.parse_event() {
+                if let Ok((id, rurl, optmarker, optpk)) = tag.parse_event() {
                     output.push(EventReference::Id {
                         id,
-                        author: None,
+                        author: optpk,
                         relays: rurl
                             .as_ref()
                             .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
@@ -503,11 +503,11 @@ impl EventV3 {
 
         // Collect every 'e' tag marked as 'mention'
         for tag in self.tags.iter() {
-            if let Ok((id, rurl, optmarker)) = tag.parse_event() {
+            if let Ok((id, rurl, optmarker, optpk)) = tag.parse_event() {
                 if optmarker.is_some() && optmarker.as_deref().unwrap() == "mention" {
                     output.push(EventReference::Id {
                         id,
-                        author: None,
+                        author: optpk,
                         relays: rurl
                             .as_ref()
                             .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
@@ -527,10 +527,10 @@ impl EventV3 {
         if e_tags.len() > 2 {
             // mentions are everything other than first and last
             for tag in &e_tags[1..e_tags.len() - 1] {
-                if let Ok((id, rurl, optmarker)) = tag.parse_event() {
+                if let Ok((id, rurl, optmarker, optpk)) = tag.parse_event() {
                     output.push(EventReference::Id {
                         id,
-                        author: None,
+                        author: optpk,
                         relays: rurl
                             .as_ref()
                             .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
@@ -548,19 +548,25 @@ impl EventV3 {
 
     /// If this event reacts to another, get that other event's Id,
     /// the reaction content, and an optional Recommended relay Url
-    pub fn reacts_to(&self) -> Option<(Id, String, Option<RelayUrl>)> {
+    pub fn reacts_to(&self) -> Option<(EventReference, String)> {
         if self.kind != EventKind::Reaction {
             return None;
         }
 
         // The last 'e' tag is it
         for tag in self.tags.iter().rev() {
-            if let Ok((id, rurl, _optmarker)) = tag.parse_event() {
+            if let Ok((id, rurl, optmarker, optpk)) = tag.parse_event() {
                 return Some((
-                    id,
+                    EventReference::Id {
+                        id,
+                        author: optpk,
+                        relays: rurl
+                            .as_ref()
+                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                            .into_vec(),
+                        marker: optmarker,
+                    },
                     self.content.clone(),
-                    rurl.as_ref()
-                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok()),
                 ));
             }
         }
@@ -578,13 +584,16 @@ impl EventV3 {
         let mut erefs: Vec<EventReference> = Vec::new();
 
         for tag in self.tags.iter() {
-            if let Ok((id, _rurl, _optmarker)) = tag.parse_event() {
+            if let Ok((id, rurl, optmarker, optpk)) = tag.parse_event() {
                 // All 'e' tags are deleted
                 erefs.push(EventReference::Id {
                     id,
-                    author: None,
-                    relays: vec![],
-                    marker: None,
+                    author: optpk,
+                    relays: rurl
+                        .as_ref()
+                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                        .into_vec(),
+                    marker: optmarker,
                 });
             } else if let Ok((ea, _optmarker)) = tag.parse_address() {
                 erefs.push(EventReference::Addr(ea));
@@ -1183,6 +1192,7 @@ mod test {
                 Id::mock(),
                 Some(UncheckedUrl::mock()),
                 None,
+                None,
             )],
             content: "Hello World!".to_string(),
         };
@@ -1243,7 +1253,7 @@ mod test {
             created_at,
             kind: EventKind::TextNote,
             tags: vec![
-                TagV3::new_event(Id::mock(), Some(UncheckedUrl::mock()), None),
+                TagV3::new_event(Id::mock(), Some(UncheckedUrl::mock()), None, None),
                 TagV3::new_delegation(real_signer.public_key(), conditions, sig),
             ],
             content: "Hello World!".to_string(),

@@ -176,22 +176,34 @@ impl TagV3 {
         id: Id,
         recommended_relay_url: Option<UncheckedUrl>,
         marker: Option<String>,
+        pubkey: Option<PublicKey>,
     ) -> TagV3 {
         let mut v: Vec<String> = vec!["e".to_owned(), id.as_hex_string()];
+
         if let Some(rurl) = recommended_relay_url {
             v.push(rurl.0);
-        } else if marker.is_some() {
-            v.push("".to_owned())
+        } else if marker.is_some() || pubkey.is_some() {
+            v.push("".to_owned());
         }
+
         if let Some(mark) = marker {
             v.push(mark);
+        } else if pubkey.is_some() {
+            v.push("".to_owned());
         }
+
+        if let Some(pk) = pubkey {
+            v.push(pk.as_hex_string());
+        }
+
         TagV3(v)
     }
 
     /// Parse an "e" tag
     /// `['e', <id>, <rurl>, <marker>]`
-    pub fn parse_event(&self) -> Result<(Id, Option<UncheckedUrl>, Option<String>), Error> {
+    pub fn parse_event(
+        &self,
+    ) -> Result<(Id, Option<UncheckedUrl>, Option<String>, Option<PublicKey>), Error> {
         if self.0.len() < 2 {
             return Err(Error::TagMismatch);
         }
@@ -199,30 +211,63 @@ impl TagV3 {
             return Err(Error::TagMismatch);
         }
         let id = Id::try_from_hex_string(&self.0[1])?;
+
         let url = if self.0.len() >= 3 {
-            Some(UncheckedUrl(self.0[2].to_owned()))
+            if self.0[2].len() > 0 {
+                Some(UncheckedUrl(self.0[2].to_owned()))
+            } else {
+                None
+            }
         } else {
             None
         };
+
         let marker = if self.0.len() >= 4 {
-            Some(self.0[3].to_owned())
+            if self.0[3].len() > 0 {
+                Some(self.0[3].to_owned())
+            } else {
+                None
+            }
         } else {
             None
         };
-        Ok((id, url, marker))
+
+        let pk = if self.0.len() >= 5 {
+            if let Ok(pk) = PublicKey::try_from_hex_string(&self.0[4], true) {
+                Some(pk)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        Ok((id, url, marker, pk))
     }
 
     /// Create a "q" tag
-    pub fn new_quote(id: Id, recommended_relay_url: Option<UncheckedUrl>) -> TagV3 {
+    pub fn new_quote(
+        id: Id,
+        recommended_relay_url: Option<UncheckedUrl>,
+        pubkey: Option<PublicKey>,
+    ) -> TagV3 {
         let mut v: Vec<String> = vec!["q".to_owned(), id.as_hex_string()];
+
         if let Some(rurl) = recommended_relay_url {
             v.push(rurl.0);
+        } else if pubkey.is_some() {
+            v.push("".to_owned());
         }
+
+        if let Some(pk) = pubkey {
+            v.push(pk.as_hex_string());
+        }
+
         TagV3(v)
     }
 
     /// Parse a "q" tag
-    pub fn parse_quote(&self) -> Result<(Id, Option<UncheckedUrl>), Error> {
+    pub fn parse_quote(&self) -> Result<(Id, Option<UncheckedUrl>, Option<PublicKey>), Error> {
         if self.0.len() < 2 {
             return Err(Error::TagMismatch);
         }
@@ -230,12 +275,28 @@ impl TagV3 {
             return Err(Error::TagMismatch);
         }
         let id = Id::try_from_hex_string(&self.0[1])?;
+
         let url = if self.0.len() >= 3 {
-            Some(UncheckedUrl(self.0[2].to_owned()))
+            if self.0[2].len() > 0 {
+                Some(UncheckedUrl(self.0[2].to_owned()))
+            } else {
+                None
+            }
         } else {
             None
         };
-        Ok((id, url))
+
+        let pubkey = if self.0.len() >= 4 {
+            if let Ok(pk) = PublicKey::try_from_hex_string(&self.0[3], true) {
+                Some(pk)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        Ok((id, url, pubkey))
     }
 
     /// Create a "p" tag
@@ -532,16 +593,69 @@ mod test {
 
     #[test]
     fn test_event_tag() {
-        let tag = TagV3::new_event(Id::mock(), None, None);
-        assert_eq!(tag.parse_event().unwrap(), (Id::mock(), None, None));
+        let tag = TagV3::new_event(Id::mock(), None, None, None);
+        assert_eq!(tag.parse_event().unwrap(), (Id::mock(), None, None, None));
 
         let data = (
             Id::mock(),
             Some(UncheckedUrl("dummy".to_owned())),
             Some("foo".to_owned()),
+            None,
         );
-        let tag = TagV3::new_event(data.0, data.1.clone(), data.2.clone());
+        let tag = TagV3::new_event(data.0, data.1.clone(), data.2.clone(), data.3.clone());
         assert_eq!(tag.parse_event().unwrap(), data);
+
+        let tag = TagV3(vec![
+            "e".to_string(),
+            "7760408f6459b9546c3a4e70e3e56756421fba34526b7d460db3fcfd2f8817db".to_string(),
+            "wss://chorus.example".to_string(),
+            "".to_string(),
+            "460c25e682fda7832b52d1f22d3d22b3176d972f60dcdc3212ed8c92ef85065c".to_string(),
+        ]);
+        let tag_data = tag.parse_event().unwrap();
+        assert!(tag_data.1.is_some());
+        assert!(tag_data.2.is_none());
+        assert_eq!(
+            tag_data.3,
+            Some(
+                PublicKey::try_from_hex_string(
+                    "460c25e682fda7832b52d1f22d3d22b3176d972f60dcdc3212ed8c92ef85065c",
+                    false
+                )
+                .unwrap()
+            )
+        );
+
+        let tag2 = TagV3::new_event(
+            Id::try_from_hex_string(
+                "7760408f6459b9546c3a4e70e3e56756421fba34526b7d460db3fcfd2f8817db",
+            )
+            .unwrap(),
+            Some(UncheckedUrl("wss://chorus.example".to_string())),
+            None,
+            Some(
+                PublicKey::try_from_hex_string(
+                    "460c25e682fda7832b52d1f22d3d22b3176d972f60dcdc3212ed8c92ef85065c",
+                    false,
+                )
+                .unwrap(),
+            ),
+        );
+
+        assert_eq!(tag, tag2);
+    }
+
+    #[test]
+    fn test_quote_tag() {
+        let id = Id::mock();
+        let pk = PublicKey::mock();
+
+        let tag1 = TagV3::new_quote(id, None, Some(pk));
+        let (id2, opturl, optpk) = tag1.parse_quote().unwrap();
+
+        assert_eq!(id, id2);
+        assert!(opturl.is_none());
+        assert_eq!(Some(pk), optpk);
     }
 
     #[test]

@@ -330,7 +330,7 @@ mod test {
             created_at: Unixtime(1680000012),
             kind: EventKind::TextNote,
             tags: vec![
-                Tag::new_event(Id::mock(), Some(UncheckedUrl::mock()), None),
+                Tag::new_event(Id::mock(), Some(UncheckedUrl::mock()), None, None),
                 Tag::new_hashtag("foodstr".to_string()),
             ],
             content: "Hello World!".to_string(),

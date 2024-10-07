@@ -410,7 +410,7 @@ pub trait Signer: fmt::Debug {
         };
 
         if let Some(ze) = zapped_event {
-            pre_event.tags.push(Tag::new_event(ze, None, None));
+            pre_event.tags.push(Tag::new_event(ze, None, None, None));
         }
 
         self.sign_event(pre_event)
