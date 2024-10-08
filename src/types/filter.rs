@@ -1,4 +1,4 @@
-use super::{Event, EventKind, IdHex, PublicKeyHex, Tag, Unixtime};
+use super::{Event, EventKind, Id, IdHex, PublicKey, PublicKeyHex, Tag, Unixtime};
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
@@ -57,29 +57,33 @@ impl Filter {
     }
 
     /// Add an Id to the filter.
-    pub fn add_id(&mut self, id_hex: &IdHex) {
-        if !self.ids.contains(id_hex) {
-            self.ids.push(id_hex.to_owned());
+    pub fn add_id(&mut self, id: Id) {
+        let idhex: IdHex = id.into();
+        if !self.ids.contains(&idhex) {
+            self.ids.push(idhex);
         }
     }
 
     /// Delete an Id from the filter
-    pub fn del_id(&mut self, id_hex: &IdHex) {
-        if let Some(index) = self.ids.iter().position(|id| *id == *id_hex) {
+    pub fn del_id(&mut self, id: Id) {
+        let idhex: IdHex = id.into();
+        if let Some(index) = self.ids.iter().position(|id| *id == idhex) {
             let _ = self.ids.swap_remove(index);
         }
     }
 
     /// Add a PublicKey to the filter
-    pub fn add_author(&mut self, public_key_hex: &PublicKeyHex) {
-        if !self.authors.contains(public_key_hex) {
-            self.authors.push(public_key_hex.to_owned());
+    pub fn add_author(&mut self, public_key: PublicKey) {
+        let pkh: PublicKeyHex = public_key.into();
+        if !self.authors.contains(&pkh) {
+            self.authors.push(pkh);
         }
     }
 
     /// Delete a PublicKey from the filter
-    pub fn del_author(&mut self, public_key_hex: &PublicKeyHex) {
-        if let Some(index) = self.authors.iter().position(|pk| *pk == *public_key_hex) {
+    pub fn del_author(&mut self, public_key: PublicKey) {
+        let pkh: PublicKeyHex = public_key.into();
+        if let Some(index) = self.authors.iter().position(|pk| *pk == pkh) {
             let _ = self.authors.swap_remove(index);
         }
     }
@@ -291,15 +295,15 @@ mod test {
 
     #[test]
     fn test_add_remove_id() {
-        let mock = IdHex::mock();
+        let mock = Id::mock();
 
         let mut filters: Filter = Filter::new();
 
-        filters.add_id(&mock);
+        filters.add_id(mock);
         assert_eq!(filters.ids.len(), 1);
-        filters.add_id(&mock); // overwrites
+        filters.add_id(mock); // overwrites
         assert_eq!(filters.ids.len(), 1);
-        filters.del_id(&mock);
+        filters.del_id(mock);
         assert!(filters.ids.is_empty());
     }
 
