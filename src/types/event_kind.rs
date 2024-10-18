@@ -8,7 +8,7 @@ use std::convert::From;
 use std::fmt;
 
 macro_rules! define_event_kinds {
-    ($($comment:expr, $name:ident = $value:expr),*) => {
+    ($($comment:expr, $display:expr, $name:ident = $value:expr),*) => {
         /// A kind of Event
         #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
         #[repr(u32)]
@@ -36,6 +36,21 @@ macro_rules! define_event_kinds {
         static WELL_KNOWN_KINDS: &[EventKind] = &[
             $($name,)*
         ];
+
+        impl fmt::Display for EventKind {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                match *self {
+                    $($name => write!(f, $display),)*
+                    JobRequest(u) => write!(f, "Job Request ({})", u),
+                    JobResult(u) => write!(f, "Job Result ({})", u),
+                    GroupControl(u) => write!(f, "Group Control ({})", u),
+                    Replaceable(u) => write!(f, "Replaceable ({})", u),
+                    Ephemeral(u) => write!(f, "Ephemeral ({})", u),
+                    GroupMetadata(u) => write!(f, "Group Metadata ({})", u),
+                    Other(u) => write!(f, "Other ({})", u),
+                }
+            }
+        }
 
         impl From<u32> for EventKind {
             fn from(u: u32) -> Self {
@@ -71,192 +86,463 @@ macro_rules! define_event_kinds {
 
 define_event_kinds!(
     "Event sets the metadata associated with a public key (NIP-01)",
+    "User Metadata",
     Metadata = 0,
+
     "Event is a text note (NIP-01)",
+    "Short Text Note",
     TextNote = 1,
+
     "Event contains a relay URL which the author recommends",
+    "Recommend Relay",
     RecommendRelay = 2,
+
     "Event contains tags which represent the authors contacts including the authors pet names for them (NIP-02)",
+    "Follows",
     ContactList = 3,
+
     "Event is an encrypted direct message (NIP-04)",
+    "Encrypted Direct Messages",
     EncryptedDirectMessage = 4,
+
     "Event is an authors request to delete previous events (NIP-09)",
+    "Event Deletion Request",
     EventDeletion = 5,
+
     "Repost (NIP-18)",
+    "Repost",
     Repost = 6,
+
     "Event is a reaction to a `TextNote` event (NIP-25)",
+    "Reaction",
     Reaction = 7,
+
     "Badge Award (NIP-58)",
+    "Badge Award",
     BadgeAward = 8,
+
     "Group Chat Message (NIP-29)",
+    "Group Chat Message",
     GroupChatMessage = 9,
+
     "Group Chat Threaded Reply (NIP-29)",
+    "Group Chat Threaded Reply",
     GroupChatThreadedReply = 10,
+
     "Group Chat Thread (NIP-29)",
+    "Group Chat Thread",
     GroupChatThread = 11,
+
     "Group Chat Reply (NIP-29)",
+    "Group Chat Reply",
     GroupChatReply = 12,
+
     "Seal (NIP-59 PR 716)",
+    "Seal",
     Seal = 13,
+
     "Chat Message / DM (NIP-24 PR 686)",
+    "Direct Message",
     DmChat = 14,
+
     "Generic Repost (NIP-18)",
+    "Generic Repost",
     GenericRepost = 16,
+
+    "Reaction to a website (NIP-25)",
+    "Reaction to a website",
+    ReactionToWebsite = 17,
+
     "Event creates a public channel (NIP-28)",
+    "Channel Creation",
     ChannelCreation = 40,
+
     "Event sets metadata on a public channel (NIP-28)",
+    "Channel Metadata",
     ChannelMetadata = 41,
+
     "Event creates a message on a public channel (NIP-28)",
+    "Channel Message",
     ChannelMessage = 42,
+
     "Event hides a message on a public channel (NIP-28)",
+    "Channel Hide Message",
     ChannelHideMessage = 43,
+
     "Event mutes a user on a public channel (NIP-28)",
+    "Channel Mute User",
     ChannelMuteUser = 44,
+
+    "Chess (PGN) (NIP-64)",
+    "Chess (PGN)",
+    ChessPgn = 64,
+
+    "Wiki article merge requests (NIP-54)",
+    "Wiki Merge Requests",
+    WikiMergeRequest = 818,
+
     "Bid (NIP-15)",
+    "Bid",
     Bid = 1021,
+
     "Bid Confirmation (NIP-15)",
+    "Bid Confirmation",
     BidConfirmation = 1022,
-    "Timestamps",
+
+    "Open Timestamps (NIP-03)",
+    "Open Timestamp",
     Timestamp = 1040,
+
     "Gift Wrap (NIP-59 PR 716)",
+    "Gift Wrap",
     GiftWrap = 1059,
+
     "File Metadata (NIP-94)",
+    "File Metadata",
     FileMetadata = 1063,
+
     "Live Chat Message (NIP-53)",
+    "Live Chat Message",
     LiveChatMessage = 1311,
-    "Patches (NIP-34)",
+
+    "Git Patches (NIP-34)",
+    "Git Patch",
     Patches = 1617,
-    "Issue (NIP-34)",
+
+    "Git Issue (NIP-34)",
+    "Git Issue",
     GitIssue = 1621,
+
     "Replies (NIP-34)",
+    "Git Reply",
     GitReply = 1622,
+
     "Status Open  (NIP-34)",
+    "Git Status Open",
     GitStatusOpen = 1630,
+
     "Status Applied (NIP-34)",
+    "Git Status Applied",
     GitStatusApplied = 1631,
+
     "Status Closed (NIP-34)",
+    "Git Status Closed",
     GitStatusClosed = 1632,
+
     "Status Draft (NIP-34)",
+    "Git Status Draft",
     GitStatusDraft = 1633,
+
     "Problem Tracker (nostrocket-1971)",
+    "Problem Tracker",
     ProblemTracker = 1971,
+
     "Reporting (NIP-56)",
+    "Reporting",
     Reporting = 1984,
+
     "Label (NIP-32)",
+    "Label",
     Label = 1985,
-    "Community (exclusive) Post (NIP-72 pr 753)",
-    CommunityPost = 4549,
+
+    "Relay reviews",
+    "Relay reviews",
+    RelayReviews = 1986,
+
+    "AI Embeddings",
+    "AI Embeddings",
+    AiEmbeddings = 1987,
+
+    "Torrent",
+    "Torrent",
+    Torrent = 2003,
+
+    "Torrent Comment",
+    "Torrent Comment",
+    TorrentComment = 2004,
+
+    "Coinjoin Pool",
+    "Coinjoin Pool",
+    CoinjoinPool = 2022,
+
     "Community Post Approval (NIP-72)",
+    "Community Post Approval",
     CommunityPostApproval = 4550,
+
     "Job Feedback (NIP-90)",
+    "Job Feedback",
     JobFeedback = 7000,
+
     "Zap Goal (NIP-75)",
+    "Zap Goal",
     ZapGoal = 9041,
+
+    "Tidal Login",
+    "Tidal Login",
+    TidalLogin = 9467,
+
+    "Zap Request",
     "Zap Request",
     ZapRequest = 9734,
+
+    "Zap",
     "Zap",
     Zap = 9735,
+
     "Highlights (NIP-84)",
+    "Highlights",
     Highlights = 9802,
+
     "Mute List (NIP-51)",
+    "Mute List",
     MuteList = 10000,
-    "PinList (NIP-51)",
+
+    "Pin List (NIP-51)",
+    "Pin List",
     PinList = 10001,
-    "Relays List (NIP-65)",
+
+    "Relay List Metadata (NIP-65)",
+    "Relay List Metadata",
     RelayList = 10002,
+
     "Bookmarks List (NIP-51)",
+    "Bookmarks List",
     BookmarkList = 10003,
+
     "Communities List (NIP-51)",
+    "Communities List",
     CommunityList = 10004,
+
     "Public Chats List (NIP-51)",
+    "Public Chats List",
     PublicChatsList = 10005,
+
     "Blocked Relays List (NIP-51)",
+    "Blocked Relays List",
     BlockedRelaysList = 10006,
+
     "Search Relays List (NIP-51)",
+    "Search Relays List",
     SearchRelaysList = 10007,
+
     "User Groups (NIP-51, NIP-29)",
+    "User Groups",
     UserGroups = 10009,
+
     "Interests List (NIP-51)",
+    "Interests List",
     InterestsList = 10015,
+
     "User Emoji List (NIP-51)",
+    "User Emoji List",
     UserEmojiList = 10030,
+
     "Relay list to receive DMs (NIP-17)",
+    "DM Relay List",
     DmRelayList = 10050,
+
+    "User Server List",
+    "User Server List",
+    UserServerList = 10063,
+
     "File storage server list (NIP-96)",
+    "File Storage Server List",
     FileStorageServerList = 10096,
+
     "Wallet Info (NIP-47)",
+    "Wallet Info",
     WalletInfo = 13194,
+
     "Lightning Pub RPC (Lightning.Pub)",
+    "Lightning Pub RPC",
     LightningPubRpc = 21000,
+
     "Client Authentication (NIP-42)",
+    "Client Authentication",
     Auth = 22242,
+
     "Wallet Request (NIP-47)",
+    "Wallet Request",
     WalletRequest = 23194,
+
     "Wallet Response (NIP-47)",
+    "Wallet Response",
     WalletResponse = 23195,
+
     "Nostr Connect (NIP-46)",
+    "Nostr Connect",
     NostrConnect = 24133,
+
+    "Blobs stored on mediaservers (Blossom)",
+    "Blossom",
+    Blossom = 24242,
+
     "HTTP Auth (NIP-98)",
+    "HTTP Auth",
     HttpAuth = 27235,
+
     "Categorized People List (NIP-51)",
+    "Follow Sets",
     FollowSets = 30000,
+
     "Categorized Bookmark List (NIP-51)",
+    "Generic Lists",
     GenericSets = 30001,
+
     "Relay Sets (NIP-51)",
+    "Relay Sets",
     RelaySets = 30002,
+
     "Bookmark Sets (NIP-51)",
+    "Bookmark Sets",
     BookmarkSets = 30003,
+
     "Curation Sets (NIP-51)",
+    "Curation Sets",
     CurationSets = 30004,
+
+    "Video Sets (NIP-51)",
+    "Video Sets",
+    VideoSets = 30005,
+
+    "Kind Mute Sets (NIP-51)",
+    "Kind Mute Sets",
+    KindMuteSets = 30007,
+
     "Profile Badges (NIP-58)",
+    "Profile Badges",
     ProfileBadges = 30008,
+
     "Badge Definition (NIP-58)",
+    "Badge Definition",
     BadgeDefinition = 30009,
+
     "Interest Sets (NIP-51)",
+    "Interest Sets",
     InterestSets = 30015,
+
     "Create or update a stall (NIP-15)",
+    "Create Or Update Stall",
     CreateUpdateStall = 30017,
+
     "Create or update a product (NIP-15)",
+    "Create Or Update Product",
     CreateUpdateProduct = 30018,
+
     "Marketplace UI/UX (NIP-15)",
+    "Marketplace UI/UX",
     MarketplaceUi = 30019,
+
     "Product sold as auction (NIP-15)",
+    "Product Sold As Auction",
     ProductSoldAuction = 30020,
+
     "Long-form Content (NIP-23)",
+    "Long-form Content",
     LongFormContent = 30023,
+
     "Draft Long-form Content (NIP-23)",
+    "Draft Long-form Content",
     DraftLongFormContent = 30024,
+
     "Emoji Sets (NIP-51)",
+    "Emoji Sets",
     EmojiSets = 30030,
+
+    "Modular Article Header",
+    "Modular Article Header",
+    ModularArticleHedaer = 30040,
+
+    "Modular Article Content",
+    "Modular Article Content",
+    ModularArticleContent = 30041,
+
     "Release artifact sets (NIP-51)",
+    "Release Artifact Sets",
     ReleaseArtifactSets = 30063,
+
     "Application Specific Data, (NIP-78)",
+    "Application Specific Data",
     AppSpecificData = 30078,
+
     "Live Event (NIP-53)",
+    "Live Event",
     LiveEvent = 30311,
+
     "User Status (NIP-315 PR 737)",
+    "User Statuses",
     UserStatus = 30315,
+
     "Classified Listing (NIP-99)",
+    "Classified Listing",
     ClassifiedListing = 30402,
+
     "Draft Classified Listing (NIP-99)",
+    "Draft Classified Listing",
     DraftClassifiedListing = 30403,
+
     "Repository Announcement (NIP-34)",
+    "Repository Announcement",
     RepositoryAnnouncement = 30617,
+
+    "Repository State Announcement (NIP-34)",
+    "Repository State Announcement",
+    RepositoryStateAnnouncement = 30618,
+
     "Wiki Article (NIP-54)",
+    "Wiki Article",
     WikiArticle = 30818,
+
+    "Redirects",
+    "Redirects",
+    Redirects = 30819,
+
+    "Link Set",
+    "Link Set",
+    LinkSet = 31388,
+
+    "Feed",
+    "Feed",
+    Feed = 31890,
+
     "Date-Based Calendar Event (NIP-52)",
+    "Date-Based Calendar Event",
     DateBasedCalendarEvent = 31922,
+
     "Time-Based Calendar Event (NIP-52)",
+    "Time-Based Calendar Event",
     TimeBasedCalendarEvent = 31923,
+
     "Calendar (NIP-52)",
+    "Calendar",
     Calendar = 31924,
+
     "Calendar Event RSVP (NIP-52)",
+    "Calendar Event RSVP",
     CalendarEventRsvp = 31925,
+
     "Handler Recommendation (NIP-89)",
+    "Handler Recommendation",
     HandlerRecommendation = 31989,
+
     "Handler Information (NIP-89)",
+    "Handler Information",
     HandlerInformation = 31990,
+
+    "Video Event",
+    "Video Event",
+    VideoEvent = 34235,
+
+    "Short-form Portrait Video Event",
+    "Short-Form Portrait Video Event",
+    ShortFormPortraitVideoEvent = 34236,
+
+    "Video View Event",
+    "Video View Event",
+    VideoViewEvent = 34237,
+
     "Community Definition (NIP-72)",
+    "Community Definition",
     CommunityDefinition = 34550
 );
 
@@ -334,7 +620,6 @@ impl EventKind {
                 | GitStatusApplied
                 | GitStatusClosed
                 | GitStatusDraft
-                | CommunityPost
                 | LongFormContent
                 | DraftLongFormContent
         )
