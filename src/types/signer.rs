@@ -49,7 +49,7 @@ pub trait Signer: fmt::Debug {
         algo: ContentEncryptionAlgorithm,
     ) -> Result<String, Error>;
 
-    /// Decrypt NIP-44
+    /// Decrypt NIP-04 or NIP-44
     fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error>;
 
     /// Get NIP-44 conversation key

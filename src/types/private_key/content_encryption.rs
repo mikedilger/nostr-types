@@ -52,15 +52,27 @@ impl PrivateKey {
         }
     }
 
-    /// Decrypt (detects encryption version)
-    pub fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
+    /// Detect encryption algorithm of ciphertext
+    pub fn detect_encryption_algorithm(ciphertext: &str) -> ContentEncryptionAlgorithm {
         let cbytes = ciphertext.as_bytes();
+
         if cbytes.len() >= 28
             && cbytes[ciphertext.len() - 28] == b'?'
             && cbytes[ciphertext.len() - 27] == b'i'
             && cbytes[ciphertext.len() - 26] == b'v'
             && cbytes[ciphertext.len() - 25] == b'='
         {
+            ContentEncryptionAlgorithm::Nip04
+        } else {
+            // We presume Nip44v1Unpadded and Nip44v1Padded are so rare and unused that
+            // we won't find them here
+            ContentEncryptionAlgorithm::Nip44v2
+        }
+    }
+
+    /// Decrypt (detects encryption version)
+    pub fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
+        if Self::detect_encryption_algorithm(ciphertext) == ContentEncryptionAlgorithm::Nip04 {
             self.decrypt_nip04(other, ciphertext)
                 .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
         } else {
