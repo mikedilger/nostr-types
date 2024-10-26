@@ -7,7 +7,7 @@ use sha2::{Digest, Sha256};
 use zeroize::Zeroize;
 
 /// Content Encryption Algorithm
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum ContentEncryptionAlgorithm {
     /// NIP-04 (insecure)
     Nip04,
