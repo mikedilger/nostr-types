@@ -16,6 +16,9 @@ pub use event_kind::{EventKind, EventKindIterator, EventKindOrRange};
 mod event_reference;
 pub use event_reference::EventReference;
 
+mod file_metadata;
+pub use file_metadata::FileMetadata;
+
 mod filter;
 pub use filter::Filter;
 
