@@ -1,7 +1,7 @@
 use super::TagV3;
 use crate::types::{
-    EventDelegation, EventKind, EventReference, Id, KeySigner, MilliSatoshi, NostrBech32, NostrUrl,
-    PrivateKey, PublicKey, RelayUrl, Signature, Signer, Unixtime, ZapData,
+    EventDelegation, EventKind, EventReference, FileMetadata, Id, KeySigner, MilliSatoshi,
+    NostrBech32, NostrUrl, PrivateKey, PublicKey, RelayUrl, Signature, Signer, Unixtime, ZapData,
 };
 use crate::{Error, IntoVec};
 use lightning_invoice::Bolt11Invoice;
@@ -889,6 +889,21 @@ impl EventV3 {
         for tag in self.tags.iter() {
             if let Ok(hashtag) = tag.parse_hashtag() {
                 output.push(hashtag);
+            }
+        }
+
+        output
+    }
+
+    /// Return all attached FileMetadata objects
+    pub fn file_metadata(&self) -> Vec<FileMetadata> {
+        let mut output: Vec<FileMetadata> = Vec::new();
+
+        for tag in self.tags.iter() {
+            if tag.tagname() == "imeta" {
+                if let Some(fm) = FileMetadata::from_imeta_tag(tag) {
+                    output.push(fm);
+                }
             }
         }
 
