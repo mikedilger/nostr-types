@@ -26,7 +26,7 @@ impl TagV3 {
 
     /// Remove empty fields from the end
     pub fn trim(&mut self) {
-        while self.0[self.0.len() - 1].is_empty() {
+        while self.0[self.len() - 1].is_empty() {
             let _ = self.0.pop();
         }
     }
@@ -36,9 +36,14 @@ impl TagV3 {
         self.0
     }
 
+    /// Number of string fields in the tag
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
     /// Get the string at the given index
     pub fn get_index(&self, index: usize) -> &str {
-        if self.0.len() > index {
+        if self.len() > index {
             &self.0[index]
         } else {
             Self::EMPTY_STRING
@@ -47,10 +52,15 @@ impl TagV3 {
 
     /// Set the string at the given index
     pub fn set_index(&mut self, index: usize, value: String) {
-        while self.0.len() <= index {
+        while self.len() <= index {
             self.0.push("".to_owned());
         }
         self.0[index] = value;
+    }
+
+    /// Push another values onto the tag
+    pub fn push_value(&mut self, value: String) {
+        self.0.push(value);
     }
 
     /// Push more values onto the tag
@@ -171,7 +181,7 @@ impl TagV3 {
         if &self.0[0] != "content-warning" {
             return Err(Error::TagMismatch);
         }
-        if self.0.len() >= 2 {
+        if self.len() >= 2 {
             Ok(Some(self.0[1].to_string()))
         } else {
             Ok(None)
@@ -211,7 +221,7 @@ impl TagV3 {
     pub fn parse_event(
         &self,
     ) -> Result<(Id, Option<UncheckedUrl>, Option<String>, Option<PublicKey>), Error> {
-        if self.0.len() < 2 {
+        if self.len() < 2 {
             return Err(Error::TagMismatch);
         }
         if &self.0[0] != "e" {
@@ -219,7 +229,7 @@ impl TagV3 {
         }
         let id = Id::try_from_hex_string(&self.0[1])?;
 
-        let url = if self.0.len() >= 3 {
+        let url = if self.len() >= 3 {
             if self.0[2].len() > 0 {
                 Some(UncheckedUrl(self.0[2].to_owned()))
             } else {
@@ -229,7 +239,7 @@ impl TagV3 {
             None
         };
 
-        let marker = if self.0.len() >= 4 {
+        let marker = if self.len() >= 4 {
             if self.0[3].len() > 0 {
                 Some(self.0[3].to_owned())
             } else {
@@ -239,7 +249,7 @@ impl TagV3 {
             None
         };
 
-        let pk = if self.0.len() >= 5 {
+        let pk = if self.len() >= 5 {
             if let Ok(pk) = PublicKey::try_from_hex_string(&self.0[4], true) {
                 Some(pk)
             } else {
@@ -275,7 +285,7 @@ impl TagV3 {
 
     /// Parse a "q" tag
     pub fn parse_quote(&self) -> Result<(Id, Option<UncheckedUrl>, Option<PublicKey>), Error> {
-        if self.0.len() < 2 {
+        if self.len() < 2 {
             return Err(Error::TagMismatch);
         }
         if &self.0[0] != "q" {
@@ -283,7 +293,7 @@ impl TagV3 {
         }
         let id = Id::try_from_hex_string(&self.0[1])?;
 
-        let url = if self.0.len() >= 3 {
+        let url = if self.len() >= 3 {
             if self.0[2].len() > 0 {
                 Some(UncheckedUrl(self.0[2].to_owned()))
             } else {
@@ -293,7 +303,7 @@ impl TagV3 {
             None
         };
 
-        let pubkey = if self.0.len() >= 4 {
+        let pubkey = if self.len() >= 4 {
             if let Ok(pk) = PublicKey::try_from_hex_string(&self.0[3], true) {
                 Some(pk)
             } else {
@@ -326,19 +336,19 @@ impl TagV3 {
 
     /// Parse a "p" tag
     pub fn parse_pubkey(&self) -> Result<(PublicKey, Option<UncheckedUrl>, Option<String>), Error> {
-        if self.0.len() < 2 {
+        if self.len() < 2 {
             return Err(Error::TagMismatch);
         }
         if &self.0[0] != "p" {
             return Err(Error::TagMismatch);
         }
         let pubkey = PublicKey::try_from_hex_string(&self.0[1], true)?;
-        let url = if self.0.len() >= 3 {
+        let url = if self.len() >= 3 {
             Some(UncheckedUrl(self.0[2].to_owned()))
         } else {
             None
         };
-        let petname = if self.0.len() >= 4 {
+        let petname = if self.len() >= 4 {
             if self.0[3].is_empty() {
                 None
             } else {
@@ -357,7 +367,7 @@ impl TagV3 {
 
     /// Parse an "t" tag
     pub fn parse_hashtag(&self) -> Result<String, Error> {
-        if self.0.len() < 2 {
+        if self.len() < 2 {
             return Err(Error::TagMismatch);
         }
         if &self.0[0] != "t" {
@@ -377,14 +387,14 @@ impl TagV3 {
 
     /// Parse an "r" tag
     pub fn parse_relay(&self) -> Result<(UncheckedUrl, Option<String>), Error> {
-        if self.0.len() < 2 {
+        if self.len() < 2 {
             return Err(Error::TagMismatch);
         }
         if &self.0[0] != "r" {
             return Err(Error::TagMismatch);
         }
         let relay = UncheckedUrl(self.0[1].clone());
-        let marker = if self.0.len() >= 3 {
+        let marker = if self.len() >= 3 {
             Some(self.0[2].clone())
         } else {
             None
@@ -399,7 +409,7 @@ impl TagV3 {
 
     /// Parse a "d" tag
     pub fn parse_identifier(&self) -> Result<String, Error> {
-        if self.0.len() < 2 {
+        if self.len() < 2 {
             return Err(Error::TagMismatch);
         }
         if &self.0[0] != "d" {
@@ -415,7 +425,7 @@ impl TagV3 {
 
     /// Parse a "subject" tag
     pub fn parse_subject(&self) -> Result<String, Error> {
-        if self.0.len() < 2 {
+        if self.len() < 2 {
             return Err(Error::TagMismatch);
         }
         if &self.0[0] != "subject" {
@@ -435,14 +445,14 @@ impl TagV3 {
 
     /// Parse a "nonce" tag
     pub fn parse_nonce(&self) -> Result<(u64, Option<u32>), Error> {
-        if self.0.len() < 2 {
+        if self.len() < 2 {
             return Err(Error::TagMismatch);
         }
         if &self.0[0] != "nonce" {
             return Err(Error::TagMismatch);
         }
         let nonce = self.0[1].parse::<u64>()?;
-        let target = if self.0.len() >= 3 {
+        let target = if self.len() >= 3 {
             Some(self.0[2].parse::<u32>()?)
         } else {
             None
@@ -457,7 +467,7 @@ impl TagV3 {
 
     /// Parse a "title" tag
     pub fn parse_title(&self) -> Result<String, Error> {
-        if self.0.len() < 2 {
+        if self.len() < 2 {
             return Err(Error::TagMismatch);
         }
         if &self.0[0] != "title" {
@@ -473,7 +483,7 @@ impl TagV3 {
 
     /// Parse a "summary" tag
     pub fn parse_summary(&self) -> Result<String, Error> {
-        if self.0.len() < 2 {
+        if self.len() < 2 {
             return Err(Error::TagMismatch);
         }
         if &self.0[0] != "summary" {
@@ -489,7 +499,7 @@ impl TagV3 {
 
     /// Parse a "k" tag
     pub fn parse_kind(&self) -> Result<EventKind, Error> {
-        if self.0.len() < 2 {
+        if self.len() < 2 {
             return Err(Error::TagMismatch);
         }
         if &self.0[0] != "k" {
@@ -515,7 +525,7 @@ impl TagV3 {
 
     /// parse delegation tag
     pub fn parse_delegation(&self) -> Result<(PublicKey, DelegationConditions, Signature), Error> {
-        if self.0.len() < 4 {
+        if self.len() < 4 {
             return Err(Error::TagMismatch);
         }
         if &self.0[0] != "delegation" {
@@ -534,7 +544,7 @@ impl TagV3 {
 
     /// parse proxy tag
     pub fn parse_proxy(&self) -> Result<(String, String), Error> {
-        if self.0.len() < 3 {
+        if self.len() < 3 {
             return Err(Error::TagMismatch);
         }
         if &self.0[0] != "proxy" {
