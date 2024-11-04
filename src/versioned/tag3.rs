@@ -108,9 +108,13 @@ impl TagV3 {
                 naddr.d
             ),
         ];
+
         if !naddr.relays.is_empty() {
             vec.push(naddr.relays[0].0.clone());
+        } else if marker.is_some() {
+            vec.push("".to_owned());
         }
+
         if let Some(marker) = marker {
             vec.push(marker);
         }
