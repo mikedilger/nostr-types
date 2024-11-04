@@ -1,7 +1,8 @@
 use crate::types::{
-    DelegationConditions, EventKind, Id, NAddr, PublicKey, Signature, UncheckedUrl,
+    DelegationConditions, EventKind, EventReference, Id, NAddr, PublicKey, RelayUrl, Signature,
+    UncheckedUrl,
 };
-use crate::Error;
+use crate::{Error, IntoVec};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "speedy")]
 use speedy::{Readable, Writable};
@@ -121,7 +122,7 @@ impl TagV3 {
         TagV3(vec)
     }
 
-    /// Parse an 'a' tag
+    /// Parse an 'a' tag or 'A' tag
     /// `['a', 'kind:pubkeyhex:d', <optrelay>, <optmarker>]`
     pub fn parse_address(&self) -> Result<(NAddr, Option<String>), Error> {
         let strings = &self.0;
@@ -129,7 +130,7 @@ impl TagV3 {
         if strings.len() < 2 {
             return Err(Error::TagMismatch);
         }
-        if &strings[0] != "a" {
+        if &strings[0] != "a" && &strings[0] != "A" {
             return Err(Error::TagMismatch);
         }
 
@@ -220,7 +221,7 @@ impl TagV3 {
         TagV3(v)
     }
 
-    /// Parse an "e" tag
+    /// Parse an "e" or "E" tag
     /// `['e', <id>, <rurl>, <marker>]`
     pub fn parse_event(
         &self,
@@ -228,7 +229,7 @@ impl TagV3 {
         if self.len() < 2 {
             return Err(Error::TagMismatch);
         }
-        if &self.0[0] != "e" {
+        if &self.0[0] != "e" && &self.0[0] != "E" {
             return Err(Error::TagMismatch);
         }
         let id = Id::try_from_hex_string(&self.0[1])?;
@@ -264,6 +265,42 @@ impl TagV3 {
         };
 
         Ok((id, url, marker, pk))
+    }
+
+    /// Convert to an EventReference if any of 'e', 'a' , 'E', 'A', or 'q'
+    pub fn as_event_reference(&self) -> Option<EventReference> {
+        // 'e' or 'E"
+        if let Ok((id, opturl, optmarker, optpk)) = self.parse_event() {
+            return Some(EventReference::Id {
+                id,
+                author: optpk,
+                relays: opturl
+                    .as_ref()
+                    .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                    .into_vec(),
+                marker: optmarker,
+            });
+        }
+
+        // 'a' or 'A'
+        if let Ok((naddr, _optmarker)) = self.parse_address() {
+            return Some(EventReference::Addr(naddr));
+        }
+
+        // 'q'
+        if let Ok((id, opturl, optpk)) = self.parse_quote() {
+            return Some(EventReference::Id {
+                id,
+                author: optpk,
+                relays: opturl
+                    .as_ref()
+                    .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                    .into_vec(),
+                marker: None,
+            });
+        }
+
+        None
     }
 
     /// Create a "q" tag

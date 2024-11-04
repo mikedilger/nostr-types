@@ -201,6 +201,10 @@ define_event_kinds!(
     "File Metadata",
     FileMetadata = 1063,
 
+    "Comment (NIP-22 PR #1233)" ,
+    "Comment",
+    Comment = 1111,
+
     "Live Chat Message (NIP-53)",
     "Live Chat Message",
     LiveChatMessage = 1311,
@@ -612,6 +616,7 @@ impl EventKind {
                 | GenericRepost
                 | ChannelMessage
                 | FileMetadata
+                | Comment
                 | LiveChatMessage
                 | Patches
                 | GitIssue

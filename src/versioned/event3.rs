@@ -307,90 +307,37 @@ impl EventV3 {
             return None;
         }
 
-        // If there are no 'e' tags nor 'a' tags, then none
-        let num_event_ref_tags = self
+        let reply_tags: Vec<&TagV3> = self
             .tags
             .iter()
-            .filter(|t| t.tagname() == "e" || t.tagname() == "a")
-            .count();
-        if num_event_ref_tags == 0 {
-            return None;
-        }
+            .filter(|t| t.tagname() == "e" && t.get_index(3) == "reply")
+            .filter(|t| t.tagname() == "a" && t.get_index(3) == "reply")
+            .collect();
 
-        // look for an 'e' tag with marker 'reply'
-        for tag in self.tags.iter() {
-            if let Ok((id, rurl, marker, optpk)) = tag.parse_event() {
-                if marker.is_some() && marker.as_deref().unwrap() == "reply" {
-                    return Some(EventReference::Id {
-                        id,
-                        author: optpk,
-                        relays: rurl
-                            .as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
-                            .into_vec(),
-                        marker,
-                    });
-                }
+        if !reply_tags.is_empty() {
+            return reply_tags[0].as_event_reference();
+        } else {
+            // deprecated positional logic:  Use the last 'e' or 'a' tag, preferring
+            // 'a' tags (this function doesn't give you both).
+
+            let a_tags: Vec<&TagV3> = self
+                .tags
+                .iter()
+                .rev()
+                .filter(|t| t.tagname() == "a")
+                .collect();
+            if !a_tags.is_empty() {
+                return a_tags[0].as_event_reference();
             }
-        }
 
-        // look for an 'e' tag with marker 'root'
-        for tag in self.tags.iter() {
-            if let Ok((id, rurl, marker, optpk)) = tag.parse_event() {
-                if marker.is_some() && marker.as_deref().unwrap() == "root" {
-                    return Some(EventReference::Id {
-                        id,
-                        author: optpk,
-                        relays: rurl
-                            .as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
-                            .into_vec(),
-                        marker,
-                    });
-                }
-            }
-        }
-
-        // look for an 'a' tag marked 'reply'
-        for tag in self.tags.iter() {
-            if let Ok((ea, marker)) = tag.parse_address() {
-                if marker.is_some() && marker.as_deref().unwrap() == "reply" {
-                    return Some(EventReference::Addr(ea));
-                };
-            }
-        }
-
-        // look for an 'a' tag marked 'root'
-        for tag in self.tags.iter() {
-            if let Ok((ea, marker)) = tag.parse_address() {
-                if marker.is_some() && marker.as_deref().unwrap() == "root" {
-                    return Some(EventReference::Addr(ea));
-                };
-            }
-        }
-
-        // Use the last unmarked 'e' or 'a' tag (whichever is last)
-        for tag in self.tags.iter().rev() {
-            if tag.tagname() == "e" {
-                if let Ok((id, rurl, marker, optpk)) = tag.parse_event() {
-                    if marker.is_none() {
-                        return Some(EventReference::Id {
-                            id,
-                            author: optpk,
-                            relays: rurl
-                                .as_ref()
-                                .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
-                                .into_vec(),
-                            marker: None,
-                        });
-                    }
-                }
-            } else if tag.tagname() == "a" {
-                if let Ok((ea, marker)) = tag.parse_address() {
-                    if marker.is_some() && marker.as_deref().unwrap() == "root" {
-                        return Some(EventReference::Addr(ea));
-                    };
-                }
+            let e_tags: Vec<&TagV3> = self
+                .tags
+                .iter()
+                .rev()
+                .filter(|t| t.tagname() == "e")
+                .collect();
+            if !e_tags.is_empty() {
+                return e_tags[0].as_event_reference();
             }
         }
 
@@ -404,40 +351,33 @@ impl EventV3 {
             return None;
         }
 
-        // look for an 'e' tag with marker 'root'
-        for tag in self.tags.iter() {
-            if let Ok((id, rurl, optmarker, optpk)) = tag.parse_event() {
-                if optmarker.is_some() && optmarker.as_deref().unwrap() == "root" {
-                    return Some(EventReference::Id {
-                        id,
-                        author: optpk,
-                        relays: rurl
-                            .as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
-                            .into_vec(),
-                        marker: optmarker,
-                    });
-                }
-            }
-        }
+        let root_referencing_tags: Vec<&TagV3> = self
+            .tags
+            .iter()
+            .filter(|t| {
+                t.tagname() == "E"
+                    || t.tagname() == "A"
+                    || (t.tagname() == "e" && t.get_index(3) == "root")
+                    // marked 'a' tags were never in the spec, but just in case:
+                    || (t.tagname() == "a" && t.get_index(3) == "root")
+            })
+            .collect();
 
-        for tag in self.tags.iter() {
-            if let Ok((id, rurl, optmarker, optpk)) = tag.parse_event() {
-                if optmarker.is_none() {
-                    return Some(EventReference::Id {
-                        id,
-                        author: optpk,
-                        relays: rurl
-                            .as_ref()
-                            .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
-                            .into_vec(),
-                        marker: None,
-                    });
-                }
-            } else if let Ok((ea, optmarker)) = tag.parse_address() {
-                if optmarker.is_none() {
-                    return Some(EventReference::Addr(ea));
-                }
+        if !root_referencing_tags.is_empty() {
+            return root_referencing_tags[0].as_event_reference();
+        } else {
+            // deprecated positional logic:  Use the first 'e' or 'a' tag, but only if there are
+            // multiple event referencing tags (not including 'q'), and don't mix 'e' and 'a'
+            // when counting multiples.
+
+            let e_tags: Vec<&TagV3> = self.tags.iter().filter(|t| t.tagname() == "e").collect();
+            if e_tags.len() > 1 {
+                return e_tags[0].as_event_reference();
+            }
+
+            let a_tags: Vec<&TagV3> = self.tags.iter().filter(|t| t.tagname() == "a").collect();
+            if a_tags.len() > 1 {
+                return a_tags[0].as_event_reference();
             }
         }
 
@@ -446,7 +386,7 @@ impl EventV3 {
 
     /// If this event quotes others, get those other events
     pub fn quotes(&self) -> Vec<EventReference> {
-        if self.kind != EventKind::TextNote {
+        if self.kind != EventKind::TextNote && self.kind != EventKind::Comment {
             return vec![];
         }
 
