@@ -630,6 +630,31 @@ impl EventKind {
         )
     }
 
+    /// If this event kind's contents are textual (and thus may have links, etc)
+    pub fn is_textual(&self) -> bool {
+        matches!(
+            *self,
+            TextNote
+                | GroupChatMessage
+                | GroupChatThreadedReply
+                | GroupChatThread
+                | GroupChatReply
+            // NOT EncryptedDirectMesasge
+            // NOT Repost
+            // NOT DmChat
+            // NOT GenericRepost
+                | ChannelMessage
+                | Comment
+                | LiveChatMessage
+            // NOT Patches (is a diff)
+            // NOT GitIssue (is markdown)
+            // NOT GitReply (is markdown)
+            // NOT GitStatusX (is markdown)
+            // NOT LongFormContent (is markdown)
+            // NOT DraftLongFormContent (is markdown)
+        )
+    }
+
     /// Is direct message related
     pub fn is_direct_message_related(&self) -> bool {
         matches!(*self, EncryptedDirectMessage | DmChat | GiftWrap)
