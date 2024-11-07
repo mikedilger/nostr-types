@@ -645,13 +645,12 @@ impl EventKind {
             // NOT GenericRepost
                 | ChannelMessage
                 | Comment
-                | LiveChatMessage
-            // NOT Patches (is a diff)
-            // NOT GitIssue (is markdown)
-            // NOT GitReply (is markdown)
-            // NOT GitStatusX (is markdown)
-            // NOT LongFormContent (is markdown)
-            // NOT DraftLongFormContent (is markdown)
+                | LiveChatMessage // NOT Patches (is a diff)
+                                  // NOT GitIssue (is markdown)
+                                  // NOT GitReply (is markdown)
+                                  // NOT GitStatusX (is markdown)
+                                  // NOT LongFormContent (is markdown)
+                                  // NOT DraftLongFormContent (is markdown)
         )
     }
 

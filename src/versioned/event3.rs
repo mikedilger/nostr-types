@@ -307,38 +307,38 @@ impl EventV3 {
             return None;
         }
 
-        let reply_tags: Vec<&TagV3> = self
-            .tags
-            .iter()
-            .filter(|t| t.tagname() == "e" && t.get_index(3) == "reply")
-            .filter(|t| t.tagname() == "a" && t.get_index(3) == "reply")
-            .collect();
-
+        // Tags marked "reply"
+        let reply_tags: Vec<&TagV3> = self.tags.iter().filter(|t| t.marker() == "reply").collect();
         if !reply_tags.is_empty() {
             return reply_tags[0].as_event_reference();
-        } else {
-            // deprecated positional logic:  Use the last 'e' or 'a' tag, preferring
-            // 'a' tags (this function doesn't give you both).
+        }
 
-            let a_tags: Vec<&TagV3> = self
-                .tags
-                .iter()
-                .rev()
-                .filter(|t| t.tagname() == "a")
-                .collect();
-            if !a_tags.is_empty() {
-                return a_tags[0].as_event_reference();
-            }
+        // Tags marked "root" serve as replies if none were marked "reply"
+        let root_tags: Vec<&TagV3> = self.tags.iter().filter(|t| t.marker() == "root").collect();
+        if !root_tags.is_empty() {
+            return root_tags[0].as_event_reference();
+        }
 
-            let e_tags: Vec<&TagV3> = self
-                .tags
-                .iter()
-                .rev()
-                .filter(|t| t.tagname() == "e")
-                .collect();
-            if !e_tags.is_empty() {
-                return e_tags[0].as_event_reference();
-            }
+        // deprecated positional logic:  Use the last 'e' or 'a' tag that doesn't
+        // have a marker, preferring 'a' tags (this function doesn't give you both).
+        let a_tags: Vec<&TagV3> = self
+            .tags
+            .iter()
+            .rev()
+            .filter(|t| t.tagname() == "a" && t.marker() == "")
+            .collect();
+        if !a_tags.is_empty() {
+            return a_tags[0].as_event_reference();
+        }
+
+        let e_tags: Vec<&TagV3> = self
+            .tags
+            .iter()
+            .rev()
+            .filter(|t| t.tagname() == "e" && t.marker() == "")
+            .collect();
+        if !e_tags.is_empty() {
+            return e_tags[0].as_event_reference();
         }
 
         None
@@ -354,13 +354,7 @@ impl EventV3 {
         let root_referencing_tags: Vec<&TagV3> = self
             .tags
             .iter()
-            .filter(|t| {
-                t.tagname() == "E"
-                    || t.tagname() == "A"
-                    || (t.tagname() == "e" && t.get_index(3) == "root")
-                    // marked 'a' tags were never in the spec, but just in case:
-                    || (t.tagname() == "a" && t.get_index(3) == "root")
-            })
+            .filter(|t| t.tagname() == "E" || t.tagname() == "A" || t.marker() == "root")
             .collect();
 
         if !root_referencing_tags.is_empty() {
@@ -370,12 +364,20 @@ impl EventV3 {
             // multiple event referencing tags (not including 'q'), and don't mix 'e' and 'a'
             // when counting multiples.
 
-            let e_tags: Vec<&TagV3> = self.tags.iter().filter(|t| t.tagname() == "e").collect();
+            let e_tags: Vec<&TagV3> = self
+                .tags
+                .iter()
+                .filter(|t| t.tagname() == "e" && t.marker() == "")
+                .collect();
             if e_tags.len() > 1 {
                 return e_tags[0].as_event_reference();
             }
 
-            let a_tags: Vec<&TagV3> = self.tags.iter().filter(|t| t.tagname() == "a").collect();
+            let a_tags: Vec<&TagV3> = self
+                .tags
+                .iter()
+                .filter(|t| t.tagname() == "a" && t.marker() == "")
+                .collect();
             if a_tags.len() > 1 {
                 return a_tags[0].as_event_reference();
             }

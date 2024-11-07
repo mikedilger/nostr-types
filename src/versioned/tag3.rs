@@ -83,10 +83,8 @@ impl TagV3 {
 
     /// Get the marker (if relevant), else ""
     pub fn marker(&self) -> &str {
-        if self.tagname() == "e" {
+        if self.tagname() == "e" || self.tagname() == "a" {
             self.get_index(3)
-        } else if self.tagname() == "a" {
-            self.get_index(2)
         } else {
             Self::EMPTY_STRING
         }
