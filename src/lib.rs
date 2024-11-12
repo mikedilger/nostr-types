@@ -43,6 +43,20 @@ macro_rules! test_serde {
     };
 }
 
+#[cfg(test)]
+macro_rules! test_serde_val {
+    ($fnname:ident, $val:expr) => {
+        #[test]
+        fn $fnname() {
+            let a = $val;
+            let x = serde_json::to_string(&a).unwrap();
+            println!("{}", x);
+            let b = serde_json::from_str(&x).unwrap();
+            assert_eq!(a, b);
+        }
+    };
+}
+
 mod types;
 pub use types::{
     find_nostr_bech32_pos, find_nostr_url_pos, ClientMessage, ContentEncryptionAlgorithm,

@@ -200,6 +200,32 @@ impl<'de> Visitor<'de> for RelayMessageVisitor {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::Event;
 
     test_serde! {RelayMessageV3, test_relay_message_serde}
+
+    test_serde_val! {
+        test_relay_message_serde_auth,
+        RelayMessageV3::Auth("dummy".to_string())
+    }
+    test_serde_val! {
+        test_relay_message_serde_closed,
+        RelayMessageV3::Closed(SubscriptionId::mock(), "dummy".to_string())
+    }
+    test_serde_val! {
+        test_relay_message_serde_eose,
+        RelayMessageV3::Eose(SubscriptionId::mock())
+    }
+    test_serde_val! {
+        test_relay_message_serde_event,
+        RelayMessageV3::Event(SubscriptionId::mock(), Box::new(Event::mock()))
+    }
+    test_serde_val! {
+        test_relay_message_serde_notice,
+        RelayMessageV3::Notice("dummy".to_string())
+    }
+    test_serde_val! {
+        test_relay_message_serde_ok,
+        RelayMessageV3::Ok(Id::mock(), true, "dummy".to_string())
+    }
 }

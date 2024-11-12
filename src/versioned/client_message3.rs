@@ -138,6 +138,24 @@ impl<'de> Visitor<'de> for ClientMessageVisitor {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::Event;
 
     test_serde! {ClientMessageV3, test_client_message_serde}
+
+    test_serde_val! {
+        test_client_message_serde_event,
+        ClientMessageV3::Event(Box::new(Event::mock()))
+    }
+    test_serde_val! {
+        test_client_message_serde_req,
+        ClientMessageV3::Req(SubscriptionId::mock(), vec![Filter::mock(), Filter::mock()])
+    }
+    test_serde_val! {
+        test_client_message_serde_close,
+        ClientMessageV3::Close(SubscriptionId::mock())
+    }
+    test_serde_val! {
+        test_client_message_serde_auth,
+        ClientMessageV3::Auth(Box::new(Event::mock()))
+    }
 }
