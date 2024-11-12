@@ -31,6 +31,9 @@ pub use identity::Identity;
 mod key_signer;
 pub use key_signer::KeySigner;
 
+mod hll8;
+pub use hll8::Hll8;
+
 mod metadata;
 pub use metadata::Metadata;
 

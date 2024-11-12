@@ -75,6 +75,10 @@ pub enum Error {
     #[error("Invalid Encrypted Event")]
     InvalidEncryptedEvent,
 
+    /// Invalid HyperLogLog data
+    #[error("Invalid HLL data")]
+    InvalidHll,
+
     /// Invalid event Id
     #[error("Invalid event Id")]
     InvalidId,
