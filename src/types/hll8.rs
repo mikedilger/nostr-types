@@ -10,6 +10,12 @@ use std::ops::AddAssign;
 #[derive(Debug, Clone, Copy)]
 pub struct Hll8([u8; 256]);
 
+impl Default for Hll8 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Hll8 {
     /// Create a new Hll8
     pub fn new() -> Hll8 {
@@ -17,14 +23,14 @@ impl Hll8 {
     }
 
     /// Import from a (hex) string
-    pub fn from_string(s: &str) -> Result<Hll8, Error> {
+    pub fn from_hex_string(s: &str) -> Result<Hll8, Error> {
         let vec: Vec<u8> = hex::decode(s)?;
         let arr: [u8; 256] = vec.try_into().map_err(|_| Error::InvalidHll)?;
         Ok(Hll8(arr))
     }
 
     /// Export to a (hex) string
-    pub fn to_string(&self) -> String {
+    pub fn to_hex_string(&self) -> String {
         hex::encode(self.0)
     }
 
@@ -48,6 +54,7 @@ impl Hll8 {
         // Count zeros after that offset
         let zeros = {
             let mut zeros: u8 = 0;
+            #[allow(clippy::needless_range_loop)]
             for i in offset + 1..=31 {
                 let leading = input[i].leading_zeros();
                 zeros += leading as u8;
