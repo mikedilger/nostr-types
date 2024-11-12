@@ -1,4 +1,5 @@
 use super::{Event, EventKind, Id, IdHex, PublicKey, PublicKeyHex, Tag, Unixtime};
+use crate::Error;
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
@@ -194,6 +195,43 @@ impl Filter {
         }
 
         true
+    }
+
+    /// The offset used for NIP-45 (pr #1561)
+    pub fn hyperloglog_offset(&self) -> Result<usize, Error> {
+        let r = |vec: &Vec<String>| {
+            let bytes = match hex::decode(&vec[0].as_bytes()[32..=33]) {
+                Ok(b) => b,
+                Err(_) => return Ok(16),
+            };
+            Ok(bytes[0] as usize % 24)
+        };
+
+        if let Some(vec) = self.tags.get(&'e') {
+            if vec.len() == 1 {
+                return r(vec);
+            }
+        }
+
+        if let Some(vec) = self.tags.get(&'p') {
+            if vec.len() == 1 {
+                return r(vec);
+            }
+        }
+
+        if let Some(vec) = self.tags.get(&'a') {
+            if vec.len() == 1 {
+                return r(vec);
+            }
+        }
+
+        if let Some(vec) = self.tags.get(&'q') {
+            if vec.len() == 1 {
+                return r(vec);
+            }
+        }
+
+        Ok(16)
     }
 
     // Mock data for testing

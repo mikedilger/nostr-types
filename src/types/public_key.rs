@@ -102,6 +102,24 @@ impl PublicKey {
         Ok(SECP256K1.verify_schnorr(&signature.0, &message, &pk)?)
     }
 
+    /// This provides a u32 hash input for HyperLogLog that is based on
+    /// NIP-45 (pr #1561).  This works with the original HyperLogLog
+    pub fn hyperloglog_hash32(&self, offset: usize) -> u32 {
+        if offset + 3 >= 32 {
+            panic!("hyperloglog_hash32 offset cannot be greater than 28");
+        }
+        u32::from_ne_bytes(self.0[offset..offset + 3].try_into().unwrap())
+    }
+
+    /// This provides a u64 hash input for HyperLogLog++ that is based on
+    /// NIP-45 (pr #1561).  This works with Google's HyperLogLog++
+    pub fn hyperloglog_hash64(&self, offset: usize) -> u64 {
+        if offset + 7 >= 32 {
+            panic!("hyperloglog_hash64 offset cannot be greater than 24");
+        }
+        u64::from_ne_bytes(self.0[offset..offset + 7].try_into().unwrap())
+    }
+
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> PublicKey {
