@@ -1,4 +1,4 @@
-use super::{EventV2, Why};
+use super::{EventV3, Why};
 use crate::types::{Id, SubscriptionId};
 use serde::de::Error as DeError;
 use serde::de::{Deserialize, Deserializer, IgnoredAny, SeqAccess, Visitor};
@@ -25,7 +25,7 @@ pub enum RelayMessageV3 {
     Eose(SubscriptionId),
 
     /// An event matching a subscription
-    Event(SubscriptionId, Box<EventV2>),
+    Event(SubscriptionId, Box<EventV3>),
 
     /// A human readable notice for errors and other information
     Notice(String),
@@ -63,7 +63,7 @@ impl RelayMessageV3 {
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> RelayMessageV3 {
-        RelayMessageV3::Event(SubscriptionId::mock(), Box::new(EventV2::mock()))
+        RelayMessageV3::Event(SubscriptionId::mock(), Box::new(EventV3::mock()))
     }
 }
 
@@ -147,7 +147,7 @@ impl<'de> Visitor<'de> for RelayMessageVisitor {
             let id: SubscriptionId = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing id field"))?;
-            let event: EventV2 = seq
+            let event: EventV3 = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing event field"))?;
             output = Some(RelayMessageV3::Event(id, Box::new(event)));
