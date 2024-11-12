@@ -39,9 +39,9 @@ impl NEvent {
         // Push relays
         for relay in &self.relays {
             tlv.push(1); // type 'relay'
-            let len = relay.0.len() as u8;
+            let len = relay.0.as_bytes().len() as u8;
             tlv.push(len); // the length of the string
-            tlv.extend(relay.0[..len as usize].as_bytes());
+            tlv.extend(&relay.0.as_bytes()[..len as usize]);
         }
 
         // Maybe Push kind
