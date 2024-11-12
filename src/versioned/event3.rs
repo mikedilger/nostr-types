@@ -590,7 +590,7 @@ impl EventV3 {
             for tag in self.tags.iter() {
                 if tag.tagname() == "description" {
                     let request_string = tag.value();
-                    if let Ok(e) = serde_json::from_str::<EventV3>(&request_string) {
+                    if let Ok(e) = serde_json::from_str::<EventV3>(request_string) {
                         zap_request = Some(e);
                     }
                 }

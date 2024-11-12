@@ -42,6 +42,11 @@ impl TagV3 {
         self.0.len()
     }
 
+    /// Is the tag empty
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Get the string at the given index
     pub fn get_index(&self, index: usize) -> &str {
         if self.len() > index {
@@ -221,6 +226,7 @@ impl TagV3 {
 
     /// Parse an "e" or "E" tag
     /// `['e', <id>, <rurl>, <marker>]`
+    #[allow(clippy::type_complexity)]
     pub fn parse_event(
         &self,
     ) -> Result<(Id, Option<UncheckedUrl>, Option<String>, Option<PublicKey>), Error> {
@@ -233,7 +239,7 @@ impl TagV3 {
         let id = Id::try_from_hex_string(&self.0[1])?;
 
         let url = if self.len() >= 3 {
-            if self.0[2].len() > 0 {
+            if !self.0[2].is_empty() {
                 Some(UncheckedUrl(self.0[2].to_owned()))
             } else {
                 None
@@ -243,7 +249,7 @@ impl TagV3 {
         };
 
         let marker = if self.len() >= 4 {
-            if self.0[3].len() > 0 {
+            if !self.0[3].is_empty() {
                 Some(self.0[3].to_owned())
             } else {
                 None
@@ -333,7 +339,7 @@ impl TagV3 {
         let id = Id::try_from_hex_string(&self.0[1])?;
 
         let url = if self.len() >= 3 {
-            if self.0[2].len() > 0 {
+            if !self.0[2].is_empty() {
                 Some(UncheckedUrl(self.0[2].to_owned()))
             } else {
                 None

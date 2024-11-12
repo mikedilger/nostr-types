@@ -131,6 +131,6 @@ impl RelayUsageSet {
 
     /// Remove a RelayUsage to Self
     pub fn remove_usage(&mut self, ru: RelayUsage) {
-        self.0 = self.0 & !(ru as u32)
+        self.0 &= !(ru as u32)
     }
 }
