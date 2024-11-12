@@ -22,6 +22,15 @@ pub enum ClientMessageV3 {
 
     /// Used to send authentication events
     Auth(Box<EventV3>),
+
+    /// Negentropy Initiation
+    NegOpen(SubscriptionId, Filter, String),
+
+    /// Negentropy Message
+    NegMsg(SubscriptionId, String),
+
+    /// Negentropy Close
+    NegClose(SubscriptionId),
 }
 
 impl ClientMessageV3 {
@@ -63,6 +72,27 @@ impl Serialize for ClientMessageV3 {
                 let mut seq = serializer.serialize_seq(Some(2))?;
                 seq.serialize_element("AUTH")?;
                 seq.serialize_element(&event)?;
+                seq.end()
+            }
+            ClientMessageV3::NegOpen(subid, filter, msg) => {
+                let mut seq = serializer.serialize_seq(Some(4))?;
+                seq.serialize_element("NEG-OPEN")?;
+                seq.serialize_element(&subid)?;
+                seq.serialize_element(&filter)?;
+                seq.serialize_element(&msg)?;
+                seq.end()
+            }
+            ClientMessageV3::NegMsg(subid, msg) => {
+                let mut seq = serializer.serialize_seq(Some(3))?;
+                seq.serialize_element("NEG-MSG")?;
+                seq.serialize_element(&subid)?;
+                seq.serialize_element(&msg)?;
+                seq.end()
+            }
+            ClientMessageV3::NegClose(subid) => {
+                let mut seq = serializer.serialize_seq(Some(2))?;
+                seq.serialize_element("NEG-CLOSE")?;
+                seq.serialize_element(&subid)?;
                 seq.end()
             }
         }
@@ -123,6 +153,30 @@ impl<'de> Visitor<'de> for ClientMessageVisitor {
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing event field"))?;
             output = Some(ClientMessageV3::Auth(Box::new(event)))
+        } else if word == "NEG-OPEN" {
+            let id: SubscriptionId = seq
+                .next_element()?
+                .ok_or_else(|| DeError::custom("Message missing id field"))?;
+            let filter: Filter = seq
+                .next_element()?
+                .ok_or_else(|| DeError::custom("Message missing filter"))?;
+            let msg: String = seq
+                .next_element()?
+                .ok_or_else(|| DeError::custom("Message missing message"))?;
+            output = Some(ClientMessageV3::NegOpen(id, filter, msg))
+        } else if word == "NEG-MSG" {
+            let id: SubscriptionId = seq
+                .next_element()?
+                .ok_or_else(|| DeError::custom("Message missing id field"))?;
+            let msg: String = seq
+                .next_element()?
+                .ok_or_else(|| DeError::custom("Message missing message"))?;
+            output = Some(ClientMessageV3::NegMsg(id, msg))
+        } else if word == "NEG-CLOSE" {
+            let id: SubscriptionId = seq
+                .next_element()?
+                .ok_or_else(|| DeError::custom("Message missing id field"))?;
+            output = Some(ClientMessageV3::NegClose(id))
         }
 
         // Consume any trailing fields
@@ -157,5 +211,17 @@ mod test {
     test_serde_val! {
         test_client_message_serde_auth,
         ClientMessageV3::Auth(Box::new(Event::mock()))
+    }
+    test_serde_val! {
+        test_client_message_serde_negopen,
+        ClientMessageV3::NegOpen(SubscriptionId::mock(), Filter::mock(), "dummy".to_string())
+    }
+    test_serde_val! {
+        test_client_message_serde_negmsg,
+        ClientMessageV3::NegMsg(SubscriptionId::mock(), "dummy".to_string())
+    }
+    test_serde_val! {
+        test_client_message_serde_negclose,
+        ClientMessageV3::NegClose(SubscriptionId::mock())
     }
 }

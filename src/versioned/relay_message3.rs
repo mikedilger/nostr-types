@@ -36,6 +36,12 @@ pub enum RelayMessageV3 {
     ///     duplicate, pow, blocked, rate-limited, invalid, auth-required,
     ///     restricted or error
     Ok(Id, bool, String),
+
+    /// Negentropy Error
+    NegErr(SubscriptionId, String),
+
+    /// Negentropy Message
+    NegMsg(SubscriptionId, String),
 }
 
 impl RelayMessageV3 {
@@ -113,6 +119,20 @@ impl Serialize for RelayMessageV3 {
                 seq.serialize_element(&message)?;
                 seq.end()
             }
+            RelayMessageV3::NegErr(subid, err) => {
+                let mut seq = serializer.serialize_seq(Some(3))?;
+                seq.serialize_element("NEG-ERR")?;
+                seq.serialize_element(&subid)?;
+                seq.serialize_element(&err)?;
+                seq.end()
+            }
+            RelayMessageV3::NegMsg(subid, msg) => {
+                let mut seq = serializer.serialize_seq(Some(3))?;
+                seq.serialize_element("NEG-MSG")?;
+                seq.serialize_element(&subid)?;
+                seq.serialize_element(&msg)?;
+                seq.end()
+            }
         }
     }
 }
@@ -185,6 +205,22 @@ impl<'de> Visitor<'de> for RelayMessageVisitor {
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing string field"))?;
             output = Some(RelayMessageV3::Closed(id, message));
+        } else if word == "NEG-ERR" {
+            let id: SubscriptionId = seq
+                .next_element()?
+                .ok_or_else(|| DeError::custom("Message missing id field"))?;
+            let err: String = seq
+                .next_element()?
+                .ok_or_else(|| DeError::custom("Message missing error"))?;
+            output = Some(RelayMessageV3::NegErr(id, err))
+        } else if word == "NEG-MSG" {
+            let id: SubscriptionId = seq
+                .next_element()?
+                .ok_or_else(|| DeError::custom("Message missing id field"))?;
+            let msg: String = seq
+                .next_element()?
+                .ok_or_else(|| DeError::custom("Message missing message"))?;
+            output = Some(RelayMessageV3::NegMsg(id, msg))
         }
 
         // Consume any trailing fields
@@ -227,5 +263,13 @@ mod test {
     test_serde_val! {
         test_relay_message_serde_ok,
         RelayMessageV3::Ok(Id::mock(), true, "dummy".to_string())
+    }
+    test_serde_val! {
+        test_relay_message_serde_negerr,
+        RelayMessageV3::NegErr(SubscriptionId::mock(), "dummy".to_string())
+    }
+    test_serde_val! {
+        test_relay_message_serde_negmsg,
+        RelayMessageV3::NegMsg(SubscriptionId::mock(), "dummy".to_string())
     }
 }
