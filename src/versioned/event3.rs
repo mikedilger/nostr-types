@@ -307,14 +307,30 @@ impl EventV3 {
             return None;
         }
 
-        // Tags marked "reply"
-        let reply_tags: Vec<&TagV3> = self.tags.iter().filter(|t| t.marker() == "reply").collect();
+        // In kind 1111, use the 'e' tag
+        if self.kind == EventKind::Comment {
+            let tags: Vec<&TagV3> = self.tags.iter().filter(|t| t.tagname() == "e").collect();
+            if !tags.is_empty() {
+                return tags[0].as_event_reference();
+            }
+        }
+
+        // 'e' tags marked "reply"
+        let reply_tags: Vec<&TagV3> = self
+            .tags
+            .iter()
+            .filter(|t| (t.tagname() == "e" || t.tagname() == "a") && t.marker() == "reply")
+            .collect();
         if !reply_tags.is_empty() {
             return reply_tags[0].as_event_reference();
         }
 
-        // Tags marked "root" serve as replies if none were marked "reply"
-        let root_tags: Vec<&TagV3> = self.tags.iter().filter(|t| t.marker() == "root").collect();
+        // 'e' tags marked "root" serve as replies if none were marked "reply"
+        let root_tags: Vec<&TagV3> = self
+            .tags
+            .iter()
+            .filter(|t| (t.tagname() == "e" || t.tagname() == "a") && t.marker() == "root")
+            .collect();
         if !root_tags.is_empty() {
             return root_tags[0].as_event_reference();
         }
