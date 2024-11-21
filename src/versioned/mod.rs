@@ -16,8 +16,11 @@ pub use event2::{EventV2, PreEventV2, RumorV2};
 pub(crate) mod event3;
 pub use event3::{EventV3, PreEventV3, RumorV3};
 
-pub(crate) mod metadata;
-pub use metadata::MetadataV1;
+pub(crate) mod metadata1;
+pub use metadata1::MetadataV1;
+
+pub(crate) mod metadata2;
+pub use metadata2::MetadataV2;
 
 pub(crate) mod nip05;
 pub use nip05::Nip05V1;

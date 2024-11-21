@@ -1,4 +1,4 @@
-use crate::versioned::metadata::MetadataV1;
+use crate::versioned::metadata1::MetadataV1;
 
 /// Metadata about a user
 ///
