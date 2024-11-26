@@ -1,4 +1,4 @@
-use crate::versioned::filter1::FilterV1;
+use crate::versioned::filter2::FilterV2;
 
 /// The main filter type
-pub type Filter = FilterV1;
+pub type Filter = FilterV2;
