@@ -16,6 +16,9 @@ pub use event2::{EventV2, PreEventV2, RumorV2};
 pub(crate) mod event3;
 pub use event3::{EventV3, PreEventV3, RumorV3};
 
+pub(crate) mod filter1;
+pub use filter1::FilterV1;
+
 pub(crate) mod metadata1;
 pub use metadata1::MetadataV1;
 
