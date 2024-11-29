@@ -19,6 +19,9 @@ pub enum ClientMessage {
     /// Used to send authentication events
     Auth(Box<Event>),
 
+    /// Count
+    Count(SubscriptionId, Vec<Filter>),
+
     /// Negentropy Initiation
     NegOpen(SubscriptionId, Filter, String),
 
@@ -68,6 +71,15 @@ impl Serialize for ClientMessage {
                 let mut seq = serializer.serialize_seq(Some(2))?;
                 seq.serialize_element("AUTH")?;
                 seq.serialize_element(&event)?;
+                seq.end()
+            }
+            ClientMessage::Count(id, filters) => {
+                let mut seq = serializer.serialize_seq(Some(3))?;
+                seq.serialize_element("COUNT")?;
+                seq.serialize_element(&id)?;
+                for filter in filters {
+                    seq.serialize_element(&filter)?;
+                }
                 seq.end()
             }
             ClientMessage::NegOpen(subid, filter, msg) => {
@@ -139,6 +151,19 @@ impl<'de> Visitor<'de> for ClientMessageVisitor {
                 }
             }
             output = Some(ClientMessage::Req(id, filters))
+        } else if word == "COUNT" {
+            let id: SubscriptionId = seq
+                .next_element()?
+                .ok_or_else(|| DeError::custom("Message missing id field"))?;
+            let mut filters: Vec<Filter> = vec![];
+            loop {
+                let f: Option<Filter> = seq.next_element()?;
+                match f {
+                    None => break,
+                    Some(fil) => filters.push(fil),
+                }
+            }
+            output = Some(ClientMessage::Count(id, filters))
         } else if word == "CLOSE" {
             let id: SubscriptionId = seq
                 .next_element()?

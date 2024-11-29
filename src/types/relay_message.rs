@@ -35,6 +35,22 @@ pub enum RelayMessage {
     ///     duplicate, pow, blocked, rate-limited, invalid, auth-required,
     ///     restricted or error
     Ok(Id, bool, String),
+
+    /// The results of a COUNT command
+    Count(SubscriptionId, CountResult),
+}
+
+/// The count results
+#[derive(Debug, Clone, Eq, PartialEq, Hash, serde::Serialize, serde::Deserialize)]
+pub struct CountResult {
+    /// The count
+    pub count: usize,
+
+    /// Whether the count is approximate
+    pub approximate: bool,
+
+    /// Optional HyperLogLog data
+    pub hll: Option<String>,
 }
 
 /// The reason why a relay issued an OK or CLOSED message
@@ -146,6 +162,13 @@ impl Serialize for RelayMessage {
                 seq.serialize_element(&message)?;
                 seq.end()
             }
+            RelayMessage::Count(sub, result) => {
+                let mut seq = serializer.serialize_seq(Some(3))?;
+                seq.serialize_element("COUNT")?;
+                seq.serialize_element(&sub)?;
+                seq.serialize_element(&result)?;
+                seq.end()
+            }
         }
     }
 }
@@ -223,6 +246,14 @@ impl<'de> Visitor<'de> for RelayMessageVisitor {
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing string field"))?;
             output = Some(RelayMessage::Closed(id, message));
+        } else if word == "COUNT" {
+            let id: SubscriptionId = seq
+                .next_element()?
+                .ok_or_else(|| DeError::custom("Message messing id field"))?;
+            let count_result: CountResult = seq
+                .next_element()?
+                .ok_or_else(|| DeError::custom("Message messing count result object field"))?;
+            output = Some(RelayMessage::Count(id, count_result));
         }
 
         // Consume any trailing fields

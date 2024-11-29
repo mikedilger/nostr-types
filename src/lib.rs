@@ -60,14 +60,14 @@ macro_rules! test_serde_val {
 mod types;
 pub use types::{
     find_nostr_bech32_pos, find_nostr_url_pos, ClientMessage, ContentEncryptionAlgorithm,
-    ContentSegment, DelegationConditions, EncryptedPrivateKey, Event, EventDelegation, EventKind,
-    EventKindIterator, EventKindOrRange, EventReference, Fee, FileMetadata, Filter, Hll8, Id,
-    IdHex, Identity, KeySecurity, KeySigner, Metadata, MilliSatoshi, NAddr, NEvent, Nip05,
-    NostrBech32, NostrUrl, PayRequestData, PreEvent, PrivateKey, Profile, PublicKey, PublicKeyHex,
-    RelayFees, RelayInformationDocument, RelayLimitation, RelayList, RelayListUsage, RelayMessage,
-    RelayOrigin, RelayRetention, RelayUrl, RelayUsage, RelayUsageSet, Rumor, ShatteredContent,
-    Signature, SignatureHex, Signer, SimpleRelayList, SimpleRelayUsage, Span, SubscriptionId, Tag,
-    UncheckedUrl, Unixtime, Url, Why, XOnlyPublicKey, ZapData,
+    ContentSegment, CountResult, DelegationConditions, EncryptedPrivateKey, Event, EventDelegation,
+    EventKind, EventKindIterator, EventKindOrRange, EventReference, Fee, FileMetadata, Filter,
+    Hll8, Id, IdHex, Identity, KeySecurity, KeySigner, Metadata, MilliSatoshi, NAddr, NEvent,
+    Nip05, NostrBech32, NostrUrl, PayRequestData, PreEvent, PrivateKey, Profile, PublicKey,
+    PublicKeyHex, RelayFees, RelayInformationDocument, RelayLimitation, RelayList, RelayListUsage,
+    RelayMessage, RelayOrigin, RelayRetention, RelayUrl, RelayUsage, RelayUsageSet, Rumor,
+    ShatteredContent, Signature, SignatureHex, Signer, SimpleRelayList, SimpleRelayUsage, Span,
+    SubscriptionId, Tag, UncheckedUrl, Unixtime, Url, Why, XOnlyPublicKey, ZapData,
 };
 
 mod versioned;
