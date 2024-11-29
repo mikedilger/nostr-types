@@ -70,7 +70,7 @@ mod relay_list;
 pub use relay_list::{RelayList, RelayListUsage};
 
 mod relay_message;
-pub use relay_message::RelayMessage;
+pub use relay_message::{RelayMessage, Why};
 
 mod relay_usage;
 pub use relay_usage::{RelayUsage, RelayUsageSet};

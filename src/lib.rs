@@ -67,16 +67,15 @@ pub use types::{
     RelayFees, RelayInformationDocument, RelayLimitation, RelayList, RelayListUsage, RelayMessage,
     RelayOrigin, RelayRetention, RelayUrl, RelayUsage, RelayUsageSet, Rumor, ShatteredContent,
     Signature, SignatureHex, Signer, SimpleRelayList, SimpleRelayUsage, Span, SubscriptionId, Tag,
-    UncheckedUrl, Unixtime, Url, XOnlyPublicKey, ZapData,
+    UncheckedUrl, Unixtime, Url, Why, XOnlyPublicKey, ZapData,
 };
 
 mod versioned;
 pub use versioned::{
-    ClientMessageV1, ClientMessageV2, ClientMessageV3, EventV1, EventV2, EventV3, FeeV1, FilterV1,
-    FilterV2, MetadataV1, MetadataV2, Nip05V1, PreEventV1, PreEventV2, PreEventV3, RelayFeesV1,
-    RelayInformationDocumentV1, RelayInformationDocumentV2, RelayLimitationV1, RelayLimitationV2,
-    RelayMessageV1, RelayMessageV2, RelayMessageV3, RelayMessageV4, RelayMessageV5,
-    RelayRetentionV1, RumorV1, RumorV2, RumorV3, TagV1, TagV2, TagV3, Why, ZapDataV1, ZapDataV2,
+    EventV1, EventV2, EventV3, FeeV1, FilterV1, FilterV2, MetadataV1, MetadataV2, Nip05V1,
+    PreEventV1, PreEventV2, PreEventV3, RelayFeesV1, RelayInformationDocumentV1,
+    RelayInformationDocumentV2, RelayLimitationV1, RelayLimitationV2, RelayRetentionV1, RumorV1,
+    RumorV2, RumorV3, TagV1, TagV2, TagV3, ZapDataV1, ZapDataV2,
 };
 
 #[inline]
