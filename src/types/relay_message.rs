@@ -47,9 +47,12 @@ pub struct CountResult {
     pub count: usize,
 
     /// Whether the count is approximate
+    #[serde(default)]
     pub approximate: bool,
 
     /// Optional HyperLogLog data
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub hll: Option<String>,
 }
 
