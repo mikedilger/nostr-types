@@ -153,6 +153,10 @@ define_event_kinds!(
     "Reaction to a website",
     ReactionToWebsite = 17,
 
+    "Picture (NIP-68)",
+    "Picture",
+    Picture = 20,
+
     "Event creates a public channel (NIP-28)",
     "Channel Creation",
     ChannelCreation = 40,
@@ -614,6 +618,7 @@ impl EventKind {
                 | Repost
                 | DmChat
                 | GenericRepost
+                | Picture
                 | ChannelMessage
                 | FileMetadata
                 | Comment
@@ -643,6 +648,7 @@ impl EventKind {
             // NOT Repost
             // NOT DmChat
             // NOT GenericRepost
+            // NOT Picture
                 | ChannelMessage
                 | Comment
                 | LiveChatMessage // NOT Patches (is a diff)
