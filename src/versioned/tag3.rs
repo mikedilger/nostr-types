@@ -1,6 +1,6 @@
 use crate::types::{
-    DelegationConditions, EventKind, EventReference, Id, NAddr, PublicKey, RelayUrl, Signature,
-    UncheckedUrl,
+    DelegationConditions, EventKind, EventReference, Id, NAddr, PublicKey, RelayUrl, Scope,
+    Signature, UncheckedUrl,
 };
 use crate::{Error, IntoVec};
 use serde::{Deserialize, Serialize};
@@ -101,10 +101,14 @@ impl TagV3 {
         TagV3(vec!["e".to_string(), UncheckedUrl::mock().0])
     }
 
-    /// Create a new 'a' address tag
-    pub fn new_address(naddr: &NAddr, marker: Option<String>) -> TagV3 {
+    /// Create a new address tag
+    pub fn new_address(naddr: &NAddr, marker: Option<String>, scope: Scope) -> TagV3 {
+        let letter = match scope {
+            Scope::Parent => "a",
+            Scope::Root => "A",
+        };
         let mut vec = vec![
-            "a".to_owned(),
+            letter.to_owned(),
             format!(
                 "{}:{}:{}",
                 Into::<u32>::into(naddr.kind),
@@ -126,16 +130,22 @@ impl TagV3 {
     }
 
     /// Parse an 'a' tag or 'A' tag
+    /// Returns an NAddr, an optional marker, and a Scope
     /// `['a', 'kind:pubkeyhex:d', <optrelay>, <optmarker>]`
-    pub fn parse_address(&self) -> Result<(NAddr, Option<String>), Error> {
+    pub fn parse_address(&self) -> Result<(NAddr, Option<String>, Scope), Error> {
         let strings = &self.0;
 
         if strings.len() < 2 {
             return Err(Error::TagMismatch);
         }
-        if &strings[0] != "a" && &strings[0] != "A" {
+
+        let scope = if &strings[0] == "a" {
+            Scope::Parent
+        } else if &strings[0] == "A" {
+            Scope::Root
+        } else {
             return Err(Error::TagMismatch);
-        }
+        };
 
         let (kind, author, d) = {
             let parts: Vec<&str> = strings[1].split(':').collect();
@@ -173,7 +183,7 @@ impl TagV3 {
             None
         };
 
-        Ok((na, marker))
+        Ok((na, marker, scope))
     }
 
     /// Create a "content-warning" tag
@@ -202,8 +212,14 @@ impl TagV3 {
         recommended_relay_url: Option<UncheckedUrl>,
         marker: Option<String>,
         pubkey: Option<PublicKey>,
+        scope: Scope,
     ) -> TagV3 {
-        let mut v: Vec<String> = vec!["e".to_owned(), id.as_hex_string()];
+        let letter = match scope {
+            Scope::Parent => "e",
+            Scope::Root => "E",
+        };
+
+        let mut v: Vec<String> = vec![letter.to_owned(), id.as_hex_string()];
 
         if let Some(rurl) = recommended_relay_url {
             v.push(rurl.0);
@@ -225,17 +241,34 @@ impl TagV3 {
     }
 
     /// Parse an "e" or "E" tag
+    /// Returns an Id, Optional relay, optional marker, optional pubkey, and scope
     /// `['e', <id>, <rurl>, <marker>]`
     #[allow(clippy::type_complexity)]
     pub fn parse_event(
         &self,
-    ) -> Result<(Id, Option<UncheckedUrl>, Option<String>, Option<PublicKey>), Error> {
+    ) -> Result<
+        (
+            Id,
+            Option<UncheckedUrl>,
+            Option<String>,
+            Option<PublicKey>,
+            Scope,
+        ),
+        Error,
+    > {
         if self.len() < 2 {
             return Err(Error::TagMismatch);
         }
-        if &self.0[0] != "e" && &self.0[0] != "E" {
+
+        let strings = &self.0;
+        let scope = if &strings[0] == "e" {
+            Scope::Parent
+        } else if &strings[0] == "E" {
+            Scope::Root
+        } else {
             return Err(Error::TagMismatch);
-        }
+        };
+
         let id = Id::try_from_hex_string(&self.0[1])?;
 
         let url = if self.len() >= 3 {
@@ -268,13 +301,13 @@ impl TagV3 {
             None
         };
 
-        Ok((id, url, marker, pk))
+        Ok((id, url, marker, pk, scope))
     }
 
     /// Convert to an EventReference if any of 'e', 'a' , 'E', 'A', or 'q'
     pub fn as_event_reference(&self) -> Option<EventReference> {
         // 'e' or 'E"
-        if let Ok((id, opturl, optmarker, optpk)) = self.parse_event() {
+        if let Ok((id, opturl, optmarker, optpk, _scope)) = self.parse_event() {
             return Some(EventReference::Id {
                 id,
                 author: optpk,
@@ -287,7 +320,7 @@ impl TagV3 {
         }
 
         // 'a' or 'A'
-        if let Ok((naddr, _optmarker)) = self.parse_address() {
+        if let Ok((naddr, _optmarker, _scope)) = self.parse_address() {
             return Some(EventReference::Addr(naddr));
         }
 
@@ -366,8 +399,15 @@ impl TagV3 {
         pubkey: PublicKey,
         relay_url: Option<UncheckedUrl>,
         petname: Option<String>,
+        scope: Scope,
     ) -> TagV3 {
-        let mut v: Vec<String> = vec!["p".to_owned(), pubkey.as_hex_string()];
+        let letter = match scope {
+            Scope::Parent => "p",
+            Scope::Root => "P",
+        };
+
+        let mut v: Vec<String> = vec![letter.to_owned(), pubkey.as_hex_string()];
+
         if let Some(rurl) = relay_url {
             v.push(rurl.0);
         } else if petname.is_some() {
@@ -380,13 +420,23 @@ impl TagV3 {
     }
 
     /// Parse a "p" tag
-    pub fn parse_pubkey(&self) -> Result<(PublicKey, Option<UncheckedUrl>, Option<String>), Error> {
+    #[allow(clippy::type_complexity)]
+    pub fn parse_pubkey(
+        &self,
+    ) -> Result<(PublicKey, Option<UncheckedUrl>, Option<String>, Scope), Error> {
         if self.len() < 2 {
             return Err(Error::TagMismatch);
         }
-        if &self.0[0] != "p" {
+
+        let strings = &self.0;
+        let scope = if &strings[0] == "p" {
+            Scope::Parent
+        } else if &strings[0] == "P" {
+            Scope::Root
+        } else {
             return Err(Error::TagMismatch);
-        }
+        };
+
         let pubkey = PublicKey::try_from_hex_string(&self.0[1], true)?;
         let url = if self.len() >= 3 {
             Some(UncheckedUrl(self.0[2].to_owned()))
@@ -402,7 +452,7 @@ impl TagV3 {
         } else {
             None
         };
-        Ok((pubkey, url, petname))
+        Ok((pubkey, url, petname, scope))
     }
 
     /// Create a "t" tag
@@ -538,20 +588,34 @@ impl TagV3 {
     }
 
     /// Create a "k" tag
-    pub fn new_kind(kind: EventKind) -> TagV3 {
-        TagV3(vec!["k".to_owned(), format!("{}", Into::<u32>::into(kind))])
+    pub fn new_kind(kind: EventKind, scope: Scope) -> TagV3 {
+        let letter = match scope {
+            Scope::Parent => "k",
+            Scope::Root => "K",
+        };
+        TagV3(vec![
+            letter.to_owned(),
+            format!("{}", Into::<u32>::into(kind)),
+        ])
     }
 
     /// Parse a "k" tag
-    pub fn parse_kind(&self) -> Result<EventKind, Error> {
+    pub fn parse_kind(&self) -> Result<(EventKind, Scope), Error> {
         if self.len() < 2 {
             return Err(Error::TagMismatch);
         }
-        if &self.0[0] != "k" {
+
+        let strings = &self.0;
+        let scope = if &strings[0] == "k" {
+            Scope::Parent
+        } else if &strings[0] == "K" {
+            Scope::Root
+        } else {
             return Err(Error::TagMismatch);
-        }
+        };
+
         let u = self.0[1].parse::<u32>()?;
-        Ok(u.into())
+        Ok((u.into(), scope))
     }
 
     /// New delegation tag
@@ -616,8 +680,8 @@ mod test {
             author: PublicKey::mock_deterministic(),
         };
 
-        let tag = TagV3::new_address(&na, None);
-        let (na2, _optmarker) = tag.parse_address().unwrap();
+        let tag = TagV3::new_address(&na, None, Scope::Parent);
+        let (na2, _optmarker, _scope) = tag.parse_address().unwrap();
         // Equal only because there is just 1 UncheckedUrl, else might have dropped
         // the rest
         assert_eq!(na, na2);
@@ -625,7 +689,7 @@ mod test {
         // Test a known JSON a tag:
         let json =
             r#"["a","34550:d0debf9fb12def81f43d7c69429bb784812ac1e4d2d53a202db6aac7ea4b466c:git"]"#;
-        let tag: TagV3 = serde_json::from_str(&json).unwrap();
+        let tag: TagV3 = serde_json::from_str(json).unwrap();
         assert!(tag.parse_address().is_ok());
 
         let tag = TagV3::new(&[
@@ -634,7 +698,7 @@ mod test {
             "",
             "root",
         ]);
-        let (_, marker) = tag.parse_address().unwrap();
+        let (_, marker, _scope) = tag.parse_address().unwrap();
         assert!(marker.as_deref().unwrap() == "root");
     }
 
@@ -655,16 +719,26 @@ mod test {
 
     #[test]
     fn test_event_tag() {
-        let tag = TagV3::new_event(Id::mock(), None, None, None);
-        assert_eq!(tag.parse_event().unwrap(), (Id::mock(), None, None, None));
+        let tag = TagV3::new_event(Id::mock(), None, None, None, Scope::Root);
+        assert_eq!(
+            tag.parse_event().unwrap(),
+            (Id::mock(), None, None, None, Scope::Root)
+        );
 
         let data = (
             Id::mock(),
             Some(UncheckedUrl("dummy".to_owned())),
             Some("foo".to_owned()),
             None,
+            Scope::Parent,
         );
-        let tag = TagV3::new_event(data.0, data.1.clone(), data.2.clone(), data.3.clone());
+        let tag = TagV3::new_event(
+            data.0,
+            data.1.clone(),
+            data.2.clone(),
+            data.3,
+            Scope::Parent,
+        );
         assert_eq!(tag.parse_event().unwrap(), data);
 
         let tag = TagV3(vec![
@@ -702,6 +776,7 @@ mod test {
                 )
                 .unwrap(),
             ),
+            Scope::Parent,
         );
 
         assert_eq!(tag, tag2);
@@ -722,18 +797,19 @@ mod test {
 
     #[test]
     fn test_pubkey_tag() {
-        let tag = TagV3::new_pubkey(PublicKey::mock_deterministic(), None, None);
+        let tag = TagV3::new_pubkey(PublicKey::mock_deterministic(), None, None, Scope::Parent);
         assert_eq!(
             tag.parse_pubkey().unwrap(),
-            (PublicKey::mock_deterministic(), None, None)
+            (PublicKey::mock_deterministic(), None, None, Scope::Parent)
         );
 
         let data = (
             PublicKey::mock(),
             Some(UncheckedUrl("dummy".to_owned())),
             Some("foo".to_owned()),
+            Scope::Root,
         );
-        let tag = TagV3::new_pubkey(data.0, data.1.clone(), data.2.clone());
+        let tag = TagV3::new_pubkey(data.0, data.1.clone(), data.2.clone(), data.3);
         assert_eq!(tag.parse_pubkey().unwrap(), data);
     }
 
@@ -817,12 +893,12 @@ mod test {
     #[test]
     fn test_kind_tag() {
         let tag = TagV3::new(&["k", "30023"]);
-        assert_eq!(tag.parse_kind().unwrap(), EventKind::LongFormContent);
+        assert_eq!(tag.parse_kind().unwrap().0, EventKind::LongFormContent);
 
         let tag = TagV3::new(&["k"]);
         assert!(tag.parse_kind().is_err());
 
-        let tag = TagV3::new_kind(EventKind::ZapRequest);
-        assert_eq!(tag.parse_kind().unwrap(), EventKind::ZapRequest);
+        let tag = TagV3::new_kind(EventKind::ZapRequest, Scope::NONE);
+        assert_eq!(tag.parse_kind().unwrap().0, EventKind::ZapRequest);
     }
 }

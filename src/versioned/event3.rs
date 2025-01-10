@@ -1,7 +1,8 @@
 use super::TagV3;
 use crate::types::{
     EventDelegation, EventKind, EventReference, FileMetadata, Id, KeySigner, MilliSatoshi,
-    NostrBech32, NostrUrl, PrivateKey, PublicKey, RelayUrl, Signature, Signer, Unixtime, ZapData,
+    NostrBech32, NostrUrl, PrivateKey, PublicKey, RelayUrl, Scope, Signature, Signer, Unixtime,
+    ZapData,
 };
 use crate::{Error, IntoVec};
 use lightning_invoice::Bolt11Invoice;
@@ -212,10 +213,12 @@ impl EventV3 {
     }
 
     /// Get the k-tag kind, if any
-    pub fn k_tag_kind(&self) -> Option<EventKind> {
+    pub fn k_tag_kind(&self, scope: Scope) -> Option<EventKind> {
         for tag in self.tags.iter() {
-            if let Ok(kind) = tag.parse_kind() {
-                return Some(kind);
+            if let Ok((kind, s)) = tag.parse_kind() {
+                if s == scope {
+                    return Some(kind);
+                }
             }
         }
         None
@@ -227,7 +230,7 @@ impl EventV3 {
         let mut output: Vec<(PublicKey, Option<RelayUrl>, Option<String>)> = Vec::new();
         // All 'p' tags
         for tag in self.tags.iter() {
-            if let Ok((pubkey, recommended_relay_url, petname)) = tag.parse_pubkey() {
+            if let Ok((pubkey, recommended_relay_url, petname, _scope)) = tag.parse_pubkey() {
                 output.push((
                     pubkey.to_owned(),
                     recommended_relay_url
@@ -241,10 +244,11 @@ impl EventV3 {
         output
     }
 
-    /// If the pubkey is tagged in the event
+    /// If the pubkey is tagged in the event (with Scope::NONE)
     pub fn is_tagged(&self, pk: &PublicKey) -> bool {
         for tag in self.tags.iter() {
-            if let Ok((pubkey, _recommended_relay_url, _petname)) = tag.parse_pubkey() {
+            if let Ok((pubkey, _recommended_relay_url, _petname, Scope::NONE)) = tag.parse_pubkey()
+            {
                 if pubkey == *pk {
                     return true;
                 }
@@ -270,13 +274,13 @@ impl EventV3 {
     }
 
     /// All events IDs that this event refers to, whether root, reply, mention, or otherwise
-    /// along with optional recommended relay URLs
+    /// (but not q) along with optional recommended relay URLs
     pub fn referred_events(&self) -> Vec<EventReference> {
         let mut output: Vec<EventReference> = Vec::new();
 
-        // Collect every 'e' tag and 'a' tag
+        // Collect every 'e','E' tag and 'a','A' tag
         for tag in self.tags.iter() {
-            if let Ok((id, rurl, marker, optpk)) = tag.parse_event() {
+            if let Ok((id, rurl, marker, optpk, _scope)) = tag.parse_event() {
                 output.push(EventReference::Id {
                     id,
                     author: optpk,
@@ -286,7 +290,7 @@ impl EventV3 {
                         .into_vec(),
                     marker,
                 });
-            } else if let Ok((ea, _optmarker)) = tag.parse_address() {
+            } else if let Ok((ea, _optmarker, _scope)) = tag.parse_address() {
                 output.push(EventReference::Addr(ea))
             }
         }
@@ -439,7 +443,7 @@ impl EventV3 {
         // For kind=6 and kind=16, all 'e' and 'a' tags are mentions
         if self.kind == EventKind::Repost || self.kind == EventKind::GenericRepost {
             for tag in self.tags.iter() {
-                if let Ok((id, rurl, optmarker, optpk)) = tag.parse_event() {
+                if let Ok((id, rurl, optmarker, optpk, Scope::NONE)) = tag.parse_event() {
                     output.push(EventReference::Id {
                         id,
                         author: optpk,
@@ -449,7 +453,7 @@ impl EventV3 {
                             .into_vec(),
                         marker: optmarker,
                     });
-                } else if let Ok((ea, _optmarker)) = tag.parse_address() {
+                } else if let Ok((ea, _optmarker, Scope::NONE)) = tag.parse_address() {
                     output.push(EventReference::Addr(ea));
                 }
             }
@@ -461,7 +465,7 @@ impl EventV3 {
 
         // Collect every 'e' tag marked as 'mention'
         for tag in self.tags.iter() {
-            if let Ok((id, rurl, optmarker, optpk)) = tag.parse_event() {
+            if let Ok((id, rurl, optmarker, optpk, Scope::NONE)) = tag.parse_event() {
                 if optmarker.is_some() && optmarker.as_deref().unwrap() == "mention" {
                     output.push(EventReference::Id {
                         id,
@@ -485,7 +489,7 @@ impl EventV3 {
         if e_tags.len() > 2 {
             // mentions are everything other than first and last
             for tag in &e_tags[1..e_tags.len() - 1] {
-                if let Ok((id, rurl, optmarker, optpk)) = tag.parse_event() {
+                if let Ok((id, rurl, optmarker, optpk, Scope::NONE)) = tag.parse_event() {
                     output.push(EventReference::Id {
                         id,
                         author: optpk,
@@ -495,7 +499,7 @@ impl EventV3 {
                             .into_vec(),
                         marker: optmarker,
                     });
-                } else if let Ok((ea, _optmarker)) = tag.parse_address() {
+                } else if let Ok((ea, _optmarker, Scope::NONE)) = tag.parse_address() {
                     output.push(EventReference::Addr(ea));
                 }
             }
@@ -513,7 +517,7 @@ impl EventV3 {
 
         // The last 'e' tag is it
         for tag in self.tags.iter().rev() {
-            if let Ok((id, rurl, optmarker, optpk)) = tag.parse_event() {
+            if let Ok((id, rurl, optmarker, optpk, Scope::NONE)) = tag.parse_event() {
                 return Some((
                     EventReference::Id {
                         id,
@@ -542,7 +546,7 @@ impl EventV3 {
         let mut erefs: Vec<EventReference> = Vec::new();
 
         for tag in self.tags.iter() {
-            if let Ok((id, rurl, optmarker, optpk)) = tag.parse_event() {
+            if let Ok((id, rurl, optmarker, optpk, Scope::NONE)) = tag.parse_event() {
                 // All 'e' tags are deleted
                 erefs.push(EventReference::Id {
                     id,
@@ -553,7 +557,7 @@ impl EventV3 {
                         .into_vec(),
                     marker: optmarker,
                 });
-            } else if let Ok((ea, _optmarker)) = tag.parse_address() {
+            } else if let Ok((ea, _optmarker, Scope::NONE)) = tag.parse_address() {
                 erefs.push(EventReference::Addr(ea));
             }
         }
@@ -574,7 +578,7 @@ impl EventV3 {
 
         if self.kind == EventKind::GiftWrap {
             for tag in self.tags.iter() {
-                if let Ok((pk, _, _)) = tag.parse_pubkey() {
+                if let Ok((pk, _, _, Scope::NONE)) = tag.parse_pubkey() {
                     return by == pk;
                 }
             }
@@ -612,7 +616,7 @@ impl EventV3 {
                 }
                 // we ignore the "p" tag, we have that data from two other places (invoice and request)
                 else if tag.tagname() == "P" {
-                    if let Ok((pk, _, _)) = tag.parse_pubkey() {
+                    if let Ok((pk, _, _, Scope::NONE)) = tag.parse_pubkey() {
                         payer_p_tag = Some(pk);
                     }
                 } else if tag.tagname() == "bolt11" {
@@ -1166,6 +1170,7 @@ mod test {
                 Some(UncheckedUrl::mock()),
                 None,
                 None,
+                Scope::Parent,
             )],
             content: "Hello World!".to_string(),
         };
@@ -1226,7 +1231,13 @@ mod test {
             created_at,
             kind: EventKind::TextNote,
             tags: vec![
-                TagV3::new_event(Id::mock(), Some(UncheckedUrl::mock()), None, None),
+                TagV3::new_event(
+                    Id::mock(),
+                    Some(UncheckedUrl::mock()),
+                    None,
+                    None,
+                    Scope::Parent,
+                ),
                 TagV3::new_delegation(real_signer.public_key(), conditions, sig),
             ],
             content: "Hello World!".to_string(),
@@ -1309,7 +1320,7 @@ mod test {
     #[test]
     fn test_realworld_event_with_naddr_tag() {
         let raw = r##"{"id":"7760408f6459b9546c3a4e70e3e56756421fba34526b7d460db3fcfd2f8817db","pubkey":"460c25e682fda7832b52d1f22d3d22b3176d972f60dcdc3212ed8c92ef85065c","created_at":1687616920,"kind":1,"tags":[["p","1bc70a0148b3f316da33fe3c89f23e3e71ac4ff998027ec712b905cd24f6a411","","mention"],["a","30311:1bc70a0148b3f316da33fe3c89f23e3e71ac4ff998027ec712b905cd24f6a411:1687612774","","mention"]],"content":"Watching Karnage's stream to see if I learn something about design. \n\nnostr:naddr1qq9rzd3cxumrzv3hxu6qygqmcu9qzj9n7vtd5vl78jyly037wxkyl7vcqflvwy4eqhxjfa4yzypsgqqqwens0qfplk","sig":"dbc5d05a24bfe990a1faaedfcb81a98940d86a105711dbdad9145d05b0ad0f46e3e24eaa3fc283818f27e057fe836a029fd9a68e7f1de06ff477493199d64064"}"##;
-        let _: EventV3 = serde_json::from_str(&raw).unwrap();
+        let _: EventV3 = serde_json::from_str(raw).unwrap();
     }
 
     #[cfg(feature = "speedy")]
@@ -1408,7 +1419,7 @@ mod test {
     #[test]
     fn test_a_tags_as_replies() {
         let raw = r#"{"id":"d4fb3aeae033baa4a9504027bff8fd065ba1bbd635c501a5e4f8c7ab0bd37c34","pubkey":"7bdef7be22dd8e59f4600e044aa53a1cf975a9dc7d27df5833bc77db784a5805","created_at":1716980987,"kind":1,"sig":"903ae95893082835a42706eda1328ea85a8bf6fbb172bb2f8696b66fccfebfae8756992894a0fb7bb592cb3f78939bdd5fac4cd1eb49138cbf3ea8069574a1dc","content":"The article is interesting, but why compiling everything when configuring meta tags in dist/index.html is sufficient? (like you did in the first version, if I'm not wrong)\nOne main selling point of Oracolo is that it does not require complex server side setup.\n\n> Every time you access the web page, the web page is compiled\n\nThis is not technically correct :)\nJavaScript code is not compiled, it is simply executed; it fetches Nostr data and so builds the page.","tags":[["p","b12b632c887f0c871d140d37bcb6e7c1e1a80264d0b7de8255aa1951d9e1ff79"],["a","30023:b12b632c887f0c871d140d37bcb6e7c1e1a80264d0b7de8255aa1951d9e1ff79:1716928135712","","root"],["r","index.html"]]}"#;
-        let event: EventV3 = serde_json::from_str(&raw).unwrap();
+        let event: EventV3 = serde_json::from_str(raw).unwrap();
         if let Some(parent) = event.replies_to() {
             assert!(matches!(parent, EventReference::Addr(_)));
         } else {

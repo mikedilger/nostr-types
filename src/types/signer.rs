@@ -1,7 +1,8 @@
 use crate::{
     ContentEncryptionAlgorithm, DelegationConditions, EncryptedPrivateKey, Error, Event, EventKind,
     EventV1, EventV2, Id, KeySecurity, KeySigner, Metadata, PreEvent, PreEventV2, PrivateKey,
-    PublicKey, PublicKeyHex, Rumor, RumorV1, RumorV2, Signature, Tag, TagV1, TagV2, Unixtime,
+    PublicKey, PublicKeyHex, Rumor, RumorV1, RumorV2, Scope, Signature, Tag, TagV1, TagV2,
+    Unixtime,
 };
 use rand::Rng;
 use rand_core::OsRng;
@@ -306,7 +307,7 @@ pub trait Signer: fmt::Debug {
             created_at: giftwrap_backdate,
             kind: EventKind::GiftWrap,
             content: encrypted_seal_json,
-            tags: vec![Tag::new_pubkey(pubkey, None, None)],
+            tags: vec![Tag::new_pubkey(pubkey, None, None, Scope::NONE)],
         };
 
         random_signer.sign_event(pre_giftwrap)
@@ -402,7 +403,7 @@ pub trait Signer: fmt::Debug {
             created_at: Unixtime::now(),
             kind: EventKind::ZapRequest,
             tags: vec![
-                Tag::new_pubkey(recipient_pubkey, None, None),
+                Tag::new_pubkey(recipient_pubkey, None, None, Scope::NONE),
                 relays_tag,
                 Tag::new(&["amount", &format!("{millisatoshis}")]),
             ],
@@ -410,7 +411,9 @@ pub trait Signer: fmt::Debug {
         };
 
         if let Some(ze) = zapped_event {
-            pre_event.tags.push(Tag::new_event(ze, None, None, None));
+            pre_event
+                .tags
+                .push(Tag::new_event(ze, None, None, None, Scope::NONE));
         }
 
         self.sign_event(pre_event)
@@ -446,7 +449,7 @@ pub trait Signer: fmt::Debug {
         // Verify you are tagged
         let mut tagged = false;
         for t in event.tags.iter() {
-            if let Ok((pubkey, _, _)) = t.parse_pubkey() {
+            if let Ok((pubkey, _, _, _)) = t.parse_pubkey() {
                 if pubkey == self.public_key() {
                     tagged = true;
                 }

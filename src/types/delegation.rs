@@ -188,8 +188,8 @@ mod test {
             .unwrap();
 
         // signature is changing, validate by verify method
-        let sig = Signature::try_from(signature).unwrap();
-        let verify_result = dc.verify_signature(&delegator_public_key, &delegatee_public_key, &sig);
+        let verify_result =
+            dc.verify_signature(&delegator_public_key, &delegatee_public_key, &signature);
         assert!(verify_result.is_ok());
     }
 
@@ -209,11 +209,7 @@ mod test {
             )
             .unwrap();
 
-            let verify_result = conditions.verify_signature(
-                &pubkey,
-                &delegatee_public_key,
-                &Signature::try_from(sig).unwrap(),
-            );
+            let verify_result = conditions.verify_signature(&pubkey, &delegatee_public_key, &sig);
             assert!(verify_result.is_ok());
         } else {
             panic!("Incorrect tag type")
@@ -237,11 +233,7 @@ mod test {
             )
             .unwrap();
 
-            let verify_result = conditions.verify_signature(
-                &pubkey,
-                &delegatee_public_key,
-                &Signature::try_from(sig).unwrap(),
-            );
+            let verify_result = conditions.verify_signature(&pubkey, &delegatee_public_key, &sig);
             assert!(verify_result.is_ok());
         } else {
             panic!("Incorrect tag type")
