@@ -491,29 +491,52 @@ impl<'de> Visitor<'de> for RidVisitor {
             rid.version = Some(s);
         }
         if let Some(v) = map.remove("limitation") {
-            rid.limitation =
-                serde_json::from_value::<Option<RelayLimitationV2>>(v).unwrap_or_default()
+            rid.limitation = match serde_json::from_value::<Option<RelayLimitationV2>>(v) {
+                Ok(x) => x,
+                Err(_) => None,
+            }
         }
         if let Some(v) = map.remove("retention") {
-            rid.retention = serde_json::from_value::<Vec<RelayRetentionV1>>(v).unwrap_or_default();
+            rid.retention = match serde_json::from_value::<Vec<RelayRetentionV1>>(v) {
+                Ok(x) => x,
+                Err(_) => vec![],
+            };
         }
         if let Some(v) = map.remove("relay_countries") {
-            rid.relay_countries = serde_json::from_value::<Vec<String>>(v).unwrap_or_default()
+            rid.relay_countries = match serde_json::from_value::<Vec<String>>(v) {
+                Ok(x) => x,
+                Err(_) => vec![],
+            }
         }
         if let Some(v) = map.remove("language_tags") {
-            rid.language_tags = serde_json::from_value::<Vec<String>>(v).unwrap_or_default()
+            rid.language_tags = match serde_json::from_value::<Vec<String>>(v) {
+                Ok(x) => x,
+                Err(_) => vec![],
+            }
         }
         if let Some(v) = map.remove("tags") {
-            rid.tags = serde_json::from_value::<Vec<String>>(v).unwrap_or_default()
+            rid.tags = match serde_json::from_value::<Vec<String>>(v) {
+                Ok(x) => x,
+                Err(_) => vec![],
+            }
         }
         if let Some(v) = map.remove("posting_policy") {
-            rid.posting_policy = serde_json::from_value::<Option<Url>>(v).unwrap_or_default()
+            rid.posting_policy = match serde_json::from_value::<Option<Url>>(v) {
+                Ok(x) => x,
+                Err(_) => None,
+            }
         }
         if let Some(v) = map.remove("payments_url") {
-            rid.payments_url = serde_json::from_value::<Option<Url>>(v).unwrap_or_default()
+            rid.payments_url = match serde_json::from_value::<Option<Url>>(v) {
+                Ok(x) => x,
+                Err(_) => None,
+            }
         }
         if let Some(v) = map.remove("fees") {
-            rid.fees = serde_json::from_value::<Option<RelayFeesV1>>(v).unwrap_or_default()
+            rid.fees = match serde_json::from_value::<Option<RelayFeesV1>>(v) {
+                Ok(x) => x,
+                Err(_) => None,
+            }
         }
 
         rid.other = map;

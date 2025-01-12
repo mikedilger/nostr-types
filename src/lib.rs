@@ -65,7 +65,7 @@ pub use types::{
     Hll8, Id, IdHex, Identity, KeySecurity, KeySigner, Metadata, MilliSatoshi, NAddr, NEvent,
     Nip05, NostrBech32, NostrUrl, PayRequestData, PreEvent, PrivateKey, Profile, PublicKey,
     PublicKeyHex, RelayFees, RelayInformationDocument, RelayLimitation, RelayList, RelayListUsage,
-    RelayMessage, RelayOrigin, RelayRetention, RelayUrl, RelayUsage, RelayUsageSet, Rumor, Scope,
+    RelayMessage, RelayOrigin, RelayRetention, RelayUrl, RelayUsage, RelayUsageSet, Rumor,
     ShatteredContent, Signature, SignatureHex, Signer, SimpleRelayList, SimpleRelayUsage, Span,
     SubscriptionId, Tag, UncheckedUrl, Unixtime, Url, Why, XOnlyPublicKey, ZapData,
 };
@@ -118,16 +118,15 @@ lazy_static::lazy_static! {
     static ref HRP_NSEC: Hrp = Hrp::parse("nsec").expect("HRP error on nsec");
 }
 
-/// Add a 'p/P' pubkey tag to a set of tags if it doesn't already exist
+/// Add a 'p' pubkey tag to a set of tags if it doesn't already exist
 pub fn add_pubkey_to_tags(
     existing_tags: &mut Vec<Tag>,
     new_pubkey: PublicKey,
     new_hint: Option<UncheckedUrl>,
-    scope: Scope,
 ) -> usize {
     let index = existing_tags.iter().position(|existing_tag| {
-        if let Ok((pubkey, _, _, s)) = existing_tag.parse_pubkey() {
-            pubkey == new_pubkey && s == scope
+        if let Ok((pubkey, _, __)) = existing_tag.parse_pubkey() {
+            pubkey == new_pubkey
         } else {
             false
         }
@@ -145,7 +144,7 @@ pub fn add_pubkey_to_tags(
         existing_tags[idx].trim();
         idx
     } else {
-        existing_tags.push(Tag::new_pubkey(new_pubkey, new_hint, None, scope));
+        existing_tags.push(Tag::new_pubkey(new_pubkey, new_hint, None));
         existing_tags.len() - 1
     }
 }
@@ -158,7 +157,6 @@ pub fn add_event_to_tags(
     new_marker: &str,
     new_pubkey: Option<PublicKey>,
     use_quote: bool,
-    scope: Scope,
 ) -> usize {
     // NIP-18: "Quote reposts are kind 1 events with an embedded q tag..."
     if new_marker == "mention" && use_quote {
@@ -195,8 +193,8 @@ pub fn add_event_to_tags(
         }
     } else {
         let index = existing_tags.iter().position(|existing_tag| {
-            if let Ok((id, _rurl, _optmarker, _optpk, s)) = existing_tag.parse_event() {
-                id == new_id && s == scope
+            if let Ok((id, _rurl, _optmarker, _optpk)) = existing_tag.parse_event() {
+                id == new_id
             } else {
                 false
             }
@@ -222,13 +220,7 @@ pub fn add_event_to_tags(
             existing_tags[idx].trim();
             idx
         } else {
-            let newtag = Tag::new_event(
-                new_id,
-                new_hint,
-                Some(new_marker.to_string()),
-                new_pubkey,
-                scope,
-            );
+            let newtag = Tag::new_event(new_id, new_hint, Some(new_marker.to_string()), new_pubkey);
             existing_tags.push(newtag);
             existing_tags.len() - 1
         }
@@ -240,14 +232,10 @@ pub fn add_addr_to_tags(
     existing_tags: &mut Vec<Tag>,
     new_addr: &NAddr,
     new_marker: Option<String>,
-    scope: Scope,
 ) -> usize {
     let index = existing_tags.iter().position(|existing_tag| {
-        if let Ok((ea, _optmarker, s)) = existing_tag.parse_address() {
-            ea.kind == new_addr.kind
-                && ea.author == new_addr.author
-                && ea.d == new_addr.d
-                && s == scope
+        if let Ok((ea, _optmarker)) = existing_tag.parse_address() {
+            ea.kind == new_addr.kind && ea.author == new_addr.author && ea.d == new_addr.d
         } else {
             false
         }
@@ -265,7 +253,7 @@ pub fn add_addr_to_tags(
         existing_tags[idx].trim();
         idx
     } else {
-        existing_tags.push(Tag::new_address(new_addr, new_marker, scope));
+        existing_tags.push(Tag::new_address(new_addr, new_marker));
         existing_tags.len() - 1
     }
 }

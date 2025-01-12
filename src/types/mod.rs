@@ -91,7 +91,7 @@ mod subscription_id;
 pub use subscription_id::SubscriptionId;
 
 mod tag;
-pub use tag::{Scope, Tag};
+pub use tag::Tag;
 
 mod unixtime;
 pub use unixtime::Unixtime;

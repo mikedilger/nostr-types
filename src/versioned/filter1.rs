@@ -303,7 +303,6 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::Scope;
 
     test_serde! {FilterV1, test_filters_serde}
 
@@ -318,7 +317,7 @@ mod test {
     #[test]
     fn test_filter_example() {
         let raw_event = r##"{"id":"dcf0f0339a9868fc5f51867f27049186fd8497816a19967ba4f03a3edf65a647","pubkey":"f647c9568d09596e323fdd0144b8e2f35aaf5daa43f9eb59b502e99d90f43673","created_at":1715996970,"kind":7,"sig":"ef592a256107217d6710ba18f8446494f0feb99df430284d1d5a36e7859b04e642f40746916ecffb98614d57d9053242c543ad05a74f2c5843dc9ba2169c5175","content":"🫂","tags":[["e","b74444aaaee395e4e76de1902d00457742eecefbd6ee329a79a6ae125f97fcbf"],["p","a723805cda67251191c8786f4da58f797e6977582301354ba8e91bcb0342dc9c"],["k","1"]]}"##;
-        let event: Event = serde_json::from_str(raw_event).unwrap();
+        let event: Event = serde_json::from_str(&raw_event).unwrap();
 
         let mut filter = FilterV1 {
             kinds: vec![EventKind::Reaction],
@@ -357,7 +356,7 @@ mod test {
         filter.add_tag_value('t', "footstr".to_string());
         filter.add_tag_value('t', "bitcoin".to_string());
         filter.del_tag_value('t', "bitcoin".to_string());
-        assert!(filter.tags.contains_key(&'t'));
+        assert!(filter.tags.get(&'t').is_some());
     }
 
     #[test]
@@ -373,13 +372,7 @@ mod test {
             created_at: Unixtime(1680000012),
             kind: EventKind::TextNote,
             tags: vec![
-                Tag::new_event(
-                    Id::mock(),
-                    Some(UncheckedUrl::mock()),
-                    None,
-                    None,
-                    Scope::Parent,
-                ),
+                Tag::new_event(Id::mock(), Some(UncheckedUrl::mock()), None, None),
                 Tag::new_hashtag("foodstr".to_string()),
             ],
             content: "Hello World!".to_string(),
@@ -391,20 +384,20 @@ mod test {
             ..Default::default()
         };
         filter.add_tag_value('e', Id::mock().as_hex_string());
-        assert!(filter.event_matches(&event));
+        assert_eq!(filter.event_matches(&event), true);
 
         let filter = FilterV1 {
             authors: vec![signer.public_key().into()],
             kinds: vec![EventKind::LongFormContent],
             ..Default::default()
         };
-        assert!(!filter.event_matches(&event));
+        assert_eq!(filter.event_matches(&event), false);
 
         let filter = FilterV1 {
             ids: vec![IdHex::mock()],
             authors: vec![signer.public_key().into()],
             ..Default::default()
         };
-        assert!(!filter.event_matches(&event));
+        assert_eq!(filter.event_matches(&event), false);
     }
 }
