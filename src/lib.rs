@@ -63,11 +63,11 @@ pub use types::{
     ContentSegment, CountResult, DelegationConditions, EncryptedPrivateKey, Event, EventDelegation,
     EventKind, EventKindIterator, EventKindOrRange, EventReference, Fee, FileMetadata, Filter,
     Hll8, Id, IdHex, Identity, KeySecurity, KeySigner, Metadata, MilliSatoshi, NAddr, NEvent,
-    Nip05, NostrBech32, NostrUrl, PayRequestData, PreEvent, PrivateKey, Profile, PublicKey,
-    PublicKeyHex, RelayFees, RelayInformationDocument, RelayLimitation, RelayList, RelayListUsage,
-    RelayMessage, RelayOrigin, RelayRetention, RelayUrl, RelayUsage, RelayUsageSet, Rumor,
-    ShatteredContent, Signature, SignatureHex, Signer, SimpleRelayList, SimpleRelayUsage, Span,
-    SubscriptionId, Tag, UncheckedUrl, Unixtime, Url, Why, XOnlyPublicKey, ZapData,
+    Nip05, NostrBech32, NostrUrl, ParsedTag, PayRequestData, PreEvent, PrivateKey, Profile,
+    PublicKey, PublicKeyHex, RelayFees, RelayInformationDocument, RelayLimitation, RelayList,
+    RelayListUsage, RelayMessage, RelayOrigin, RelayRetention, RelayUrl, RelayUsage, RelayUsageSet,
+    Rumor, ShatteredContent, Signature, SignatureHex, Signer, SimpleRelayList, SimpleRelayUsage,
+    Span, SubscriptionId, Tag, UncheckedUrl, Unixtime, Url, Why, XOnlyPublicKey, ZapData,
 };
 
 mod versioned;

@@ -1,6 +1,6 @@
 use crate::types::{
-    DelegationConditions, EventKind, EventReference, Id, NAddr, PublicKey, RelayUrl, Signature,
-    UncheckedUrl,
+    DelegationConditions, EventKind, EventReference, Id, NAddr, ParsedTag, PublicKey, RelayUrl,
+    Signature, UncheckedUrl,
 };
 use crate::{Error, IntoVec};
 use serde::{Deserialize, Serialize};
@@ -56,6 +56,20 @@ impl TagV3 {
         }
     }
 
+    /// Get the string at the given index, None if beyond length or empty
+    pub fn get_opt_index(&self, i: usize) -> Option<&str> {
+        if self.0.len() <= i {
+            None
+        } else {
+            let s = self.get_index(i);
+            if s == "" {
+                None
+            } else {
+                Some(s)
+            }
+        }
+    }
+
     /// Set the string at the given index
     pub fn set_index(&mut self, index: usize, value: String) {
         while self.len() <= index {
@@ -99,6 +113,11 @@ impl TagV3 {
     #[allow(dead_code)]
     pub(crate) fn mock() -> TagV3 {
         TagV3(vec!["e".to_string(), UncheckedUrl::mock().0])
+    }
+
+    /// Parse into a ParsedTag
+    pub fn parse(&self) -> Result<ParsedTag, Error> {
+        ParsedTag::parse(self)
     }
 
     /// Create a new 'a' address tag
