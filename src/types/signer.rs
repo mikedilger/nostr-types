@@ -1,7 +1,8 @@
 use crate::{
     ContentEncryptionAlgorithm, DelegationConditions, EncryptedPrivateKey, Error, Event, EventKind,
-    EventV1, EventV2, Id, KeySecurity, KeySigner, Metadata, PreEvent, PreEventV2, PrivateKey,
-    PublicKey, PublicKeyHex, Rumor, RumorV1, RumorV2, Signature, Tag, TagV1, TagV2, Unixtime,
+    EventV1, EventV2, Id, KeySecurity, KeySigner, Metadata, ParsedTag, PreEvent, PreEventV2,
+    PrivateKey, PublicKey, PublicKeyHex, Rumor, RumorV1, RumorV2, Signature, Tag, TagV1, TagV2,
+    Unixtime,
 };
 use rand::Rng;
 use rand_core::OsRng;
@@ -306,7 +307,12 @@ pub trait Signer: fmt::Debug {
             created_at: giftwrap_backdate,
             kind: EventKind::GiftWrap,
             content: encrypted_seal_json,
-            tags: vec![Tag::new_pubkey(pubkey, None, None)],
+            tags: vec![ParsedTag::Pubkey {
+                pubkey,
+                recommended_relay_url: None,
+                petname: None,
+            }
+            .into_tag()],
         };
 
         random_signer.sign_event(pre_giftwrap)
@@ -402,7 +408,12 @@ pub trait Signer: fmt::Debug {
             created_at: Unixtime::now(),
             kind: EventKind::ZapRequest,
             tags: vec![
-                Tag::new_pubkey(recipient_pubkey, None, None),
+                ParsedTag::Pubkey {
+                    pubkey: recipient_pubkey,
+                    recommended_relay_url: None,
+                    petname: None,
+                }
+                .into_tag(),
                 relays_tag,
                 Tag::new(&["amount", &format!("{millisatoshis}")]),
             ],
@@ -410,7 +421,15 @@ pub trait Signer: fmt::Debug {
         };
 
         if let Some(ze) = zapped_event {
-            pre_event.tags.push(Tag::new_event(ze, None, None, None));
+            pre_event.tags.push(
+                ParsedTag::Event {
+                    id: ze,
+                    recommended_relay_url: None,
+                    marker: None,
+                    author_pubkey: None,
+                }
+                .into_tag(),
+            );
         }
 
         self.sign_event(pre_event)
@@ -446,7 +465,7 @@ pub trait Signer: fmt::Debug {
         // Verify you are tagged
         let mut tagged = false;
         for t in event.tags.iter() {
-            if let Ok((pubkey, _, _)) = t.parse_pubkey() {
+            if let Ok(ParsedTag::Pubkey { pubkey, .. }) = t.parse() {
                 if pubkey == self.public_key() {
                     tagged = true;
                 }

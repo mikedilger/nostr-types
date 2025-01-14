@@ -302,6 +302,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::ParsedTag;
 
     test_serde! {FilterV2, test_filters_serde}
 
@@ -360,7 +361,7 @@ mod test {
 
     #[test]
     fn test_event_matches() {
-        use crate::{Id, KeySigner, PreEvent, PrivateKey, Signer, Tag, UncheckedUrl};
+        use crate::{Id, KeySigner, PreEvent, PrivateKey, Signer, UncheckedUrl};
 
         let signer = {
             let privkey = PrivateKey::mock();
@@ -371,8 +372,14 @@ mod test {
             created_at: Unixtime(1680000012),
             kind: EventKind::TextNote,
             tags: vec![
-                Tag::new_event(Id::mock(), Some(UncheckedUrl::mock()), None, None),
-                Tag::new_hashtag("foodstr".to_string()),
+                ParsedTag::Event {
+                    id: Id::mock(),
+                    recommended_relay_url: Some(UncheckedUrl::mock()),
+                    marker: None,
+                    author_pubkey: None,
+                }
+                .into_tag(),
+                ParsedTag::Hashtag("foodstr".to_string()).into_tag(),
             ],
             content: "Hello World!".to_string(),
         };

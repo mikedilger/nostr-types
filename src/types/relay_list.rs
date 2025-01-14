@@ -1,4 +1,4 @@
-use crate::types::{Event, RelayUrl, Tag};
+use crate::types::{Event, ParsedTag, RelayUrl, Tag};
 use std::collections::HashMap;
 
 /// Relay Usage
@@ -39,9 +39,9 @@ impl RelayList {
         let mut relay_list: RelayList = Default::default();
 
         for tag in event.tags.iter() {
-            if let Ok((uurl, optmarker)) = tag.parse_relay() {
-                if let Ok(relay_url) = RelayUrl::try_from_unchecked_url(&uurl) {
-                    if let Some(m) = optmarker {
+            if let Ok(ParsedTag::RelayUsage { url, usage }) = tag.parse() {
+                if let Ok(relay_url) = RelayUrl::try_from_unchecked_url(&url) {
+                    if let Some(m) = usage {
                         match &*m.trim().to_lowercase() {
                             "read" => {
                                 let _ = relay_list.0.insert(relay_url, RelayListUsage::Inbox);
@@ -65,10 +65,13 @@ impl RelayList {
     pub fn to_event_tags(&self) -> Vec<Tag> {
         let mut tags: Vec<Tag> = Vec::new();
         for (relay_url, usage) in self.0.iter() {
-            tags.push(Tag::new_relay(
-                relay_url.to_unchecked_url(),
-                usage.marker().map(|s| s.to_owned()),
-            ));
+            tags.push(
+                ParsedTag::RelayUsage {
+                    url: relay_url.to_unchecked_url(),
+                    usage: usage.marker().map(|s| s.to_owned()),
+                }
+                .into_tag(),
+            );
         }
         tags
     }

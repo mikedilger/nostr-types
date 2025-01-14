@@ -125,7 +125,7 @@ pub fn add_pubkey_to_tags(
     new_hint: Option<UncheckedUrl>,
 ) -> usize {
     let index = existing_tags.iter().position(|existing_tag| {
-        if let Ok((pubkey, _, __)) = existing_tag.parse_pubkey() {
+        if let Ok(ParsedTag::Pubkey { pubkey, .. }) = existing_tag.parse() {
             pubkey == new_pubkey
         } else {
             false
@@ -144,7 +144,14 @@ pub fn add_pubkey_to_tags(
         existing_tags[idx].trim();
         idx
     } else {
-        existing_tags.push(Tag::new_pubkey(new_pubkey, new_hint, None));
+        existing_tags.push(
+            ParsedTag::Pubkey {
+                pubkey: new_pubkey,
+                recommended_relay_url: new_hint,
+                petname: None,
+            }
+            .into_tag(),
+        );
         existing_tags.len() - 1
     }
 }
@@ -161,7 +168,7 @@ pub fn add_event_to_tags(
     // NIP-18: "Quote reposts are kind 1 events with an embedded q tag..."
     if new_marker == "mention" && use_quote {
         let index = existing_tags.iter().position(|existing_tag| {
-            if let Ok((id, _rurl, _optpk)) = existing_tag.parse_quote() {
+            if let Ok(ParsedTag::Quote { id, .. }) = existing_tag.parse() {
                 id == new_id
             } else {
                 false
@@ -187,13 +194,18 @@ pub fn add_event_to_tags(
             existing_tags[idx].trim();
             idx
         } else {
-            let newtag = Tag::new_quote(new_id, new_hint, new_pubkey);
+            let newtag = ParsedTag::Quote {
+                id: new_id,
+                recommended_relay_url: new_hint,
+                author_pubkey: new_pubkey,
+            }
+            .into_tag();
             existing_tags.push(newtag);
             existing_tags.len() - 1
         }
     } else {
         let index = existing_tags.iter().position(|existing_tag| {
-            if let Ok((id, _rurl, _optmarker, _optpk)) = existing_tag.parse_event() {
+            if let Ok(ParsedTag::Event { id, .. }) = existing_tag.parse() {
                 id == new_id
             } else {
                 false
@@ -220,7 +232,13 @@ pub fn add_event_to_tags(
             existing_tags[idx].trim();
             idx
         } else {
-            let newtag = Tag::new_event(new_id, new_hint, Some(new_marker.to_string()), new_pubkey);
+            let newtag = ParsedTag::Event {
+                id: new_id,
+                recommended_relay_url: new_hint,
+                marker: Some(new_marker.to_string()),
+                author_pubkey: new_pubkey,
+            }
+            .into_tag();
             existing_tags.push(newtag);
             existing_tags.len() - 1
         }
@@ -234,8 +252,10 @@ pub fn add_addr_to_tags(
     new_marker: Option<String>,
 ) -> usize {
     let index = existing_tags.iter().position(|existing_tag| {
-        if let Ok((ea, _optmarker)) = existing_tag.parse_address() {
-            ea.kind == new_addr.kind && ea.author == new_addr.author && ea.d == new_addr.d
+        if let Ok(ParsedTag::Address { address, .. }) = existing_tag.parse() {
+            address.kind == new_addr.kind
+                && address.author == new_addr.author
+                && address.d == new_addr.d
         } else {
             false
         }
@@ -253,7 +273,13 @@ pub fn add_addr_to_tags(
         existing_tags[idx].trim();
         idx
     } else {
-        existing_tags.push(Tag::new_address(new_addr, new_marker));
+        existing_tags.push(
+            ParsedTag::Address {
+                address: new_addr.clone(),
+                marker: new_marker,
+            }
+            .into_tag(),
+        );
         existing_tags.len() - 1
     }
 }
@@ -261,6 +287,6 @@ pub fn add_addr_to_tags(
 /// Add an 'subject' tag to a set of tags if it doesn't already exist
 pub fn add_subject_to_tags_if_missing(existing_tags: &mut Vec<Tag>, subject: String) {
     if !existing_tags.iter().any(|t| t.tagname() == "subject") {
-        existing_tags.push(Tag::new_subject(subject));
+        existing_tags.push(ParsedTag::Subject(subject).into_tag());
     }
 }
