@@ -1,4 +1,5 @@
 use super::{find_nostr_url_pos, NostrBech32, NostrUrl};
+use aho_corasick::AhoCorasick;
 use lazy_static::lazy_static;
 use linkify::{LinkFinder, LinkKind};
 use regex::Regex;
@@ -51,7 +52,14 @@ impl ShatteredContent {
     /// Break content into meaningful segments
     ///
     /// This avoids reallocation
-    pub fn new(content: String) -> ShatteredContent {
+    pub fn new(content: String, replace_app_links: bool) -> ShatteredContent {
+
+        let content = if replace_app_links {
+            replace_urls_with_nostr(&content)
+        } else {
+            content
+        };
+
         let segments = shatter_content_1(&content);
 
         ShatteredContent {
@@ -161,6 +169,31 @@ fn apply_offset(segments: &mut [ContentSegment], offset: usize) {
     }
 }
 
+
+fn replace_urls_with_nostr(content: &str) -> String {
+    const PATTERNS: &[(&'static str, &'static str)] = &[
+        ("https://njump.me/npub1", "nostr:npub1"),
+        ("https://njump.me/nprofile1", "nostr:nprofile1"),
+        ("https://njump.me/nevent1", "nostr:nevent1"),
+        ("https://njump.me/naddr1", "nostr:naddr1"),
+        ("https://primal.net/e/note1", "nostr:note1"),
+        ("https://primal.net/p/npub1", "nostr:npub1"),
+        ("https://nostrudel.ninja/#/u/npub1", "nostr:npub1"),
+        ("https://nostrudel.ninja/u/npub1", "nostr:npub1"),
+        ("https://yakihonne.com/article/naddr1", "nostr:naddr1"),
+        ("https://yakihonne.com/users/npub1", "nostr:npub1"),
+    ];
+
+    lazy_static! {
+        static ref INPUTS: Vec<&'static str> = PATTERNS.iter().map(|(input,_)| *input).collect();
+        static ref OUTPUTS: Vec<&'static str> = PATTERNS.iter().map(|(_,output)| *output).collect();
+        static ref AHO: AhoCorasick = AhoCorasick::new(INPUTS.iter()).unwrap();
+    }
+
+    AHO.replace_all(content, &OUTPUTS)
+}
+
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -169,7 +202,7 @@ mod test {
     fn test_shatter_content() {
         let content_str = "My friend #[0]  wrote me this note: nostr:note10ttnuuvcs29y3k23gwrcurw2ksvgd7c2rrqlfx7urmt5m963vhss8nja90 and it might have referred to https://github.com/Giszmo/nostr.info/blob/master/assets/js/main.js";
         let content = content_str.to_string();
-        let pieces = ShatteredContent::new(content);
+        let pieces = ShatteredContent::new(content, false);
         assert_eq!(pieces.segments.len(), 6);
         assert!(matches!(pieces.segments[0], ContentSegment::Plain(..)));
         assert!(matches!(
@@ -184,7 +217,7 @@ mod test {
         let content_str = r#"This is a test of NIP-27 posting support referencing this note nostr:nevent1qqsqqqq9wh98g4u6e480vyp6p4w3ux2cd0mxn2rssq0w5cscsgzp2ksprpmhxue69uhkzapwdehhxarjwahhy6mn9e3k7mf0qyt8wumn8ghj7etyv4hzumn0wd68ytnvv9hxgtcpremhxue69uhkummnw3ez6ur4vgh8wetvd3hhyer9wghxuet59uq3kamnwvaz7tmwdaehgu3wd45kketyd9kxwetj9e3k7mf0qy2hwumn8ghj7mn0wd68ytn00p68ytnyv4mz7qgnwaehxw309ahkvenrdpskjm3wwp6kytcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsz9mhwden5te0wfjkccte9ehx7um5wghxyctwvshszxthwden5te0wfjkccte9eekummjwsh8xmmrd9skctcnmzajy and again without the url data nostr:note1qqqq2aw2w3te4n2w7cgr5r2arcv4s6lkdx58pqq7af3p3qsyz4dqns2935
 And referencing this person nostr:npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc2ak0dmvfeyse9p35c and again as an nprofile nostr:nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgprdmhxue69uhkummnw3ezumtfddjkg6tvvajhytnrdakj7qg7waehxw309ahx7um5wgkhqatz9emk2mrvdaexgetj9ehx2ap0qythwumn8ghj7un9d3shjtnwdaehgu3wd9hxvme0qyt8wumn8ghj7etyv4hzumn0wd68ytnvv9hxgtcpzdmhxue69uhk7enxvd5xz6tw9ec82c30qy2hwumn8ghj7mn0wd68ytn00p68ytnyv4mz7qgcwaehxw309ashgtnwdaehgunhdaexkuewvdhk6tczkvt9n all on the same damn line even (I think)."#;
         let content = content_str.to_string();
-        let pieces = ShatteredContent::new(content);
+        let pieces = ShatteredContent::new(content, false);
         assert_eq!(pieces.segments.len(), 9);
     }
 
@@ -197,12 +230,21 @@ Hier einige Impressionen mit opsec gewährten Bildern.
 Wonderful Long Weekend at a Zitadelle, Here Impressions opsec included
  nostr:npub1vwf2mytkyk22x2gcmr9d7k";
         let content = content_str.to_string();
-        let pieces = ShatteredContent::new(content);
+        let pieces = ShatteredContent::new(content, false);
         assert_eq!(pieces.segments.len(), 2);
         assert!(matches!(pieces.segments[0], ContentSegment::Plain(..)));
         assert!(matches!(pieces.segments[1], ContentSegment::Plain(..))); // 223 - 256
         if let ContentSegment::Plain(span) = pieces.segments[1] {
             let _slice = pieces.slice(&span);
         }
+    }
+
+    #[test]
+    fn test_shatter_content_3() {
+        let content_str = "Check this out https://primal.net/e/note10ttnuuvcs29y3k23gwrcurw2ksvgd7c2rrqlfx7urmt5m963vhss8nja90";
+        let content = content_str.to_string();
+        let pieces = ShatteredContent::new(content, true);
+        assert_eq!(pieces.segments.len(), 2);
+        assert!(matches!(pieces.segments[1], ContentSegment::NostrUrl(_)));
     }
 }
