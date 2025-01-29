@@ -69,10 +69,7 @@ impl Signer for KeySigner {
             return Ok(());
         }
 
-        let private_key = match self.encrypted_private_key.decrypt(password) {
-            Ok(pk) => pk,
-            Err(e) => return Err(e),
-        };
+        let private_key = self.encrypted_private_key.decrypt(password)?;
 
         self.private_key = Some(private_key);
 

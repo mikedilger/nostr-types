@@ -523,7 +523,7 @@ mod test {
                 (&vector.plaintext, vector.ciphertext, vector.nonce)
             {
                 let nonce: [u8; 24] = hex::decode(noncestr).unwrap().try_into().unwrap();
-                let ciphertext2 = sec1.nip44_v1_encrypt(&pub2, &plaintext, false, Some(nonce));
+                let ciphertext2 = sec1.nip44_v1_encrypt(&pub2, plaintext, false, Some(nonce));
                 assert_eq!(ciphertext, ciphertext2);
                 println!("Test vector {} encryption matches", num);
             }

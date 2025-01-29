@@ -947,7 +947,7 @@ mod test {
         assert_eq!(tag, tag2);
 
         let json = r#"["a","34550:d0debf9fb12def81f43d7c69429bb784812ac1e4d2d53a202db6aac7ea4b466c:git",""]"#;
-        let tag: TagV2 = serde_json::from_str(&json).unwrap();
+        let tag: TagV2 = serde_json::from_str(json).unwrap();
         if let TagV2::Address { ref relay_url, .. } = tag {
             assert_eq!(*relay_url, Some(UncheckedUrl("".to_string())));
         } else {

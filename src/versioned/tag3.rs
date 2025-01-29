@@ -59,7 +59,7 @@ impl TagV3 {
             None
         } else {
             let s = self.get_index(i);
-            if s == "" {
+            if s.is_empty() {
                 None
             } else {
                 Some(s)
