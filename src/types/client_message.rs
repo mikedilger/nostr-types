@@ -11,7 +11,7 @@ pub enum ClientMessage {
     Event(Box<Event>),
 
     /// A subscription request
-    Req(SubscriptionId, Vec<Filter>),
+    Req(SubscriptionId, Filter),
 
     /// A request to close a subscription
     Close(SubscriptionId),
@@ -20,7 +20,7 @@ pub enum ClientMessage {
     Auth(Box<Event>),
 
     /// Count
-    Count(SubscriptionId, Vec<Filter>),
+    Count(SubscriptionId, Filter),
 
     /// Negentropy Initiation
     NegOpen(SubscriptionId, Filter, String),
@@ -52,13 +52,11 @@ impl Serialize for ClientMessage {
                 seq.serialize_element(&event)?;
                 seq.end()
             }
-            ClientMessage::Req(id, filters) => {
+            ClientMessage::Req(id, filter) => {
                 let mut seq = serializer.serialize_seq(Some(3))?;
                 seq.serialize_element("REQ")?;
                 seq.serialize_element(&id)?;
-                for filter in filters {
-                    seq.serialize_element(&filter)?;
-                }
+                seq.serialize_element(&filter)?;
                 seq.end()
             }
             ClientMessage::Close(id) => {
@@ -73,13 +71,11 @@ impl Serialize for ClientMessage {
                 seq.serialize_element(&event)?;
                 seq.end()
             }
-            ClientMessage::Count(id, filters) => {
+            ClientMessage::Count(id, filter) => {
                 let mut seq = serializer.serialize_seq(Some(3))?;
                 seq.serialize_element("COUNT")?;
                 seq.serialize_element(&id)?;
-                for filter in filters {
-                    seq.serialize_element(&filter)?;
-                }
+                seq.serialize_element(&filter)?;
                 seq.end()
             }
             ClientMessage::NegOpen(subid, filter, msg) => {
@@ -142,28 +138,18 @@ impl<'de> Visitor<'de> for ClientMessageVisitor {
             let id: SubscriptionId = seq
                 .next_element()?
                 .ok_or_else(|| DeError::custom("Message missing id field"))?;
-            let mut filters: Vec<Filter> = vec![];
-            loop {
-                let f: Option<Filter> = seq.next_element()?;
-                match f {
-                    None => break,
-                    Some(fil) => filters.push(fil),
-                }
-            }
-            output = Some(ClientMessage::Req(id, filters))
+            let filter: Filter = seq
+                .next_element()?
+                .ok_or_else(|| DeError::custom("Message missing filter field"))?;
+            output = Some(ClientMessage::Req(id, filter))
         } else if word == "COUNT" {
             let id: SubscriptionId = seq
                 .next_element()?
-                .ok_or_else(|| DeError::custom("Message missing id field"))?;
-            let mut filters: Vec<Filter> = vec![];
-            loop {
-                let f: Option<Filter> = seq.next_element()?;
-                match f {
-                    None => break,
-                    Some(fil) => filters.push(fil),
-                }
-            }
-            output = Some(ClientMessage::Count(id, filters))
+                .ok_or_else(|| DeError::custom("Message missing filter field"))?;
+            let filter: Filter = seq
+                .next_element()?
+                .ok_or_else(|| DeError::custom("Message missing filter field"))?;
+            output = Some(ClientMessage::Count(id, filter))
         } else if word == "CLOSE" {
             let id: SubscriptionId = seq
                 .next_element()?
@@ -223,7 +209,7 @@ mod test {
     }
     test_serde_val! {
         test_client_message_serde_req,
-        ClientMessage::Req(SubscriptionId::mock(), vec![Filter::mock(), Filter::mock()])
+        ClientMessage::Req(SubscriptionId::mock(), Filter::mock())
     }
     test_serde_val! {
         test_client_message_serde_close,
