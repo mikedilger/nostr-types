@@ -498,8 +498,8 @@ impl EventV3 {
 
         // Look for nostr links within the content
 
-        // Collect every 'e' tag marked as 'mention'
         for tag in self.tags.iter() {
+            // Collect every 'e' tag marked as 'mention'
             if let Ok(ParsedTag::Event {
                 id,
                 recommended_relay_url,
@@ -518,6 +518,24 @@ impl EventV3 {
                         marker,
                     });
                 }
+            }
+
+            // Collect every 'q' tag
+            if let Ok(ParsedTag::Quote {
+                id,
+                recommended_relay_url,
+                author_pubkey
+            }) = tag.parse()
+            {
+                output.push(EventReference::Id {
+                    id,
+                    author: author_pubkey,
+                    relays: recommended_relay_url
+                        .as_ref()
+                        .and_then(|rru| RelayUrl::try_from_unchecked_url(rru).ok())
+                        .into_vec(),
+                    marker: None,
+                });
             }
         }
 
