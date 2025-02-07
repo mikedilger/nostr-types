@@ -579,8 +579,8 @@ impl EventKind {
     /// NOTE: this INCLUDES parameterized replaceable events
     pub fn is_replaceable(&self) -> bool {
         match *self {
-            Metadata => true,
-            ContactList => true,
+            Metadata => true, // 0
+            ContactList => true, // 3
             _ => {
                 let u: u32 = From::from(*self);
                 (10000..=19999).contains(&u) || (30000..=39999).contains(&u)
@@ -598,6 +598,12 @@ impl EventKind {
     pub fn is_parameterized_replaceable(&self) -> bool {
         let u: u32 = From::from(*self);
         (30000..=39999).contains(&u)
+    }
+
+    /// If this event kind is addressable (new name for parameterized replaceable)
+    #[inline]
+    pub fn is_addressable(&self) -> bool {
+        self.is_parameterized_replaceable()
     }
 
     /// If this event kind is feed related.
