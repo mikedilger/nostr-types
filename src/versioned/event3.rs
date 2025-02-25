@@ -524,7 +524,7 @@ impl EventV3 {
             if let Ok(ParsedTag::Quote {
                 id,
                 recommended_relay_url,
-                author_pubkey
+                author_pubkey,
             }) = tag.parse()
             {
                 output.push(EventReference::Id {

@@ -53,7 +53,6 @@ impl ShatteredContent {
     ///
     /// This avoids reallocation
     pub fn new(content: String, replace_app_links: bool) -> ShatteredContent {
-
         let content = if replace_app_links {
             replace_urls_with_nostr(&content)
         } else {
@@ -169,7 +168,6 @@ fn apply_offset(segments: &mut [ContentSegment], offset: usize) {
     }
 }
 
-
 fn replace_urls_with_nostr(content: &str) -> String {
     const PATTERNS: &[(&'static str, &'static str)] = &[
         ("https://njump.me/npub1", "nostr:npub1"),
@@ -201,14 +199,14 @@ fn replace_urls_with_nostr(content: &str) -> String {
     ];
 
     lazy_static! {
-        static ref INPUTS: Vec<&'static str> = PATTERNS.iter().map(|(input,_)| *input).collect();
-        static ref OUTPUTS: Vec<&'static str> = PATTERNS.iter().map(|(_,output)| *output).collect();
+        static ref INPUTS: Vec<&'static str> = PATTERNS.iter().map(|(input, _)| *input).collect();
+        static ref OUTPUTS: Vec<&'static str> =
+            PATTERNS.iter().map(|(_, output)| *output).collect();
         static ref AHO: AhoCorasick = AhoCorasick::new(INPUTS.iter()).unwrap();
     }
 
     AHO.replace_all(content, &OUTPUTS)
 }
-
 
 #[cfg(test)]
 mod test {

@@ -579,7 +579,7 @@ impl EventKind {
     /// NOTE: this INCLUDES parameterized replaceable events
     pub fn is_replaceable(&self) -> bool {
         match *self {
-            Metadata => true, // 0
+            Metadata => true,    // 0
             ContactList => true, // 3
             _ => {
                 let u: u32 = From::from(*self);

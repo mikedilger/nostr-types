@@ -568,7 +568,8 @@ impl<'de> Visitor<'de> for RidVisitor {
             rid.version = Some(s);
         }
         if let Some(v) = map.remove("limitation") {
-            rid.limitation = serde_json::from_value::<Option<RelayLimitationV1>>(v).unwrap_or_default()
+            rid.limitation =
+                serde_json::from_value::<Option<RelayLimitationV1>>(v).unwrap_or_default()
         }
         if let Some(v) = map.remove("retention") {
             rid.retention = serde_json::from_value::<Vec<RelayRetentionV1>>(v).unwrap_or_default();
