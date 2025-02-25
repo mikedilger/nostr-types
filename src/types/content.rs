@@ -169,7 +169,7 @@ fn apply_offset(segments: &mut [ContentSegment], offset: usize) {
 }
 
 fn replace_urls_with_nostr(content: &str) -> String {
-    const PATTERNS: &[(&'static str, &'static str)] = &[
+    const PATTERNS: &[(&str, &str)] = &[
         ("https://njump.me/npub1", "nostr:npub1"),
         ("https://njump.me/nprofile1", "nostr:nprofile1"),
         ("https://njump.me/nevent1", "nostr:nevent1"),
