@@ -267,6 +267,14 @@ impl Signer for PrivateKey {
     }
 }
 
+fn base64flex() -> base64::engine::GeneralPurpose {
+    let config = base64::engine::GeneralPurposeConfig::new()
+        .with_decode_allow_trailing_bits(true)
+        .with_encode_padding(true)
+        .with_decode_padding_mode(base64::engine::DecodePaddingMode::Indifferent);
+    base64::engine::GeneralPurpose::new(&base64::alphabet::STANDARD, config)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

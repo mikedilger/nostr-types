@@ -1,4 +1,4 @@
-use super::{KeySecurity, PrivateKey};
+use super::{base64flex, KeySecurity, PrivateKey};
 use crate::Error;
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, KeyIvInit};
 use base64::Engine;
@@ -264,7 +264,7 @@ impl PrivateKey {
         encrypted: &EncryptedPrivateKey,
         password: &str,
     ) -> Result<PrivateKey, Error> {
-        let concatenation = base64::engine::general_purpose::STANDARD.decode(&encrypted.0)?; // 64 or 80 bytes
+        let concatenation = base64flex().decode(&encrypted.0)?; // 64 or 80 bytes
         if concatenation.len() == 64 {
             Self::import_encrypted_pre_v1(concatenation, password)
         } else if concatenation.len() == 80 {

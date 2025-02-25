@@ -1,4 +1,4 @@
-use super::PrivateKey;
+use super::{base64flex, PrivateKey};
 use crate::{Error, PublicKey};
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use base64::Engine;
@@ -92,7 +92,7 @@ impl PrivateKey {
         };
 
         let algo = {
-            let bytes = base64::engine::general_purpose::STANDARD
+            let bytes = base64flex()
                 .decode(ciphertext)
                 .map_err(Error::BadEncryptedMessageBase64)?;
             if bytes.is_empty() {
@@ -179,8 +179,8 @@ impl PrivateKey {
 
         Ok(format!(
             "{}?iv={}",
-            base64::engine::general_purpose::STANDARD.encode(ciphertext),
-            base64::engine::general_purpose::STANDARD.encode(iv)
+            base64flex().encode(ciphertext),
+            base64flex().encode(iv)
         ))
     }
 
@@ -190,10 +190,10 @@ impl PrivateKey {
         if parts.len() != 2 {
             return Err(Error::BadEncryptedMessage);
         }
-        let ciphertext: Vec<u8> = base64::engine::general_purpose::STANDARD
+        let ciphertext: Vec<u8> = base64flex()
             .decode(parts[0])
             .map_err(Error::BadEncryptedMessageBase64)?;
-        let iv_vec: Vec<u8> = base64::engine::general_purpose::STANDARD
+        let iv_vec: Vec<u8> = base64flex()
             .decode(parts[1])
             .map_err(Error::BadEncryptedMessageBase64)?;
         let iv: [u8; 16] = iv_vec.try_into().unwrap();
@@ -233,7 +233,7 @@ impl PrivateKey {
             let mut cipher = chacha20::XChaCha20::new(&shared_secret.into(), output[1..=24].into());
             shared_secret.zeroize();
             cipher.apply_keystream(&mut output[25..]);
-            base64::engine::general_purpose::STANDARD.encode(output)
+            base64flex().encode(output)
         };
 
         if pad {
@@ -276,7 +276,7 @@ impl PrivateKey {
     ) -> Result<Vec<u8>, Error> {
         use chacha20::cipher::StreamCipher;
         let mut shared_secret = self.shared_secret_nip44_v1(other);
-        let bytes = base64::engine::general_purpose::STANDARD
+        let bytes = base64flex()
             .decode(ciphertext)
             .map_err(Error::BadEncryptedMessageBase64)?;
         if bytes[0] != 1 {
