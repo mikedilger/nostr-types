@@ -486,6 +486,9 @@ pub trait Signer: fmt::Debug {
             return Err(Error::WrongEventKind);
         }
 
+        // Veirfy the signature of the seal
+        seal.verify(None)?;
+
         // Note the author
         let author = seal.pubkey;
 
@@ -495,7 +498,7 @@ pub trait Signer: fmt::Debug {
         // Translate into a Rumor
         let rumor: Rumor = serde_json::from_str(&content)?;
 
-        // Compae the author
+        // Compare the author
         if rumor.pubkey != author {
             return Err(Error::InvalidPublicKey);
         }
