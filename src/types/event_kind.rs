@@ -177,6 +177,10 @@ define_event_kinds!(
     "Channel Mute User",
     ChannelMuteUser = 44,
 
+    "Request to Vanish (NIP-62)",
+    "Request to Vanish",
+    RequestToVanish = 62,
+
     "Chess (PGN) (NIP-64)",
     "Chess (PGN)",
     ChessPgn = 64,
