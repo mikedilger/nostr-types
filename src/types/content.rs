@@ -7,7 +7,7 @@ use regex::Regex;
 /// This is like `Range<usize>`, except we impl offset() on it
 /// This is like linkify::Span, except we impl offset() on it and don't need
 ///   the as_str() or kind() functions.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Span {
     start: usize,
     end: usize,
@@ -22,7 +22,7 @@ impl Span {
 }
 
 /// A segment of content
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ContentSegment {
     /// A Nostr URL
     NostrUrl(NostrUrl),
@@ -32,6 +32,9 @@ pub enum ContentSegment {
 
     /// A hyperlink
     Hyperlink(Span),
+
+    /// A hash tag
+    Hashtag(String),
 
     /// Plain text
     Plain(Span),
@@ -138,6 +141,7 @@ fn shatter_content_2(content: &str) -> Vec<ContentSegment> {
     segments
 }
 
+// Pass 3 - URLs
 fn shatter_content_3(content: &str) -> Vec<ContentSegment> {
     let mut segments: Vec<ContentSegment> = Vec::new();
 
@@ -148,11 +152,43 @@ fn shatter_content_3(content: &str) -> Vec<ContentSegment> {
                 end: span.end(),
             }));
         } else if !span.as_str().is_empty() {
+            let mut inner_segments = shatter_content_4(&content[span.start()..span.end()]);
+            apply_offset(&mut inner_segments, span.start());
+            segments.append(&mut inner_segments);
+        }
+    }
+
+    segments
+}
+
+// Pass 4 - Hashtags
+fn shatter_content_4(content: &str) -> Vec<ContentSegment> {
+    lazy_static! {
+        static ref HTAG_RE: Regex = Regex::new(r"(?ms)(?:^|\s)(#[\w\p{Extended_Pictographic}]+)\b").unwrap();
+    }
+
+    let mut segments: Vec<ContentSegment> = Vec::new();
+
+    let mut pos = 0;
+    for cap in HTAG_RE.captures_iter(content) {
+        let mat = cap.get(1).unwrap();
+        if mat.start() > pos {
             segments.push(ContentSegment::Plain(Span {
-                start: span.start(),
-                end: span.end(),
+                start: pos,
+                end: mat.start(),
             }));
         }
+        segments.push(ContentSegment::Hashtag(
+            content[mat.start()+1..mat.end()].to_owned(),
+        ));
+        pos = mat.end();
+    }
+
+    if pos < content.len() {
+        segments.push(ContentSegment::Plain(Span {
+            start: pos,
+            end: content.len(),
+        }));
     }
 
     segments
@@ -245,10 +281,10 @@ Wonderful Long Weekend at a Zitadelle, Here Impressions opsec included
  nostr:npub1vwf2mytkyk22x2gcmr9d7k";
         let content = content_str.to_string();
         let pieces = ShatteredContent::new(content, false);
-        assert_eq!(pieces.segments.len(), 2);
-        assert!(matches!(pieces.segments[0], ContentSegment::Plain(..)));
-        assert!(matches!(pieces.segments[1], ContentSegment::Plain(..))); // 223 - 256
-        if let ContentSegment::Plain(span) = pieces.segments[1] {
+        assert_eq!(pieces.segments.len(), 6);
+        assert!(matches!(pieces.segments[2], ContentSegment::Plain(..)));
+        assert!(matches!(pieces.segments[4], ContentSegment::Plain(..)));
+        if let ContentSegment::Plain(span) = pieces.segments[5] {
             let _slice = pieces.slice(&span);
         }
     }
@@ -260,5 +296,21 @@ Wonderful Long Weekend at a Zitadelle, Here Impressions opsec included
         let pieces = ShatteredContent::new(content, true);
         assert_eq!(pieces.segments.len(), 2);
         assert!(matches!(pieces.segments[1], ContentSegment::NostrUrl(_)));
+    }
+
+    #[test]
+    fn test_shatter_content_4() {
+        let content_str = "#happy this is crazy #mad #dog";
+        let content = content_str.to_string();
+        let pieces = ShatteredContent::new(content, true);
+        for piece in pieces.segments.iter() {
+            println!(">{:?}<", piece);
+        }
+        assert_eq!(pieces.segments.len(), 5);
+        assert_eq!(pieces.segments[0], ContentSegment::Hashtag("happy".to_owned()));
+        assert_eq!(pieces.segments[1], ContentSegment::Plain(Span { start: 6, end: 21 }));
+        assert_eq!(pieces.segments[2], ContentSegment::Hashtag("mad".to_owned()));
+        assert_eq!(pieces.segments[3], ContentSegment::Plain(Span { start: 25, end: 26 }));
+        assert_eq!(pieces.segments[4], ContentSegment::Hashtag("dog".to_owned()));
     }
 }

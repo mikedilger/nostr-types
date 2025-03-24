@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 
 /// A bech32 sequence representing a nostr object (or set of objects)
 // note, internally we store them as the object the sequence represents
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NostrBech32 {
     /// naddr - a NostrBech32 parameterized replaceable event coordinate
     NAddr(NAddr),
@@ -175,7 +175,7 @@ impl NostrBech32 {
 }
 
 /// A Nostr URL (starting with 'nostr:')
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NostrUrl(pub NostrBech32);
 
 impl std::fmt::Display for NostrUrl {
