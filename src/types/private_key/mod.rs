@@ -234,19 +234,11 @@ impl Signer for PrivateKey {
         Ok((self.as_bech32_string(), false))
     }
 
-    fn sign_id(&self, id: Id) -> Result<Signature, Error> {
+    async fn sign_id(&self, id: Id) -> Result<Signature, Error> {
         self.sign_id(id)
     }
 
-    async fn sign_id_async(&self, id: Id) -> Result<Signature, Error> {
-        self.sign_id(id)
-    }
-
-    fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
-        self.sign(message)
-    }
-
-    async fn sign_async(&self, message: &[u8]) -> Result<Signature, Error> {
+    async fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
         self.sign(message)
     }
 

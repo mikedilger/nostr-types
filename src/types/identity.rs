@@ -124,20 +124,20 @@ impl Identity {
     }
 
     /// Sign a 32-bit hash
-    pub fn sign_id(&self, id: Id) -> Result<Signature, Error> {
+    pub async fn sign_id(&self, id: Id) -> Result<Signature, Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.sign_id(id),
+            Identity::Signer(boxed_signer) => boxed_signer.sign_id(id).await,
         }
     }
 
     /// Sign a message (this hashes with SHA-256 first internally)
-    pub fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
+    pub async fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.sign(message),
+            Identity::Signer(boxed_signer) => boxed_signer.sign(message).await,
         }
     }
 
@@ -232,7 +232,7 @@ impl Identity {
     }
 
     /// Create an event that sets Metadata
-    pub fn create_metadata_event(
+    pub async fn create_metadata_event(
         &self,
         input: PreEvent,
         metadata: Metadata,
@@ -240,12 +240,14 @@ impl Identity {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.create_metadata_event(input, metadata),
+            Identity::Signer(boxed_signer) => {
+                boxed_signer.create_metadata_event(input, metadata).await
+            }
         }
     }
 
     /// Create a ZapRequest event These events are not published to nostr, they are sent to a lnurl.
-    pub fn create_zap_request_event(
+    pub async fn create_zap_request_event(
         &self,
         recipient_pubkey: PublicKey,
         zapped_event: Option<Id>,
@@ -256,13 +258,17 @@ impl Identity {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.create_zap_request_event(
-                recipient_pubkey,
-                zapped_event,
-                millisatoshis,
-                relays,
-                content,
-            ),
+            Identity::Signer(boxed_signer) => {
+                boxed_signer
+                    .create_zap_request_event(
+                        recipient_pubkey,
+                        zapped_event,
+                        millisatoshis,
+                        relays,
+                        content,
+                    )
+                    .await
+            }
         }
     }
 
@@ -305,7 +311,7 @@ impl Identity {
     }
 
     /// Generate delegation signature
-    pub fn generate_delegation_signature(
+    pub async fn generate_delegation_signature(
         &self,
         delegated_pubkey: PublicKey,
         delegation_conditions: &DelegationConditions,
@@ -314,31 +320,33 @@ impl Identity {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
             Identity::Signer(boxed_signer) => {
-                boxed_signer.generate_delegation_signature(delegated_pubkey, delegation_conditions)
+                boxed_signer
+                    .generate_delegation_signature(delegated_pubkey, delegation_conditions)
+                    .await
             }
         }
     }
 
     /// Giftwrap an event
-    pub fn giftwrap(&self, input: PreEvent, pubkey: PublicKey) -> Result<Event, Error> {
+    pub async fn giftwrap(&self, input: PreEvent, pubkey: PublicKey) -> Result<Event, Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.giftwrap(input, pubkey),
+            Identity::Signer(boxed_signer) => boxed_signer.giftwrap(input, pubkey).await,
         }
     }
 
     /// Sign an event
-    pub fn sign_event(&self, input: PreEvent) -> Result<Event, Error> {
+    pub async fn sign_event(&self, input: PreEvent) -> Result<Event, Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.sign_event(input),
+            Identity::Signer(boxed_signer) => boxed_signer.sign_event(input).await,
         }
     }
 
     /// Sign an event with Proof-of-Work
-    pub fn sign_event_with_pow(
+    pub async fn sign_event_with_pow(
         &self,
         input: PreEvent,
         zero_bits: u8,
@@ -348,7 +356,9 @@ impl Identity {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
             Identity::Signer(boxed_signer) => {
-                boxed_signer.sign_event_with_pow(input, zero_bits, work_sender)
+                boxed_signer
+                    .sign_event_with_pow(input, zero_bits, work_sender)
+                    .await
             }
         }
     }

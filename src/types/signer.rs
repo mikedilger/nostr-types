@@ -38,17 +38,11 @@ pub trait Signer: fmt::Debug + Sync {
     /// What is the signer's encrypted private key?
     fn encrypted_private_key(&self) -> Option<&EncryptedPrivateKey>;
 
-    /// Sign a 32-bit hash
-    fn sign_id(&self, id: Id) -> Result<Signature, Error>;
-
     /// Sign a 32-bit hash asynchronously
-    async fn sign_id_async(&self, id: Id) -> Result<Signature, Error>;
-
-    /// Sign a message (this hashes with SHA-256 first internally)
-    fn sign(&self, message: &[u8]) -> Result<Signature, Error>;
+    async fn sign_id(&self, id: Id) -> Result<Signature, Error>;
 
     /// Sign a message asynchronously (this hashes with SHA-256 first internally)
-    async fn sign_async(&self, message: &[u8]) -> Result<Signature, Error>;
+    async fn sign(&self, message: &[u8]) -> Result<Signature, Error>;
 
     /// Encrypt
     fn encrypt(
@@ -91,7 +85,7 @@ pub trait Signer: fmt::Debug + Sync {
     fn key_security(&self) -> Result<KeySecurity, Error>;
 
     /// Generate delegation signature
-    fn generate_delegation_signature(
+    async fn generate_delegation_signature(
         &self,
         delegated_pubkey: PublicKey,
         delegation_conditions: &DelegationConditions,
@@ -102,7 +96,7 @@ pub trait Signer: fmt::Debug + Sync {
             delegation_conditions.as_string()
         );
 
-        self.sign(input.as_bytes())
+        self.sign(input.as_bytes()).await
     }
 
     /// Verify delegation signature
@@ -122,7 +116,7 @@ pub trait Signer: fmt::Debug + Sync {
     }
 
     /// Sign an event
-    fn sign_event(&self, input: PreEvent) -> Result<Event, Error> {
+    async fn sign_event(&self, input: PreEvent) -> Result<Event, Error> {
         // Verify the pubkey matches
         if input.pubkey != self.public_key() {
             return Err(Error::InvalidPrivateKey);
@@ -132,7 +126,7 @@ pub trait Signer: fmt::Debug + Sync {
         let id = input.hash()?;
 
         // Generate Signature
-        let signature = self.sign_id(id)?;
+        let signature = self.sign_id(id).await?;
 
         Ok(Event {
             id,
@@ -146,7 +140,7 @@ pub trait Signer: fmt::Debug + Sync {
     }
 
     /// Sign an event
-    fn sign_event2(&self, input: PreEventV2) -> Result<EventV2, Error> {
+    async fn sign_event2(&self, input: PreEventV2) -> Result<EventV2, Error> {
         // Verify the pubkey matches
         if input.pubkey != self.public_key() {
             return Err(Error::InvalidPrivateKey);
@@ -156,7 +150,7 @@ pub trait Signer: fmt::Debug + Sync {
         let id = input.hash()?;
 
         // Generate Signature
-        let signature = self.sign_id(id)?;
+        let signature = self.sign_id(id).await?;
 
         Ok(EventV2 {
             id,
@@ -170,7 +164,7 @@ pub trait Signer: fmt::Debug + Sync {
     }
 
     /// Sign an event with Proof-of-Work
-    fn sign_event_with_pow(
+    async fn sign_event_with_pow(
         &self,
         mut input: PreEvent,
         zero_bits: u8,
@@ -252,7 +246,7 @@ pub trait Signer: fmt::Debug + Sync {
         let id = input.hash().unwrap();
 
         // Signature
-        let signature = self.sign_id(id)?;
+        let signature = self.sign_id(id).await?;
 
         Ok(Event {
             id,
@@ -266,7 +260,7 @@ pub trait Signer: fmt::Debug + Sync {
     }
 
     /// Giftwrap an event
-    fn giftwrap(&self, input: PreEvent, pubkey: PublicKey) -> Result<Event, Error> {
+    async fn giftwrap(&self, input: PreEvent, pubkey: PublicKey) -> Result<Event, Error> {
         let sender_pubkey = input.pubkey;
 
         // Verify the pubkey matches
@@ -297,7 +291,7 @@ pub trait Signer: fmt::Debug + Sync {
                 tags: vec![],
             };
 
-            self.sign_event(pre_seal)?
+            self.sign_event(pre_seal).await?
         };
 
         // Generate a random keypair for the gift wrap
@@ -323,11 +317,11 @@ pub trait Signer: fmt::Debug + Sync {
             .into_tag()],
         };
 
-        random_signer.sign_event(pre_giftwrap)
+        random_signer.sign_event(pre_giftwrap).await
     }
 
     /// Giftwrap an event
-    fn giftwrap2(&self, input: PreEventV2, pubkey: PublicKey) -> Result<EventV2, Error> {
+    async fn giftwrap2(&self, input: PreEventV2, pubkey: PublicKey) -> Result<EventV2, Error> {
         let sender_pubkey = input.pubkey;
 
         // Verify the pubkey matches
@@ -358,7 +352,7 @@ pub trait Signer: fmt::Debug + Sync {
                 tags: vec![],
             };
 
-            self.sign_event2(pre_seal)?
+            self.sign_event2(pre_seal).await?
         };
 
         // Generate a random keypair for the gift wrap
@@ -384,23 +378,23 @@ pub trait Signer: fmt::Debug + Sync {
             }],
         };
 
-        random_signer.sign_event2(pre_giftwrap)
+        random_signer.sign_event2(pre_giftwrap).await
     }
 
     /// Create an event that sets Metadata
-    fn create_metadata_event(
+    async fn create_metadata_event(
         &self,
         mut input: PreEvent,
         metadata: Metadata,
     ) -> Result<Event, Error> {
         input.kind = EventKind::Metadata;
         input.content = serde_json::to_string(&metadata)?;
-        self.sign_event(input)
+        self.sign_event(input).await
     }
 
     /// Create a ZapRequest event
     /// These events are not published to nostr, they are sent to a lnurl.
-    fn create_zap_request_event(
+    async fn create_zap_request_event(
         &self,
         recipient_pubkey: PublicKey,
         zapped_event: Option<Id>,
@@ -440,7 +434,7 @@ pub trait Signer: fmt::Debug + Sync {
             );
         }
 
-        self.sign_event(pre_event)
+        self.sign_event(pre_event).await
     }
 
     /// Decrypt the contents of an event

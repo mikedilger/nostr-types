@@ -103,26 +103,18 @@ impl Signer for KeySigner {
         Some(&self.encrypted_private_key)
     }
 
-    fn sign_id(&self, id: Id) -> Result<Signature, Error> {
+    async fn sign_id(&self, id: Id) -> Result<Signature, Error> {
         match &self.private_key {
             Some(pk) => pk.sign_id(id),
             None => Err(Error::SignerIsLocked),
         }
     }
 
-    async fn sign_id_async(&self, id: Id) -> Result<Signature, Error> {
-        self.sign_id(id)
-    }
-
-    fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
+    async fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
         match &self.private_key {
             Some(pk) => pk.sign(message),
             None => Err(Error::SignerIsLocked),
         }
-    }
-
-    async fn sign_async(&self, message: &[u8]) -> Result<Signature, Error> {
-        self.sign(message)
     }
 
     fn encrypt(

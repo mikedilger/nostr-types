@@ -29,8 +29,8 @@ impl Signature {
 
     // Mock data for testing
     #[allow(dead_code)]
-    pub(crate) fn mock() -> Signature {
-        let event = Event::mock();
+    pub(crate) async fn mock() -> Signature {
+        let event = Event::mock().await;
         event.sig
     }
 }
@@ -89,8 +89,8 @@ pub struct SignatureHex(pub String);
 impl SignatureHex {
     // Mock data for testing
     #[allow(dead_code)]
-    pub(crate) fn mock() -> SignatureHex {
-        From::from(Signature::mock())
+    pub(crate) async fn mock() -> SignatureHex {
+        From::from(Signature::mock().await)
     }
 }
 
@@ -112,7 +112,7 @@ impl TryFrom<SignatureHex> for Signature {
 mod test {
     use super::*;
 
-    test_serde! {Signature, test_signature_serde}
+    test_serde_async! {Signature, test_signature_serde}
 
     #[cfg(feature = "speedy")]
     #[test]

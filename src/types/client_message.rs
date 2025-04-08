@@ -35,8 +35,8 @@ pub enum ClientMessage {
 impl ClientMessage {
     // Mock data for testing
     #[allow(dead_code)]
-    pub(crate) fn mock() -> ClientMessage {
-        ClientMessage::Event(Box::new(Event::mock()))
+    pub(crate) async fn mock() -> ClientMessage {
+        ClientMessage::Event(Box::new(Event::mock().await))
     }
 }
 
@@ -201,11 +201,11 @@ mod test {
     use super::*;
     use crate::Event;
 
-    test_serde! {ClientMessage, test_client_message_serde}
+    test_serde_async! {ClientMessage, test_client_message_serde}
 
-    test_serde_val! {
+    test_serde_val_async! {
         test_client_message_serde_event,
-        ClientMessage::Event(Box::new(Event::mock()))
+        ClientMessage::Event(Box::new(Event::mock().await))
     }
     test_serde_val! {
         test_client_message_serde_req,
@@ -215,9 +215,9 @@ mod test {
         test_client_message_serde_close,
         ClientMessage::Close(SubscriptionId::mock())
     }
-    test_serde_val! {
+    test_serde_val_async! {
         test_client_message_serde_auth,
-        ClientMessage::Auth(Box::new(Event::mock()))
+        ClientMessage::Auth(Box::new(Event::mock().await))
     }
     test_serde_val! {
         test_client_message_serde_negopen,

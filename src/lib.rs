@@ -44,10 +44,38 @@ macro_rules! test_serde {
 }
 
 #[cfg(test)]
+macro_rules! test_serde_async {
+    ($t:ty, $fnname:ident) => {
+        #[tokio::test]
+        async fn $fnname() {
+            let a = <$t>::mock().await;
+            let x = serde_json::to_string(&a).unwrap();
+            println!("{}", x);
+            let b = serde_json::from_str(&x).unwrap();
+            assert_eq!(a, b);
+        }
+    };
+}
+
+#[cfg(test)]
 macro_rules! test_serde_val {
     ($fnname:ident, $val:expr) => {
         #[test]
         fn $fnname() {
+            let a = $val;
+            let x = serde_json::to_string(&a).unwrap();
+            println!("{}", x);
+            let b = serde_json::from_str(&x).unwrap();
+            assert_eq!(a, b);
+        }
+    };
+}
+
+#[cfg(test)]
+macro_rules! test_serde_val_async {
+    ($fnname:ident, $val:expr) => {
+        #[tokio::test]
+        async fn $fnname() {
             let a = $val;
             let x = serde_json::to_string(&a).unwrap();
             println!("{}", x);

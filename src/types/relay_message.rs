@@ -108,8 +108,8 @@ impl RelayMessage {
 
     // Mock data for testing
     #[allow(dead_code)]
-    pub(crate) fn mock() -> RelayMessage {
-        RelayMessage::Event(SubscriptionId::mock(), Box::new(Event::mock()))
+    pub(crate) async fn mock() -> RelayMessage {
+        RelayMessage::Event(SubscriptionId::mock(), Box::new(Event::mock().await))
     }
 }
 
@@ -273,5 +273,5 @@ impl<'de> Visitor<'de> for RelayMessageVisitor {
 mod test {
     use super::*;
 
-    test_serde! {RelayMessage, test_relay_message_serde}
+    test_serde_async! {RelayMessage, test_relay_message_serde}
 }

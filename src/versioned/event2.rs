@@ -184,7 +184,7 @@ impl EventV2 {
 
     /// Mock data for testing
     #[allow(dead_code)]
-    pub(crate) fn mock() -> EventV2 {
+    pub(crate) async fn mock() -> EventV2 {
         let signer = {
             let private_key = PrivateKey::mock();
             KeySigner::from_private_key(private_key, "", 1).unwrap()
@@ -197,7 +197,7 @@ impl EventV2 {
             tags: vec![TagV2::mock(), TagV2::mock()],
             content: "This is a test".to_string(),
         };
-        signer.sign_event2(pre).unwrap()
+        signer.sign_event2(pre).await.unwrap()
     }
 
     /// Get the k-tag kind, if any
@@ -1181,10 +1181,10 @@ mod test {
     use super::*;
     use crate::types::{DelegationConditions, Signer, UncheckedUrl};
 
-    test_serde! {EventV2, test_event_serde}
+    test_serde_async! {EventV2, test_event_serde}
 
-    #[test]
-    fn test_event_new_and_verify() {
+    #[tokio::test]
+    async fn test_event_new_and_verify() {
         let signer = {
             let privkey = PrivateKey::mock();
             KeySigner::from_private_key(privkey, "", 1).unwrap()
@@ -1202,7 +1202,7 @@ mod test {
             }],
             content: "Hello World!".to_string(),
         };
-        let mut event = signer.sign_event2(preevent).unwrap();
+        let mut event = signer.sign_event2(preevent).await.unwrap();
         assert!(event.verify(None).is_ok());
 
         // Now make sure it fails when the message has been modified
@@ -1225,7 +1225,7 @@ mod test {
     }
 
     // helper
-    fn create_event_with_delegation<S>(created_at: Unixtime, real_signer: &S) -> EventV2
+    async fn create_event_with_delegation<S>(created_at: Unixtime, real_signer: &S) -> EventV2
     where
         S: Signer,
     {
@@ -1241,6 +1241,7 @@ mod test {
 
         let sig = real_signer
             .generate_delegation_signature(delegated_signer.public_key(), &conditions)
+            .await
             .unwrap();
 
         let preevent = PreEventV2 {
@@ -1264,18 +1265,18 @@ mod test {
             ],
             content: "Hello World!".to_string(),
         };
-        delegated_signer.sign_event2(preevent).unwrap()
+        delegated_signer.sign_event2(preevent).await.unwrap()
     }
 
-    #[test]
-    fn test_event_with_delegation_ok() {
+    #[tokio::test]
+    async fn test_event_with_delegation_ok() {
         let delegator_signer = {
             let delegator_privkey = PrivateKey::mock();
             KeySigner::from_private_key(delegator_privkey, "", 1).unwrap()
         };
         let delegator_pubkey = delegator_signer.public_key();
 
-        let event = create_event_with_delegation(Unixtime(1680000012), &delegator_signer);
+        let event = create_event_with_delegation(Unixtime(1680000012), &delegator_signer).await;
         assert!(event.verify(None).is_ok());
 
         // check delegation
@@ -1287,12 +1288,12 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_event_with_delegation_invalid_created_after() {
+    #[tokio::test]
+    async fn test_event_with_delegation_invalid_created_after() {
         let delegator_privkey = PrivateKey::mock();
         let signer = KeySigner::from_private_key(delegator_privkey, "", 1).unwrap();
 
-        let event = create_event_with_delegation(Unixtime(1690000000), &signer);
+        let event = create_event_with_delegation(Unixtime(1690000000), &signer).await;
         assert!(event.verify(None).is_ok());
 
         // check delegation
@@ -1307,14 +1308,14 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_event_with_delegation_invalid_created_before() {
+    #[tokio::test]
+    async fn test_event_with_delegation_invalid_created_before() {
         let signer = {
             let delegator_privkey = PrivateKey::mock();
             KeySigner::from_private_key(delegator_privkey, "", 1).unwrap()
         };
 
-        let event = create_event_with_delegation(Unixtime(1610000000), &signer);
+        let event = create_event_with_delegation(Unixtime(1610000000), &signer).await;
         assert!(event.verify(None).is_ok());
 
         // check delegation
@@ -1403,8 +1404,8 @@ mod test {
         println!("TAGS: [len={:?}]", (event.tags.len() as u32).to_ne_bytes());
     }
 
-    #[test]
-    fn test_event_gift_wrap() {
+    #[tokio::test]
+    async fn test_event_gift_wrap() {
         let signer1 = {
             let sec1 = PrivateKey::try_from_hex_string(
                 "0000000000000000000000000000000000000000000000000000000000000001",
@@ -1431,6 +1432,7 @@ mod test {
 
         let gift_wrap = signer1
             .giftwrap2(pre.clone(), signer2.public_key())
+            .await
             .unwrap();
         let rumor = signer2.unwrap_giftwrap2(&gift_wrap).unwrap();
         let output_pre: PreEventV2 = rumor.into();

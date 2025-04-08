@@ -164,7 +164,8 @@ fn shatter_content_3(content: &str) -> Vec<ContentSegment> {
 // Pass 4 - Hashtags
 fn shatter_content_4(content: &str) -> Vec<ContentSegment> {
     lazy_static! {
-        static ref HTAG_RE: Regex = Regex::new(r"(?ms)(?:^|\s)(#[\w\p{Extended_Pictographic}]+)\b").unwrap();
+        static ref HTAG_RE: Regex =
+            Regex::new(r"(?ms)(?:^|\s)(#[\w\p{Extended_Pictographic}]+)\b").unwrap();
     }
 
     let mut segments: Vec<ContentSegment> = Vec::new();
@@ -179,7 +180,7 @@ fn shatter_content_4(content: &str) -> Vec<ContentSegment> {
             }));
         }
         segments.push(ContentSegment::Hashtag(
-            content[mat.start()+1..mat.end()].to_owned(),
+            content[mat.start() + 1..mat.end()].to_owned(),
         ));
         pos = mat.end();
     }
@@ -307,10 +308,25 @@ Wonderful Long Weekend at a Zitadelle, Here Impressions opsec included
             println!(">{:?}<", piece);
         }
         assert_eq!(pieces.segments.len(), 5);
-        assert_eq!(pieces.segments[0], ContentSegment::Hashtag("happy".to_owned()));
-        assert_eq!(pieces.segments[1], ContentSegment::Plain(Span { start: 6, end: 21 }));
-        assert_eq!(pieces.segments[2], ContentSegment::Hashtag("mad".to_owned()));
-        assert_eq!(pieces.segments[3], ContentSegment::Plain(Span { start: 25, end: 26 }));
-        assert_eq!(pieces.segments[4], ContentSegment::Hashtag("dog".to_owned()));
+        assert_eq!(
+            pieces.segments[0],
+            ContentSegment::Hashtag("happy".to_owned())
+        );
+        assert_eq!(
+            pieces.segments[1],
+            ContentSegment::Plain(Span { start: 6, end: 21 })
+        );
+        assert_eq!(
+            pieces.segments[2],
+            ContentSegment::Hashtag("mad".to_owned())
+        );
+        assert_eq!(
+            pieces.segments[3],
+            ContentSegment::Plain(Span { start: 25, end: 26 })
+        );
+        assert_eq!(
+            pieces.segments[4],
+            ContentSegment::Hashtag("dog".to_owned())
+        );
     }
 }
