@@ -117,7 +117,7 @@ impl Signer for KeySigner {
         }
     }
 
-    fn encrypt(
+    async fn encrypt(
         &self,
         other: &PublicKey,
         plaintext: &str,
@@ -129,14 +129,14 @@ impl Signer for KeySigner {
         }
     }
 
-    fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
+    async fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
         match &self.private_key {
             Some(pk) => pk.decrypt(other, ciphertext),
             None => Err(Error::SignerIsLocked),
         }
     }
 
-    fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error> {
+    async fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error> {
         let xpub = other.as_xonly_public_key();
         match &self.private_key {
             Some(pk) => Ok(nip44::get_conversation_key(pk.as_secret_key(), xpub)),
@@ -144,7 +144,7 @@ impl Signer for KeySigner {
         }
     }
 
-    fn export_private_key_in_hex(
+    async fn export_private_key_in_hex(
         &mut self,
         pass: &str,
         log_n: u8,
@@ -168,7 +168,7 @@ impl Signer for KeySigner {
         }
     }
 
-    fn export_private_key_in_bech32(
+    async fn export_private_key_in_bech32(
         &mut self,
         pass: &str,
         log_n: u8,

@@ -45,7 +45,7 @@ pub trait Signer: fmt::Debug + Sync {
     async fn sign(&self, message: &[u8]) -> Result<Signature, Error>;
 
     /// Encrypt
-    fn encrypt(
+    async fn encrypt(
         &self,
         other: &PublicKey,
         plaintext: &str,
@@ -53,10 +53,10 @@ pub trait Signer: fmt::Debug + Sync {
     ) -> Result<String, Error>;
 
     /// Decrypt NIP-04 or NIP-44
-    fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error>;
+    async fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error>;
 
     /// Get NIP-44 conversation key
-    fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error>;
+    async fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error>;
 
     /// Export the private key in hex.
     ///
@@ -65,8 +65,11 @@ pub trait Signer: fmt::Debug + Sync {
     ///
     /// We need the password and log_n parameters to possibly rebuild
     /// the EncryptedPrivateKey when downgrading key security
-    fn export_private_key_in_hex(&mut self, pass: &str, log_n: u8)
-        -> Result<(String, bool), Error>;
+    async fn export_private_key_in_hex(
+        &mut self,
+        pass: &str,
+        log_n: u8,
+    ) -> Result<(String, bool), Error>;
 
     /// Export the private key in bech32.
     ///
@@ -75,7 +78,7 @@ pub trait Signer: fmt::Debug + Sync {
     ///
     /// We need the password and log_n parameters to possibly rebuild
     /// the EncryptedPrivateKey when downgrading key security
-    fn export_private_key_in_bech32(
+    async fn export_private_key_in_bech32(
         &mut self,
         pass: &str,
         log_n: u8,
@@ -280,8 +283,9 @@ pub trait Signer: fmt::Debug + Sync {
         let seal = {
             let rumor = Rumor::new(input)?;
             let rumor_json = serde_json::to_string(&rumor)?;
-            let encrypted_rumor_json =
-                self.encrypt(&pubkey, &rumor_json, ContentEncryptionAlgorithm::Nip44v2)?;
+            let encrypted_rumor_json = self
+                .encrypt(&pubkey, &rumor_json, ContentEncryptionAlgorithm::Nip44v2)
+                .await?;
 
             let pre_seal = PreEvent {
                 pubkey: sender_pubkey,
@@ -301,8 +305,9 @@ pub trait Signer: fmt::Debug + Sync {
         }?;
 
         let seal_json = serde_json::to_string(&seal)?;
-        let encrypted_seal_json =
-            random_signer.encrypt(&pubkey, &seal_json, ContentEncryptionAlgorithm::Nip44v2)?;
+        let encrypted_seal_json = random_signer
+            .encrypt(&pubkey, &seal_json, ContentEncryptionAlgorithm::Nip44v2)
+            .await?;
 
         let pre_giftwrap = PreEvent {
             pubkey: random_signer.public_key(),
@@ -341,8 +346,9 @@ pub trait Signer: fmt::Debug + Sync {
         let seal = {
             let rumor = RumorV2::new(input)?;
             let rumor_json = serde_json::to_string(&rumor)?;
-            let encrypted_rumor_json =
-                self.encrypt(&pubkey, &rumor_json, ContentEncryptionAlgorithm::Nip44v2)?;
+            let encrypted_rumor_json = self
+                .encrypt(&pubkey, &rumor_json, ContentEncryptionAlgorithm::Nip44v2)
+                .await?;
 
             let pre_seal = PreEventV2 {
                 pubkey: sender_pubkey,
@@ -362,8 +368,9 @@ pub trait Signer: fmt::Debug + Sync {
         }?;
 
         let seal_json = serde_json::to_string(&seal)?;
-        let encrypted_seal_json =
-            random_signer.encrypt(&pubkey, &seal_json, ContentEncryptionAlgorithm::Nip44v2)?;
+        let encrypted_seal_json = random_signer
+            .encrypt(&pubkey, &seal_json, ContentEncryptionAlgorithm::Nip44v2)
+            .await?;
 
         let pre_giftwrap = PreEventV2 {
             pubkey: random_signer.public_key(),
@@ -438,7 +445,7 @@ pub trait Signer: fmt::Debug + Sync {
     }
 
     /// Decrypt the contents of an event
-    fn decrypt_event_contents(&self, event: &Event) -> Result<String, Error> {
+    async fn decrypt_event_contents(&self, event: &Event) -> Result<String, Error> {
         if !event.kind.contents_are_encrypted() {
             return Err(Error::WrongEventKind);
         }
@@ -455,11 +462,11 @@ pub trait Signer: fmt::Debug + Sync {
             event.pubkey
         };
 
-        self.decrypt(&pubkey, &event.content)
+        self.decrypt(&pubkey, &event.content).await
     }
 
     /// If a gift wrap event, unwrap and return the inner Rumor
-    fn unwrap_giftwrap(&self, event: &Event) -> Result<Rumor, Error> {
+    async fn unwrap_giftwrap(&self, event: &Event) -> Result<Rumor, Error> {
         if event.kind != EventKind::GiftWrap {
             return Err(Error::WrongEventKind);
         }
@@ -478,7 +485,7 @@ pub trait Signer: fmt::Debug + Sync {
         }
 
         // Decrypt the content
-        let content = self.decrypt(&event.pubkey, &event.content)?;
+        let content = self.decrypt(&event.pubkey, &event.content).await?;
 
         // Translate into a seal Event
         let seal: Event = serde_json::from_str(&content)?;
@@ -495,7 +502,7 @@ pub trait Signer: fmt::Debug + Sync {
         let author = seal.pubkey;
 
         // Decrypt the content
-        let content = self.decrypt(&seal.pubkey, &seal.content)?;
+        let content = self.decrypt(&seal.pubkey, &seal.content).await?;
 
         // Translate into a Rumor
         let rumor: Rumor = serde_json::from_str(&content)?;
@@ -511,7 +518,7 @@ pub trait Signer: fmt::Debug + Sync {
 
     /// If a gift wrap event, unwrap and return the inner Rumor
     /// @deprecated for migrations only
-    fn unwrap_giftwrap2(&self, event: &EventV2) -> Result<RumorV2, Error> {
+    async fn unwrap_giftwrap2(&self, event: &EventV2) -> Result<RumorV2, Error> {
         if event.kind != EventKind::GiftWrap {
             return Err(Error::WrongEventKind);
         }
@@ -531,7 +538,7 @@ pub trait Signer: fmt::Debug + Sync {
         }
 
         // Decrypt the content
-        let content = self.decrypt(&event.pubkey, &event.content)?;
+        let content = self.decrypt(&event.pubkey, &event.content).await?;
 
         // Translate into a seal Event
         let seal: EventV2 = serde_json::from_str(&content)?;
@@ -545,7 +552,7 @@ pub trait Signer: fmt::Debug + Sync {
         let author = seal.pubkey;
 
         // Decrypt the content
-        let content = self.decrypt(&seal.pubkey, &seal.content)?;
+        let content = self.decrypt(&seal.pubkey, &seal.content).await?;
 
         // Translate into a Rumor
         let rumor: RumorV2 = serde_json::from_str(&content)?;
@@ -561,7 +568,7 @@ pub trait Signer: fmt::Debug + Sync {
 
     /// If a gift wrap event, unwrap and return the inner Rumor
     /// @deprecated for migrations only
-    fn unwrap_giftwrap1(&self, event: &EventV1) -> Result<RumorV1, Error> {
+    async fn unwrap_giftwrap1(&self, event: &EventV1) -> Result<RumorV1, Error> {
         if event.kind != EventKind::GiftWrap {
             return Err(Error::WrongEventKind);
         }
@@ -581,7 +588,7 @@ pub trait Signer: fmt::Debug + Sync {
         }
 
         // Decrypt the content
-        let content = self.decrypt(&event.pubkey, &event.content)?;
+        let content = self.decrypt(&event.pubkey, &event.content).await?;
 
         // Translate into a seal Event
         let seal: EventV1 = serde_json::from_str(&content)?;
@@ -595,7 +602,7 @@ pub trait Signer: fmt::Debug + Sync {
         let author = seal.pubkey;
 
         // Decrypt the content
-        let content = self.decrypt(&seal.pubkey, &seal.content)?;
+        let content = self.decrypt(&seal.pubkey, &seal.content).await?;
 
         // Translate into a Rumor
         let rumor: RumorV1 = serde_json::from_str(&content)?;

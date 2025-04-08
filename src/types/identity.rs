@@ -142,7 +142,7 @@ impl Identity {
     }
 
     /// Encrypt
-    pub fn encrypt(
+    pub async fn encrypt(
         &self,
         other: &PublicKey,
         plaintext: &str,
@@ -151,25 +151,25 @@ impl Identity {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.encrypt(other, plaintext, algo),
+            Identity::Signer(boxed_signer) => boxed_signer.encrypt(other, plaintext, algo).await,
         }
     }
 
     /// Decrypt
-    pub fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
+    pub async fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.decrypt(other, ciphertext),
+            Identity::Signer(boxed_signer) => boxed_signer.decrypt(other, ciphertext).await,
         }
     }
 
     /// Get NIP-44 conversation key
-    pub fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error> {
+    pub async fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.nip44_conversation_key(other),
+            Identity::Signer(boxed_signer) => boxed_signer.nip44_conversation_key(other).await,
         }
     }
 
@@ -180,7 +180,7 @@ impl Identity {
     ///
     /// We need the password and log_n parameters to possibly rebuild
     /// the EncryptedPrivateKey when downgrading key security
-    pub fn export_private_key_in_hex(
+    pub async fn export_private_key_in_hex(
         &mut self,
         pass: &str,
         log_n: u8,
@@ -188,7 +188,9 @@ impl Identity {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.export_private_key_in_hex(pass, log_n),
+            Identity::Signer(boxed_signer) => {
+                boxed_signer.export_private_key_in_hex(pass, log_n).await
+            }
         }
     }
 
@@ -199,7 +201,7 @@ impl Identity {
     ///
     /// We need the password and log_n parameters to possibly rebuild
     /// the EncryptedPrivateKey when downgrading key security
-    pub fn export_private_key_in_bech32(
+    pub async fn export_private_key_in_bech32(
         &mut self,
         pass: &str,
         log_n: u8,
@@ -208,7 +210,7 @@ impl Identity {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
             Identity::Signer(boxed_signer) => {
-                boxed_signer.export_private_key_in_bech32(pass, log_n)
+                boxed_signer.export_private_key_in_bech32(pass, log_n).await
             }
         }
     }
@@ -273,40 +275,40 @@ impl Identity {
     }
 
     /// Decrypt the contents of an event
-    pub fn decrypt_event_contents(&self, event: &Event) -> Result<String, Error> {
+    pub async fn decrypt_event_contents(&self, event: &Event) -> Result<String, Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.decrypt_event_contents(event),
+            Identity::Signer(boxed_signer) => boxed_signer.decrypt_event_contents(event).await,
         }
     }
 
     /// If a gift wrap event, unwrap and return the inner Rumor
-    pub fn unwrap_giftwrap(&self, event: &Event) -> Result<Rumor, Error> {
+    pub async fn unwrap_giftwrap(&self, event: &Event) -> Result<Rumor, Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.unwrap_giftwrap(event),
-        }
-    }
-
-    /// If a gift wrap event, unwrap and return the inner Rumor
-    /// @deprecated for migrations only
-    pub fn unwrap_giftwrap1(&self, event: &EventV1) -> Result<RumorV1, Error> {
-        match self {
-            Identity::None => Err(Error::NoPublicKey),
-            Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.unwrap_giftwrap1(event),
+            Identity::Signer(boxed_signer) => boxed_signer.unwrap_giftwrap(event).await,
         }
     }
 
     /// If a gift wrap event, unwrap and return the inner Rumor
     /// @deprecated for migrations only
-    pub fn unwrap_giftwrap2(&self, event: &EventV2) -> Result<RumorV2, Error> {
+    pub async fn unwrap_giftwrap1(&self, event: &EventV1) -> Result<RumorV1, Error> {
         match self {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => boxed_signer.unwrap_giftwrap2(event),
+            Identity::Signer(boxed_signer) => boxed_signer.unwrap_giftwrap1(event).await,
+        }
+    }
+
+    /// If a gift wrap event, unwrap and return the inner Rumor
+    /// @deprecated for migrations only
+    pub async fn unwrap_giftwrap2(&self, event: &EventV2) -> Result<RumorV2, Error> {
+        match self {
+            Identity::None => Err(Error::NoPublicKey),
+            Identity::Public(_) => Err(Error::NoPrivateKey),
+            Identity::Signer(boxed_signer) => boxed_signer.unwrap_giftwrap2(event).await,
         }
     }
 

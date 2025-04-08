@@ -1512,7 +1512,7 @@ mod test {
             .giftwrap(pre.clone(), signer2.public_key())
             .await
             .unwrap();
-        let rumor = signer2.unwrap_giftwrap(&gift_wrap).unwrap();
+        let rumor = signer2.unwrap_giftwrap(&gift_wrap).await.unwrap();
         let output_pre: PreEventV3 = rumor.into();
 
         assert_eq!(pre, output_pre);
