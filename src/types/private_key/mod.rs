@@ -1,4 +1,5 @@
 use crate::{Error, Id, PublicKey, Signature, Signer};
+use async_trait::async_trait;
 use rand_core::OsRng;
 use std::convert::TryFrom;
 use std::fmt;
@@ -189,6 +190,7 @@ impl Drop for PrivateKey {
     }
 }
 
+#[async_trait]
 impl Signer for PrivateKey {
     fn is_locked(&self) -> bool {
         false
@@ -236,7 +238,15 @@ impl Signer for PrivateKey {
         self.sign_id(id)
     }
 
+    async fn sign_id_async(&self, id: Id) -> Result<Signature, Error> {
+        self.sign_id(id)
+    }
+
     fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
+        self.sign(message)
+    }
+
+    async fn sign_async(&self, message: &[u8]) -> Result<Signature, Error> {
         self.sign(message)
     }
 

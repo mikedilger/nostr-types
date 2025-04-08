@@ -2,6 +2,7 @@ use crate::{
     ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, Id, KeySecurity, PrivateKey, PublicKey,
     Signature, Signer,
 };
+use async_trait::async_trait;
 use std::fmt;
 
 /// Signer with a local private key (and public key)
@@ -59,6 +60,7 @@ impl KeySigner {
     }
 }
 
+#[async_trait]
 impl Signer for KeySigner {
     fn is_locked(&self) -> bool {
         self.private_key.is_none()
@@ -108,11 +110,19 @@ impl Signer for KeySigner {
         }
     }
 
+    async fn sign_id_async(&self, id: Id) -> Result<Signature, Error> {
+        self.sign_id(id)
+    }
+
     fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
         match &self.private_key {
             Some(pk) => pk.sign(message),
             None => Err(Error::SignerIsLocked),
         }
+    }
+
+    async fn sign_async(&self, message: &[u8]) -> Result<Signature, Error> {
+        self.sign(message)
     }
 
     fn encrypt(

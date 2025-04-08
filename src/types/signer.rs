@@ -4,6 +4,7 @@ use crate::{
     PrivateKey, PublicKey, PublicKeyHex, Rumor, RumorV1, RumorV2, Signature, Tag, TagV1, TagV2,
     Unixtime,
 };
+use async_trait::async_trait;
 use rand::Rng;
 use rand_core::OsRng;
 use std::fmt;
@@ -14,7 +15,8 @@ use std::thread;
 use std::thread::JoinHandle;
 
 /// Signer operations
-pub trait Signer: fmt::Debug {
+#[async_trait]
+pub trait Signer: fmt::Debug + Sync {
     /// Is the signer locked?
     fn is_locked(&self) -> bool;
 
@@ -39,8 +41,14 @@ pub trait Signer: fmt::Debug {
     /// Sign a 32-bit hash
     fn sign_id(&self, id: Id) -> Result<Signature, Error>;
 
+    /// Sign a 32-bit hash asynchronously
+    async fn sign_id_async(&self, id: Id) -> Result<Signature, Error>;
+
     /// Sign a message (this hashes with SHA-256 first internally)
     fn sign(&self, message: &[u8]) -> Result<Signature, Error>;
+
+    /// Sign a message asynchronously (this hashes with SHA-256 first internally)
+    async fn sign_async(&self, message: &[u8]) -> Result<Signature, Error>;
 
     /// Encrypt
     fn encrypt(
