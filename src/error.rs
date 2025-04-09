@@ -7,6 +7,10 @@ pub enum Error {
     #[error("Assertion failed: {0}")]
     AssertionFailed(String),
 
+    /// Bad NIP-46 Bunker URL
+    #[error("Bad NIP-46 Bunker URL")]
+    BadBunkerUrl,
+
     /// Bad Encrypted Message
     #[error("Bad Encrypted Message")]
     BadEncryptedMessage,
@@ -158,6 +162,21 @@ pub enum Error {
     #[error("Missing URL Authority")]
     InvalidUrlMissingAuthority,
 
+    /// NIP-46 error
+    #[cfg(feature = "nip46")]
+    #[error("NIP-46 error: {0}")]
+    Nip46Error(String),
+
+    /// NIP-46 failed to post
+    #[cfg(feature = "nip46")]
+    #[error("NIP-46 failed to post: {0}")]
+    Nip46FailedToPost(String),
+
+    /// NIP-46 failed to post
+    #[cfg(feature = "nip46")]
+    #[error("NIP-46 no response")]
+    Nip46NoResponse,
+
     /// Addr to a non-replaceable event kind
     #[error("Event kind is not replaceable")]
     NonReplaceableAddr,
@@ -233,6 +252,10 @@ pub enum Error {
     /// Unpad error
     #[error("Decryption error: {0}")]
     Unpad(#[from] aes::cipher::block_padding::UnpadError),
+
+    /// Unsupported Algorithm
+    #[error("Unsupported algorithm")]
+    UnsupportedAlgorithm,
 
     /// Url Error
     #[error("Not a valid nostr relay url: {0}")]
