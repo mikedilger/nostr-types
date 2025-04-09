@@ -85,6 +85,10 @@ macro_rules! test_serde_val_async {
     };
 }
 
+/// A basic nostr client
+#[cfg(feature = "client")]
+pub mod client;
+
 mod types;
 pub use types::{
     find_nostr_bech32_pos, find_nostr_url_pos, ClientMessage, ContentEncryptionAlgorithm,

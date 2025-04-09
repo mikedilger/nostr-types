@@ -35,6 +35,11 @@ pub enum Error {
     #[error("Crypto Error: {0}")]
     Crypto(#[from] nip44::Error),
 
+    /// Disconnected
+    #[cfg(feature = "client")]
+    #[error("Disconnected")]
+    Disconnected,
+
     /// Encryption/Decryption Error
     #[error("Private Key Encryption/Decryption Error")]
     PrivateKeyEncryption,
@@ -66,6 +71,11 @@ pub enum Error {
     /// Hex string decoding error
     #[error("Hex Decode Error: {0}")]
     HexDecode(#[from] hex::FromHexError),
+
+    /// HTTP error
+    #[cfg(feature = "client")]
+    #[error("HTTP: {0}")]
+    Http(#[from] http::Error),
 
     /// Invalid encrypted private key
     #[error("Invalid Encrypted Private Key")]
@@ -127,6 +137,11 @@ pub enum Error {
     #[error("Invalid URL: \"{0}\"")]
     InvalidUrl(#[from] url::ParseError),
 
+    /// Invalid URI
+    #[cfg(feature = "client")]
+    #[error("Invalid URI: {0}")]
+    InvalidUri(#[from] http::uri::InvalidUri),
+
     /// Invalid URL TLV encoding
     #[error("Invalid URL TLV encoding")]
     InvalidUrlTlv,
@@ -163,6 +178,11 @@ pub enum Error {
     #[error("Parse integer error")]
     ParseInt(#[from] std::num::ParseIntError),
 
+    /// HTTP request eror
+    #[cfg(feature = "client")]
+    #[error("HTTP error: {0}")]
+    Reqwest(#[from] reqwest::Error),
+
     /// Scrypt error
     #[error("Scrypt invalid output length")]
     Scrypt,
@@ -188,6 +208,16 @@ pub enum Error {
     #[error("Tag mismatch")]
     TagMismatch,
 
+    /// Timeout
+    #[cfg(feature = "client")]
+    #[error("Timeout")]
+    TimedOut,
+
+    /// Timeout
+    #[cfg(feature = "client")]
+    #[error("Timeout: {0}")]
+    Timeout(#[from] tokio::time::error::Elapsed),
+
     /// Unknown event kind
     #[error("Unknown event kind = {0}")]
     UnknownEventKind(u32),
@@ -211,6 +241,16 @@ pub enum Error {
     /// UTF-8 error
     #[error("UTF-8 Error: {0}")]
     Utf8Error(#[from] std::str::Utf8Error),
+
+    /// Websocket error
+    #[cfg(feature = "client")]
+    #[error("Websocket error: {0}")]
+    Websocket(#[from] tungstenite::Error),
+
+    /// Websocket Connection Failed
+    #[cfg(feature = "client")]
+    #[error("Websocket connection failed: {0}")]
+    WebsocketConnectionFailed(http::StatusCode),
 
     /// Wrong event kind
     #[error("Wrong event kind")]
