@@ -61,9 +61,9 @@ impl RelayFetchResult {
     }
 }
 
-/// A connection to a relay.
+/// A client connection to a relay.
 #[derive(Debug)]
-pub struct Connection {
+pub struct Client {
     relay_url: String,
     disconnected: bool,
     websocket: Ws,
@@ -74,13 +74,13 @@ pub struct Connection {
     auth_as: Option<Box<dyn Signer>>,
 }
 
-impl Connection {
+impl Client {
     /// Connect to a relay
     pub async fn connect(
         relay_url: &str,
         timeout: Duration,
         auth_as: Option<Box<dyn Signer>>,
-    ) -> Result<Connection, Error> {
+    ) -> Result<Client, Error> {
         let (host, uri) = url_to_host_and_uri(relay_url)?;
         let key: [u8; 16] = rand::random();
         let request = http::request::Request::builder()
@@ -104,7 +104,7 @@ impl Connection {
             return Err(Error::WebsocketConnectionFailed(status));
         }
 
-        Ok(Connection {
+        Ok(Client {
             relay_url: relay_url.to_string(),
             disconnected: false,
             websocket,
@@ -122,13 +122,13 @@ impl Connection {
             return Ok(());
         }
 
-        let connection = Self::connect(&self.relay_url, self.timeout, None).await?;
+        let client = Self::connect(&self.relay_url, self.timeout, None).await?;
 
         self.disconnected = false;
-        self.websocket = connection.websocket;
-        self.auth_state = connection.auth_state;
-        self.dup_auth = connection.dup_auth;
-        self.next_sub_id = connection.next_sub_id;
+        self.websocket = client.websocket;
+        self.auth_state = client.auth_state;
+        self.dup_auth = client.dup_auth;
+        self.next_sub_id = client.next_sub_id;
 
         Ok(())
     }
