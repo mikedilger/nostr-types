@@ -1,6 +1,6 @@
 use crate::{
-    ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, Id, KeySecurity, MutSigner, PrivateKey,
-    PublicKey, Signature, Signer,
+    ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, ExportableSigner, Id, KeySecurity,
+    LockableSigner, PrivateKey, PublicKey, Signature, Signer,
 };
 use async_trait::async_trait;
 use std::fmt;
@@ -62,10 +62,6 @@ impl KeySigner {
 
 #[async_trait]
 impl Signer for KeySigner {
-    fn is_locked(&self) -> bool {
-        self.private_key.is_none()
-    }
-
     fn public_key(&self) -> PublicKey {
         self.public_key
     }
@@ -123,8 +119,11 @@ impl Signer for KeySigner {
     }
 }
 
-#[async_trait]
-impl MutSigner for KeySigner {
+impl LockableSigner for KeySigner {
+    fn is_locked(&self) -> bool {
+        self.private_key.is_none()
+    }
+
     fn unlock(&mut self, password: &str) -> Result<(), Error> {
         if !self.is_locked() {
             return Ok(());
@@ -153,7 +152,10 @@ impl MutSigner for KeySigner {
         self.encrypted_private_key = private_key.export_encrypted(pass, log_n)?;
         Ok(())
     }
+}
 
+#[async_trait]
+impl ExportableSigner for KeySigner {
     async fn export_private_key_in_hex(
         &mut self,
         pass: &str,

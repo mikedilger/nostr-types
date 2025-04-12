@@ -17,9 +17,6 @@ use std::thread::JoinHandle;
 /// Signer operations
 #[async_trait]
 pub trait Signer: fmt::Debug + Sync {
-    /// Is the signer locked?
-    fn is_locked(&self) -> bool;
-
     /// What is the signer's public key?
     fn public_key(&self) -> PublicKey;
 
@@ -579,11 +576,11 @@ pub trait Signer: fmt::Debug + Sync {
     }
 }
 
-/// Mutable Signer. This is a signer which is also lockable and where the
-/// private key can be exported (and the security level of it updated).
-/// All these functions require mutability.
-#[async_trait]
-pub trait MutSigner: Signer {
+/// Any `Signer` that can be locked and unlocked with a passphrase
+pub trait LockableSigner: Signer {
+    /// Is the signer locked?
+    fn is_locked(&self) -> bool;
+
     /// Try to unlock access to the private key
     fn unlock(&mut self, password: &str) -> Result<(), Error>;
 
@@ -595,7 +592,11 @@ pub trait MutSigner: Signer {
 
     /// Upgrade the encrypted private key to the latest format
     fn upgrade(&mut self, pass: &str, log_n: u8) -> Result<(), Error>;
+}
 
+/// Any `Signer` that allows the secret to be exported
+#[async_trait]
+pub trait ExportableSigner: Signer {
     /// Export the private key in hex.
     ///
     /// This returns a boolean indicating if the key security was downgraded. If it was,

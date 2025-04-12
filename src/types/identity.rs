@@ -1,6 +1,6 @@
 use crate::{
     ContentEncryptionAlgorithm, DelegationConditions, EncryptedPrivateKey, Error, Event, EventV1,
-    EventV2, Id, KeySecurity, KeySigner, Metadata, MutSigner, PreEvent, PrivateKey, PublicKey,
+    EventV2, Id, KeySecurity, KeySigner, LockableSigner, Metadata, PreEvent, PrivateKey, PublicKey,
     Rumor, RumorV1, RumorV2, Signature,
 };
 use std::ops::DerefMut;
@@ -17,7 +17,7 @@ pub enum Identity {
     Public(PublicKey),
 
     /// Signer (locked or unlocked)
-    Signer(Box<dyn MutSigner>),
+    Signer(Box<dyn LockableSigner>),
 }
 
 // No one besides the Identity has the internal Signer, so we can safely Send
@@ -54,6 +54,15 @@ impl Identity {
     pub fn generate(password: &str, log_n: u8) -> Result<Self, Error> {
         let key_signer = KeySigner::generate(password, log_n)?;
         Ok(Self::Signer(Box::new(key_signer)))
+    }
+
+    /// Get access to the inner `LockableSigner`
+    pub fn inner(&self) -> Option<&Box<dyn LockableSigner>> {
+        match self {
+            Self::None => None,
+            Self::Public(_) => None,
+            Self::Signer(b) => Some(b),
+        }
     }
 
     /// Unlock
@@ -170,48 +179,6 @@ impl Identity {
             Identity::None => Err(Error::NoPublicKey),
             Identity::Public(_) => Err(Error::NoPrivateKey),
             Identity::Signer(boxed_signer) => boxed_signer.nip44_conversation_key(other).await,
-        }
-    }
-
-    /// Export the private key in hex.
-    ///
-    /// This returns a boolean indicating if the key security was downgraded. If it was,
-    /// the caller should save the new self.encrypted_private_key()
-    ///
-    /// We need the password and log_n parameters to possibly rebuild
-    /// the EncryptedPrivateKey when downgrading key security
-    pub async fn export_private_key_in_hex(
-        &mut self,
-        pass: &str,
-        log_n: u8,
-    ) -> Result<(String, bool), Error> {
-        match self {
-            Identity::None => Err(Error::NoPublicKey),
-            Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => {
-                boxed_signer.export_private_key_in_hex(pass, log_n).await
-            }
-        }
-    }
-
-    /// Export the private key in bech32.
-    ///
-    /// This returns a boolean indicating if the key security was downgraded. If it was,
-    /// the caller should save the new self.encrypted_private_key()
-    ///
-    /// We need the password and log_n parameters to possibly rebuild
-    /// the EncryptedPrivateKey when downgrading key security
-    pub async fn export_private_key_in_bech32(
-        &mut self,
-        pass: &str,
-        log_n: u8,
-    ) -> Result<(String, bool), Error> {
-        match self {
-            Identity::None => Err(Error::NoPublicKey),
-            Identity::Public(_) => Err(Error::NoPrivateKey),
-            Identity::Signer(boxed_signer) => {
-                boxed_signer.export_private_key_in_bech32(pass, log_n).await
-            }
         }
     }
 

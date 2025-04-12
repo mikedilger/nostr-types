@@ -1,4 +1,4 @@
-use crate::{Error, Id, MutSigner, PublicKey, Signature, Signer};
+use crate::{Error, ExportableSigner, Id, PublicKey, Signature, Signer};
 use async_trait::async_trait;
 use rand_core::OsRng;
 use std::convert::TryFrom;
@@ -192,9 +192,6 @@ impl Drop for PrivateKey {
 
 #[async_trait]
 impl Signer for PrivateKey {
-    fn is_locked(&self) -> bool {
-        false
-    }
     fn public_key(&self) -> PublicKey {
         self.public_key()
     }
@@ -239,21 +236,7 @@ impl Signer for PrivateKey {
 }
 
 #[async_trait]
-impl MutSigner for PrivateKey {
-    fn unlock(&mut self, _password: &str) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn lock(&mut self) {}
-
-    fn change_passphrase(&mut self, _old: &str, _new: &str, _log_n: u8) -> Result<(), Error> {
-        Err(Error::InvalidOperation)
-    }
-
-    fn upgrade(&mut self, _pass: &str, _log_n: u8) -> Result<(), Error> {
-        Err(Error::InvalidOperation)
-    }
-
+impl ExportableSigner for PrivateKey {
     async fn export_private_key_in_hex(
         &mut self,
         _pass: &str,
