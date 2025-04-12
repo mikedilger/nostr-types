@@ -82,7 +82,7 @@ mod signature;
 pub use signature::{Signature, SignatureHex};
 
 mod signer;
-pub use signer::Signer;
+pub use signer::{MutSigner, Signer};
 
 mod simple_relay_list;
 pub use simple_relay_list::{SimpleRelayList, SimpleRelayUsage};

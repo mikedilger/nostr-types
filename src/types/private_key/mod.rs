@@ -1,4 +1,4 @@
-use crate::{Error, Id, PublicKey, Signature, Signer};
+use crate::{Error, Id, MutSigner, PublicKey, Signature, Signer};
 use async_trait::async_trait;
 use rand_core::OsRng;
 use std::convert::TryFrom;
@@ -195,43 +195,12 @@ impl Signer for PrivateKey {
     fn is_locked(&self) -> bool {
         false
     }
-
-    fn unlock(&mut self, _password: &str) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn lock(&mut self) {}
-
-    fn change_passphrase(&mut self, _old: &str, _new: &str, _log_n: u8) -> Result<(), Error> {
-        Err(Error::InvalidOperation)
-    }
-
-    fn upgrade(&mut self, _pass: &str, _log_n: u8) -> Result<(), Error> {
-        Err(Error::InvalidOperation)
-    }
-
     fn public_key(&self) -> PublicKey {
         self.public_key()
     }
 
     fn encrypted_private_key(&self) -> Option<&EncryptedPrivateKey> {
         None
-    }
-
-    async fn export_private_key_in_hex(
-        &mut self,
-        _pass: &str,
-        _log_n: u8,
-    ) -> Result<(String, bool), Error> {
-        Ok((self.as_hex_string(), false))
-    }
-
-    async fn export_private_key_in_bech32(
-        &mut self,
-        _pass: &str,
-        _log_n: u8,
-    ) -> Result<(String, bool), Error> {
-        Ok((self.as_bech32_string(), false))
     }
 
     async fn sign_id(&self, id: Id) -> Result<Signature, Error> {
@@ -266,6 +235,39 @@ impl Signer for PrivateKey {
 
     fn key_security(&self) -> Result<KeySecurity, Error> {
         Ok(KeySecurity::NotTracked)
+    }
+}
+
+#[async_trait]
+impl MutSigner for PrivateKey {
+    fn unlock(&mut self, _password: &str) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn lock(&mut self) {}
+
+    fn change_passphrase(&mut self, _old: &str, _new: &str, _log_n: u8) -> Result<(), Error> {
+        Err(Error::InvalidOperation)
+    }
+
+    fn upgrade(&mut self, _pass: &str, _log_n: u8) -> Result<(), Error> {
+        Err(Error::InvalidOperation)
+    }
+
+    async fn export_private_key_in_hex(
+        &mut self,
+        _pass: &str,
+        _log_n: u8,
+    ) -> Result<(String, bool), Error> {
+        Ok((self.as_hex_string(), false))
+    }
+
+    async fn export_private_key_in_bech32(
+        &mut self,
+        _pass: &str,
+        _log_n: u8,
+    ) -> Result<(String, bool), Error> {
+        Ok((self.as_bech32_string(), false))
     }
 }
 

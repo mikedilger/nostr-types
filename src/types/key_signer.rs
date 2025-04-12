@@ -1,6 +1,6 @@
 use crate::{
-    ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, Id, KeySecurity, PrivateKey, PublicKey,
-    Signature, Signer,
+    ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, Id, KeySecurity, MutSigner, PrivateKey,
+    PublicKey, Signature, Signer,
 };
 use async_trait::async_trait;
 use std::fmt;
@@ -66,35 +66,6 @@ impl Signer for KeySigner {
         self.private_key.is_none()
     }
 
-    fn unlock(&mut self, password: &str) -> Result<(), Error> {
-        if !self.is_locked() {
-            return Ok(());
-        }
-
-        let private_key = self.encrypted_private_key.decrypt(password)?;
-
-        self.private_key = Some(private_key);
-
-        Ok(())
-    }
-
-    fn lock(&mut self) {
-        self.private_key = None;
-    }
-
-    fn change_passphrase(&mut self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
-        let private_key = self.encrypted_private_key.decrypt(old)?;
-        self.encrypted_private_key = private_key.export_encrypted(new, log_n)?;
-        self.private_key = Some(private_key);
-        Ok(())
-    }
-
-    fn upgrade(&mut self, pass: &str, log_n: u8) -> Result<(), Error> {
-        let private_key = self.encrypted_private_key.decrypt(pass)?;
-        self.encrypted_private_key = private_key.export_encrypted(pass, log_n)?;
-        Ok(())
-    }
-
     fn public_key(&self) -> PublicKey {
         self.public_key
     }
@@ -144,6 +115,45 @@ impl Signer for KeySigner {
         }
     }
 
+    fn key_security(&self) -> Result<KeySecurity, Error> {
+        match &self.private_key {
+            Some(pk) => Ok(pk.key_security()),
+            None => Err(Error::SignerIsLocked),
+        }
+    }
+}
+
+#[async_trait]
+impl MutSigner for KeySigner {
+    fn unlock(&mut self, password: &str) -> Result<(), Error> {
+        if !self.is_locked() {
+            return Ok(());
+        }
+
+        let private_key = self.encrypted_private_key.decrypt(password)?;
+
+        self.private_key = Some(private_key);
+
+        Ok(())
+    }
+
+    fn lock(&mut self) {
+        self.private_key = None;
+    }
+
+    fn change_passphrase(&mut self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
+        let private_key = self.encrypted_private_key.decrypt(old)?;
+        self.encrypted_private_key = private_key.export_encrypted(new, log_n)?;
+        self.private_key = Some(private_key);
+        Ok(())
+    }
+
+    fn upgrade(&mut self, pass: &str, log_n: u8) -> Result<(), Error> {
+        let private_key = self.encrypted_private_key.decrypt(pass)?;
+        self.encrypted_private_key = private_key.export_encrypted(pass, log_n)?;
+        Ok(())
+    }
+
     async fn export_private_key_in_hex(
         &mut self,
         pass: &str,
@@ -190,13 +200,6 @@ impl Signer for KeySigner {
             Ok((output, downgraded))
         } else {
             Err(Error::SignerIsLocked)
-        }
-    }
-
-    fn key_security(&self) -> Result<KeySecurity, Error> {
-        match &self.private_key {
-            Some(pk) => Ok(pk.key_security()),
-            None => Err(Error::SignerIsLocked),
         }
     }
 }

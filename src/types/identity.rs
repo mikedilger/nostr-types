@@ -1,7 +1,7 @@
 use crate::{
     ContentEncryptionAlgorithm, DelegationConditions, EncryptedPrivateKey, Error, Event, EventV1,
-    EventV2, Id, KeySecurity, KeySigner, Metadata, PreEvent, PrivateKey, PublicKey, Rumor, RumorV1,
-    RumorV2, Signature, Signer,
+    EventV2, Id, KeySecurity, KeySigner, Metadata, MutSigner, PreEvent, PrivateKey, PublicKey,
+    Rumor, RumorV1, RumorV2, Signature,
 };
 use std::ops::DerefMut;
 use std::sync::mpsc::Sender;
@@ -17,7 +17,7 @@ pub enum Identity {
     Public(PublicKey),
 
     /// Signer (locked or unlocked)
-    Signer(Box<dyn Signer>),
+    Signer(Box<dyn MutSigner>),
 }
 
 // No one besides the Identity has the internal Signer, so we can safely Send
