@@ -277,7 +277,7 @@ impl Client {
     ) -> Result<RelayFetchResult, Error> {
         let sub_id_usize = self.next_sub_id.fetch_add(1, Ordering::Relaxed);
         let sub_id = SubscriptionId(format!("sub{}", sub_id_usize));
-        let client_message = ClientMessage::Req(sub_id.clone(), filter);
+        let client_message = ClientMessage::Req(sub_id.clone(), filter.clone());
         self.send_message(client_message).await?;
 
         let mut pre_eose_events: Vec<Event> = Vec::new();
@@ -285,32 +285,45 @@ impl Client {
         let mut eose_happened: bool = false;
 
         loop {
+            // If EOSE and we are closing on EOSE
+            if close && eose_happened {
+                // Close the subscription
+                if close {
+                    self.close_subscription(sub_id.clone()).await?;
+                }
+
+                return Ok(RelayFetchResult {
+                    sub_id: None,
+                    pre_eose_events,
+                    post_eose_events: None,
+                    close_msg: None,
+                });
+            }
+
             let opt_message = self.wait_for_message().await?;
+
+            // If timed out waiting
             if opt_message.is_none() {
                 // Close the subscription
                 if close {
                     self.close_subscription(sub_id.clone()).await?;
                 }
 
-                if eose_happened {
-                    return Ok(RelayFetchResult {
-                        sub_id: if close { None } else { Some(sub_id) },
-                        pre_eose_events,
-                        post_eose_events: Some(post_eose_events),
-                        close_msg: None,
-                    });
-                } else {
-                    return Ok(RelayFetchResult {
-                        sub_id: if close { None } else { Some(sub_id) },
-                        pre_eose_events,
-                        post_eose_events: None,
-                        close_msg: None,
-                    });
-                }
+                return Ok(RelayFetchResult {
+                    sub_id: if close { None } else { Some(sub_id) },
+                    pre_eose_events,
+                    post_eose_events: if eose_happened {
+                        Some(post_eose_events)
+                    } else {
+                        None
+                    },
+                    close_msg: None,
+                });
             }
+
             match opt_message.unwrap() {
                 RelayMessage::Event(sub, box_event) => {
-                    if sub == sub_id {
+                    if sub == sub_id && filter.event_matches(&box_event) {
                         if eose_happened {
                             post_eose_events.push((*box_event).clone());
                         } else {
@@ -320,21 +333,16 @@ impl Client {
                 }
                 RelayMessage::Closed(sub, msg) => {
                     if sub == sub_id {
-                        if eose_happened {
-                            return Ok(RelayFetchResult {
-                                sub_id: if close { None } else { Some(sub_id) },
-                                pre_eose_events,
-                                post_eose_events: Some(post_eose_events),
-                                close_msg: Some(msg),
-                            });
-                        } else {
-                            return Ok(RelayFetchResult {
-                                sub_id: if close { None } else { Some(sub_id) },
-                                pre_eose_events,
-                                post_eose_events: None,
-                                close_msg: Some(msg),
-                            });
-                        }
+                        return Ok(RelayFetchResult {
+                            sub_id: if close { None } else { Some(sub_id) },
+                            pre_eose_events,
+                            post_eose_events: if eose_happened {
+                                Some(post_eose_events)
+                            } else {
+                                None
+                            },
+                            close_msg: Some(msg),
+                        });
                     }
                 }
                 RelayMessage::Eose(sub) => {
