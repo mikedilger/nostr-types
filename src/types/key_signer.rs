@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use std::fmt;
 
 /// Signer with a local private key (and public key)
+#[derive(Clone)]
 pub struct KeySigner {
     encrypted_private_key: EncryptedPrivateKey,
     public_key: PublicKey,
