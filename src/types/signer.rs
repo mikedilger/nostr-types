@@ -623,3 +623,6 @@ pub trait ExportableSigner: Signer {
         log_n: u8,
     ) -> Result<(String, bool), Error>;
 }
+
+/// Any signer that is both lockable and exportable
+pub trait FullSigner: LockableSigner + ExportableSigner {}
