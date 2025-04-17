@@ -1,6 +1,6 @@
 use crate::{
-    ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, ExportableSigner, Id, KeySecurity,
-    LockableSigner, PrivateKey, PublicKey, Signature, Signer,
+    ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, ExportableSigner, FullSigner, Id,
+    KeySecurity, LockableSigner, PrivateKey, PublicKey, Signature, Signer,
 };
 use async_trait::async_trait;
 use std::fmt;
@@ -206,3 +206,5 @@ impl ExportableSigner for KeySigner {
         }
     }
 }
+
+impl FullSigner for KeySigner { }
