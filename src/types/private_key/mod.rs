@@ -1,4 +1,4 @@
-use crate::{Error, ExportableSigner, Id, PublicKey, Signature, Signer};
+use crate::{Error, Id, MutExportableSigner, PublicKey, Signature, Signer};
 use async_trait::async_trait;
 use rand_core::OsRng;
 use std::convert::TryFrom;
@@ -197,7 +197,7 @@ impl Signer for PrivateKey {
         self.public_key()
     }
 
-    fn encrypted_private_key(&self) -> Option<&EncryptedPrivateKey> {
+    fn encrypted_private_key(&self) -> Option<EncryptedPrivateKey> {
         None
     }
 
@@ -237,7 +237,7 @@ impl Signer for PrivateKey {
 }
 
 #[async_trait]
-impl ExportableSigner for PrivateKey {
+impl MutExportableSigner for PrivateKey {
     async fn export_private_key_in_hex(
         &mut self,
         _pass: &str,

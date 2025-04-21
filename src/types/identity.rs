@@ -1,7 +1,7 @@
 use crate::{
     ContentEncryptionAlgorithm, DelegationConditions, EncryptedPrivateKey, Error, Event, EventV1,
-    EventV2, FullSigner, Id, KeySecurity, KeySigner, LockableSigner, Metadata, PreEvent, PrivateKey,
-    PublicKey, Rumor, RumorV1, RumorV2, Signature,
+    EventV2, FullSigner, Id, KeySecurity, KeySigner, LockableSigner, Metadata, PreEvent,
+    PrivateKey, PublicKey, Rumor, RumorV1, RumorV2, Signature,
 };
 use std::ops::DerefMut;
 use std::sync::mpsc::Sender;
@@ -94,8 +94,7 @@ impl Identity {
     pub fn lock(&mut self) {
         if let Self::LockableSigner(ref mut boxed_signer) = self {
             boxed_signer.deref_mut().lock()
-        }
-        else if let Self::FullSigner(ref mut boxed_signer) = self {
+        } else if let Self::FullSigner(ref mut boxed_signer) = self {
             boxed_signer.deref_mut().lock()
         }
     }
@@ -147,7 +146,7 @@ impl Identity {
     }
 
     /// What is the signer's encrypted private key?
-    pub fn encrypted_private_key(&self) -> Option<&EncryptedPrivateKey> {
+    pub fn encrypted_private_key(&self) -> Option<EncryptedPrivateKey> {
         if let Self::LockableSigner(boxed_signer) = self {
             boxed_signer.encrypted_private_key()
         } else if let Self::FullSigner(boxed_signer) = self {
@@ -187,7 +186,9 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => boxed_signer.encrypt(other, plaintext, algo).await,
+            Self::LockableSigner(boxed_signer) => {
+                boxed_signer.encrypt(other, plaintext, algo).await
+            }
             Self::FullSigner(boxed_signer) => boxed_signer.encrypt(other, plaintext, algo).await,
         }
     }
@@ -272,7 +273,7 @@ impl Identity {
                         content,
                     )
                     .await
-            },
+            }
             Self::FullSigner(boxed_signer) => {
                 boxed_signer
                     .create_zap_request_event(
@@ -342,7 +343,7 @@ impl Identity {
                 boxed_signer
                     .generate_delegation_signature(delegated_pubkey, delegation_conditions)
                     .await
-            },
+            }
             Self::FullSigner(boxed_signer) => {
                 boxed_signer
                     .generate_delegation_signature(delegated_pubkey, delegation_conditions)
@@ -385,7 +386,7 @@ impl Identity {
                 boxed_signer
                     .sign_event_with_pow(input, zero_bits, work_sender)
                     .await
-            },
+            }
             Self::FullSigner(boxed_signer) => {
                 boxed_signer
                     .sign_event_with_pow(input, zero_bits, work_sender)

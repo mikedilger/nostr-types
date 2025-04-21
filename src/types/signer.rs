@@ -21,7 +21,7 @@ pub trait Signer: fmt::Debug + Sync {
     fn public_key(&self) -> PublicKey;
 
     /// What is the signer's encrypted private key?
-    fn encrypted_private_key(&self) -> Option<&EncryptedPrivateKey>;
+    fn encrypted_private_key(&self) -> Option<EncryptedPrivateKey>;
 
     /// Sign a 32-bit hash asynchronously
     async fn sign_id(&self, id: Id) -> Result<Signature, Error>;
@@ -582,21 +582,51 @@ pub trait LockableSigner: Signer {
     fn is_locked(&self) -> bool;
 
     /// Try to unlock access to the private key
-    fn unlock(&mut self, password: &str) -> Result<(), Error>;
+    fn unlock(&self, password: &str) -> Result<(), Error>;
 
     /// Lock access to the private key
-    fn lock(&mut self);
+    fn lock(&self);
 
     /// Change the passphrase used for locking access to the private key
-    fn change_passphrase(&mut self, old: &str, new: &str, log_n: u8) -> Result<(), Error>;
+    fn change_passphrase(&self, old: &str, new: &str, log_n: u8) -> Result<(), Error>;
 
     /// Upgrade the encrypted private key to the latest format
-    fn upgrade(&mut self, pass: &str, log_n: u8) -> Result<(), Error>;
+    fn upgrade(&self, pass: &str, log_n: u8) -> Result<(), Error>;
 }
 
 /// Any `Signer` that allows the secret to be exported
 #[async_trait]
 pub trait ExportableSigner: Signer {
+    /// Export the private key in hex.
+    ///
+    /// This returns a boolean indicating if the key security was downgraded. If it was,
+    /// the caller should save the new self.encrypted_private_key()
+    ///
+    /// We need the password and log_n parameters to possibly rebuild
+    /// the EncryptedPrivateKey when downgrading key security
+    async fn export_private_key_in_hex(
+        &self,
+        pass: &str,
+        log_n: u8,
+    ) -> Result<(String, bool), Error>;
+
+    /// Export the private key in bech32.
+    ///
+    /// This returns a boolean indicating if the key security was downgraded. If it was,
+    /// the caller should save the new self.encrypted_private_key()
+    ///
+    /// We need the password and log_n parameters to possibly rebuild
+    /// the EncryptedPrivateKey when downgrading key security
+    async fn export_private_key_in_bech32(
+        &self,
+        pass: &str,
+        log_n: u8,
+    ) -> Result<(String, bool), Error>;
+}
+
+/// Any `Signer` that allows the secret to be exported
+#[async_trait]
+pub trait MutExportableSigner: Signer {
     /// Export the private key in hex.
     ///
     /// This returns a boolean indicating if the key security was downgraded. If it was,
