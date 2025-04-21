@@ -60,22 +60,22 @@ impl Identity {
     }
 
     /// Get access to the inner `LockableSigner`
-    pub fn inner_lockable(&self) -> Option<&Box<dyn LockableSigner>> {
+    pub fn inner_lockable(&self) -> Option<&dyn LockableSigner> {
         match self {
             Self::None => None,
             Self::Public(_) => None,
-            Self::LockableSigner(b) => Some(b),
-            Self::FullSigner(_) => None,
+            Self::LockableSigner(b) => Some(b.as_ref()),
+            Self::FullSigner(b) => Some(b.as_ref()),
         }
     }
 
     /// Get access to the inner `FullSigner`
-    pub fn inner_full(&self) -> Option<&Box<dyn FullSigner>> {
+    pub fn inner_full(&self) -> Option<&dyn FullSigner> {
         match self {
             Self::None => None,
             Self::Public(_) => None,
             Self::LockableSigner(_) => None,
-            Self::FullSigner(b) => Some(b),
+            Self::FullSigner(b) => Some(b.as_ref()),
         }
     }
 
