@@ -63,7 +63,7 @@ impl RelayFetchResult {
 
 /// A client connection to a relay.
 #[derive(Debug)]
-pub struct Client {
+pub struct Client<'a> {
     relay_url: String,
     disconnected: bool,
     websocket: Ws,
@@ -71,16 +71,16 @@ pub struct Client {
     dup_auth: bool,
     next_sub_id: AtomicUsize,
     timeout: Duration,
-    auth_as: Option<Box<dyn Signer>>,
+    auth_as: Option<&'a dyn Signer>,
 }
 
-impl Client {
+impl Client<'_> {
     /// Connect to a relay
-    pub async fn connect(
+    pub async fn connect<'a>(
         relay_url: &str,
         timeout: Duration,
-        auth_as: Option<Box<dyn Signer>>,
-    ) -> Result<Client, Error> {
+        auth_as: Option<&'a dyn Signer>,
+    ) -> Result<Client<'a>, Error> {
         let (host, uri) = url_to_host_and_uri(relay_url)?;
         let key: [u8; 16] = rand::random();
         let request = http::request::Request::builder()
