@@ -3,8 +3,8 @@ use crate::{
     EventV2, FullSigner, Id, KeySecurity, KeySigner, LockableSigner, Metadata, PreEvent,
     PrivateKey, PublicKey, Rumor, RumorV1, RumorV2, Signature,
 };
-use std::ops::DerefMut;
 use std::sync::mpsc::Sender;
+use std::sync::Arc;
 
 /// All states that your identity can be in
 #[derive(Debug, Default)]
@@ -17,10 +17,10 @@ pub enum Identity {
     Public(PublicKey),
 
     /// Lockable signer
-    LockableSigner(Box<dyn LockableSigner>),
+    LockableSigner(Arc<dyn LockableSigner>),
 
     /// Full signer (exportable too)
-    FullSigner(Box<dyn FullSigner>),
+    FullSigner(Arc<dyn FullSigner>),
 }
 
 // No one besides the Identity has the internal Signer, so we can safely Send
@@ -38,64 +38,64 @@ impl Identity {
     /// New `Identity` from a private key
     pub fn from_private_key(pk: PrivateKey, pass: &str, log_n: u8) -> Result<Self, Error> {
         let key_signer = KeySigner::from_private_key(pk, pass, log_n)?;
-        Ok(Self::FullSigner(Box::new(key_signer)))
+        Ok(Self::FullSigner(Arc::new(key_signer)))
     }
 
     /// New `Identity` from an encrypted private key and a public key
     pub fn from_locked_parts(pk: PublicKey, epk: EncryptedPrivateKey) -> Self {
         let key_signer = KeySigner::from_locked_parts(epk, pk);
-        Self::FullSigner(Box::new(key_signer))
+        Self::FullSigner(Arc::new(key_signer))
     }
 
     /// New `Identity` from an encrypted private key and its password
     pub fn from_encrypted_private_key(epk: EncryptedPrivateKey, pass: &str) -> Result<Self, Error> {
         let key_signer = KeySigner::from_encrypted_private_key(epk, pass)?;
-        Ok(Self::FullSigner(Box::new(key_signer)))
+        Ok(Self::FullSigner(Arc::new(key_signer)))
     }
 
     /// Generate a new `Identity`
     pub fn generate(password: &str, log_n: u8) -> Result<Self, Error> {
         let key_signer = KeySigner::generate(password, log_n)?;
-        Ok(Self::FullSigner(Box::new(key_signer)))
+        Ok(Self::FullSigner(Arc::new(key_signer)))
     }
 
     /// Get access to the inner `LockableSigner`
-    pub fn inner_lockable(&self) -> Option<&dyn LockableSigner> {
+    pub fn inner_lockable(&self) -> Option<Arc<dyn LockableSigner>> {
         match self {
             Self::None => None,
             Self::Public(_) => None,
-            Self::LockableSigner(b) => Some(b.as_ref()),
-            Self::FullSigner(b) => Some(b.as_ref()),
+            Self::LockableSigner(b) => Some(b.clone()),
+            Self::FullSigner(b) => Some(b.clone()),
         }
     }
 
     /// Get access to the inner `FullSigner`
-    pub fn inner_full(&self) -> Option<&dyn FullSigner> {
+    pub fn inner_full(&self) -> Option<Arc<dyn FullSigner>> {
         match self {
             Self::None => None,
             Self::Public(_) => None,
             Self::LockableSigner(_) => None,
-            Self::FullSigner(b) => Some(b.as_ref()),
+            Self::FullSigner(b) => Some(b.clone()),
         }
     }
 
     /// Unlock
-    pub fn unlock(&mut self, password: &str) -> Result<(), Error> {
-        if let Self::LockableSigner(ref mut boxed_signer) = self {
-            boxed_signer.deref_mut().unlock(password)
-        } else if let Self::FullSigner(ref mut boxed_signer) = self {
-            boxed_signer.deref_mut().unlock(password)
+    pub fn unlock(&self, password: &str) -> Result<(), Error> {
+        if let Self::LockableSigner(arcsigner) = self {
+            arcsigner.unlock(password)
+        } else if let Self::FullSigner(arcsigner) = self {
+            arcsigner.unlock(password)
         } else {
             Ok(())
         }
     }
 
     /// Lock access to the private key
-    pub fn lock(&mut self) {
-        if let Self::LockableSigner(ref mut boxed_signer) = self {
-            boxed_signer.deref_mut().lock()
-        } else if let Self::FullSigner(ref mut boxed_signer) = self {
-            boxed_signer.deref_mut().lock()
+    pub fn lock(&self) {
+        if let Self::LockableSigner(arcsigner) = self {
+            arcsigner.lock()
+        } else if let Self::FullSigner(arcsigner) = self {
+            arcsigner.lock()
         }
     }
 
@@ -126,12 +126,12 @@ impl Identity {
     }
 
     /// Change the passphrase used for locking access to the private key
-    pub fn change_passphrase(&mut self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
+    pub fn change_passphrase(&self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => boxed_signer.change_passphrase(old, new, log_n),
-            Self::FullSigner(boxed_signer) => boxed_signer.change_passphrase(old, new, log_n),
+            Self::LockableSigner(arcsigner) => arcsigner.change_passphrase(old, new, log_n),
+            Self::FullSigner(arcsigner) => arcsigner.change_passphrase(old, new, log_n),
         }
     }
 
@@ -140,17 +140,17 @@ impl Identity {
         match self {
             Self::None => None,
             Self::Public(pk) => Some(*pk),
-            Self::LockableSigner(boxed_signer) => Some(boxed_signer.public_key()),
-            Self::FullSigner(boxed_signer) => Some(boxed_signer.public_key()),
+            Self::LockableSigner(arcsigner) => Some(arcsigner.public_key()),
+            Self::FullSigner(arcsigner) => Some(arcsigner.public_key()),
         }
     }
 
     /// What is the signer's encrypted private key?
     pub fn encrypted_private_key(&self) -> Option<EncryptedPrivateKey> {
-        if let Self::LockableSigner(boxed_signer) = self {
-            boxed_signer.encrypted_private_key()
-        } else if let Self::FullSigner(boxed_signer) = self {
-            boxed_signer.encrypted_private_key()
+        if let Self::LockableSigner(arcsigner) = self {
+            arcsigner.encrypted_private_key()
+        } else if let Self::FullSigner(arcsigner) = self {
+            arcsigner.encrypted_private_key()
         } else {
             None
         }
@@ -161,8 +161,8 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => boxed_signer.sign_id(id).await,
-            Self::FullSigner(boxed_signer) => boxed_signer.sign_id(id).await,
+            Self::LockableSigner(arcsigner) => arcsigner.sign_id(id).await,
+            Self::FullSigner(arcsigner) => arcsigner.sign_id(id).await,
         }
     }
 
@@ -171,8 +171,8 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => boxed_signer.sign(message).await,
-            Self::FullSigner(boxed_signer) => boxed_signer.sign(message).await,
+            Self::LockableSigner(arcsigner) => arcsigner.sign(message).await,
+            Self::FullSigner(arcsigner) => arcsigner.sign(message).await,
         }
     }
 
@@ -186,10 +186,8 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => {
-                boxed_signer.encrypt(other, plaintext, algo).await
-            }
-            Self::FullSigner(boxed_signer) => boxed_signer.encrypt(other, plaintext, algo).await,
+            Self::LockableSigner(arcsigner) => arcsigner.encrypt(other, plaintext, algo).await,
+            Self::FullSigner(arcsigner) => arcsigner.encrypt(other, plaintext, algo).await,
         }
     }
 
@@ -198,8 +196,8 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => boxed_signer.decrypt(other, ciphertext).await,
-            Self::FullSigner(boxed_signer) => boxed_signer.decrypt(other, ciphertext).await,
+            Self::LockableSigner(arcsigner) => arcsigner.decrypt(other, ciphertext).await,
+            Self::FullSigner(arcsigner) => arcsigner.decrypt(other, ciphertext).await,
         }
     }
 
@@ -208,8 +206,8 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => boxed_signer.nip44_conversation_key(other).await,
-            Self::FullSigner(boxed_signer) => boxed_signer.nip44_conversation_key(other).await,
+            Self::LockableSigner(arcsigner) => arcsigner.nip44_conversation_key(other).await,
+            Self::FullSigner(arcsigner) => arcsigner.nip44_conversation_key(other).await,
         }
     }
 
@@ -218,18 +216,18 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => boxed_signer.key_security(),
-            Self::FullSigner(boxed_signer) => boxed_signer.key_security(),
+            Self::LockableSigner(arcsigner) => arcsigner.key_security(),
+            Self::FullSigner(arcsigner) => arcsigner.key_security(),
         }
     }
 
     /// Upgrade the encrypted private key to the latest format
-    pub fn upgrade(&mut self, pass: &str, log_n: u8) -> Result<(), Error> {
+    pub fn upgrade(&self, pass: &str, log_n: u8) -> Result<(), Error> {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => boxed_signer.upgrade(pass, log_n),
-            Self::FullSigner(boxed_signer) => boxed_signer.upgrade(pass, log_n),
+            Self::LockableSigner(arcsigner) => arcsigner.upgrade(pass, log_n),
+            Self::FullSigner(arcsigner) => arcsigner.upgrade(pass, log_n),
         }
     }
 
@@ -242,12 +240,10 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => {
-                boxed_signer.create_metadata_event(input, metadata).await
+            Self::LockableSigner(arcsigner) => {
+                arcsigner.create_metadata_event(input, metadata).await
             }
-            Self::FullSigner(boxed_signer) => {
-                boxed_signer.create_metadata_event(input, metadata).await
-            }
+            Self::FullSigner(arcsigner) => arcsigner.create_metadata_event(input, metadata).await,
         }
     }
 
@@ -263,8 +259,8 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => {
-                boxed_signer
+            Self::LockableSigner(arcsigner) => {
+                arcsigner
                     .create_zap_request_event(
                         recipient_pubkey,
                         zapped_event,
@@ -274,8 +270,8 @@ impl Identity {
                     )
                     .await
             }
-            Self::FullSigner(boxed_signer) => {
-                boxed_signer
+            Self::FullSigner(arcsigner) => {
+                arcsigner
                     .create_zap_request_event(
                         recipient_pubkey,
                         zapped_event,
@@ -293,8 +289,8 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => boxed_signer.decrypt_event_contents(event).await,
-            Self::FullSigner(boxed_signer) => boxed_signer.decrypt_event_contents(event).await,
+            Self::LockableSigner(arcsigner) => arcsigner.decrypt_event_contents(event).await,
+            Self::FullSigner(arcsigner) => arcsigner.decrypt_event_contents(event).await,
         }
     }
 
@@ -303,8 +299,8 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => boxed_signer.unwrap_giftwrap(event).await,
-            Self::FullSigner(boxed_signer) => boxed_signer.unwrap_giftwrap(event).await,
+            Self::LockableSigner(arcsigner) => arcsigner.unwrap_giftwrap(event).await,
+            Self::FullSigner(arcsigner) => arcsigner.unwrap_giftwrap(event).await,
         }
     }
 
@@ -314,8 +310,8 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => boxed_signer.unwrap_giftwrap1(event).await,
-            Self::FullSigner(boxed_signer) => boxed_signer.unwrap_giftwrap1(event).await,
+            Self::LockableSigner(arcsigner) => arcsigner.unwrap_giftwrap1(event).await,
+            Self::FullSigner(arcsigner) => arcsigner.unwrap_giftwrap1(event).await,
         }
     }
 
@@ -325,8 +321,8 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => boxed_signer.unwrap_giftwrap2(event).await,
-            Self::FullSigner(boxed_signer) => boxed_signer.unwrap_giftwrap2(event).await,
+            Self::LockableSigner(arcsigner) => arcsigner.unwrap_giftwrap2(event).await,
+            Self::FullSigner(arcsigner) => arcsigner.unwrap_giftwrap2(event).await,
         }
     }
 
@@ -339,13 +335,13 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => {
-                boxed_signer
+            Self::LockableSigner(arcsigner) => {
+                arcsigner
                     .generate_delegation_signature(delegated_pubkey, delegation_conditions)
                     .await
             }
-            Self::FullSigner(boxed_signer) => {
-                boxed_signer
+            Self::FullSigner(arcsigner) => {
+                arcsigner
                     .generate_delegation_signature(delegated_pubkey, delegation_conditions)
                     .await
             }
@@ -357,8 +353,8 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => boxed_signer.giftwrap(input, pubkey).await,
-            Self::FullSigner(boxed_signer) => boxed_signer.giftwrap(input, pubkey).await,
+            Self::LockableSigner(arcsigner) => arcsigner.giftwrap(input, pubkey).await,
+            Self::FullSigner(arcsigner) => arcsigner.giftwrap(input, pubkey).await,
         }
     }
 
@@ -367,8 +363,8 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => boxed_signer.sign_event(input).await,
-            Self::FullSigner(boxed_signer) => boxed_signer.sign_event(input).await,
+            Self::LockableSigner(arcsigner) => arcsigner.sign_event(input).await,
+            Self::FullSigner(arcsigner) => arcsigner.sign_event(input).await,
         }
     }
 
@@ -382,13 +378,13 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => {
-                boxed_signer
+            Self::LockableSigner(arcsigner) => {
+                arcsigner
                     .sign_event_with_pow(input, zero_bits, work_sender)
                     .await
             }
-            Self::FullSigner(boxed_signer) => {
-                boxed_signer
+            Self::FullSigner(arcsigner) => {
+                arcsigner
                     .sign_event_with_pow(input, zero_bits, work_sender)
                     .await
             }
@@ -405,12 +401,12 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(boxed_signer) => boxed_signer.verify_delegation_signature(
+            Self::LockableSigner(arcsigner) => arcsigner.verify_delegation_signature(
                 delegated_pubkey,
                 delegation_conditions,
                 signature,
             ),
-            Self::FullSigner(boxed_signer) => boxed_signer.verify_delegation_signature(
+            Self::FullSigner(arcsigner) => arcsigner.verify_delegation_signature(
                 delegated_pubkey,
                 delegation_conditions,
                 signature,
