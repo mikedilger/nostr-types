@@ -6,6 +6,7 @@ use base64::Engine;
 use futures_util::{SinkExt, StreamExt};
 use http::Uri;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 use tungstenite::protocol::Message;
 
@@ -63,7 +64,7 @@ impl RelayFetchResult {
 
 /// A client connection to a relay.
 #[derive(Debug)]
-pub struct Client<'a> {
+pub struct Client {
     relay_url: String,
     disconnected: bool,
     websocket: Ws,
@@ -71,16 +72,16 @@ pub struct Client<'a> {
     dup_auth: bool,
     next_sub_id: AtomicUsize,
     timeout: Duration,
-    auth_as: Option<&'a dyn Signer>,
+    auth_as: Option<Arc<dyn Signer>>,
 }
 
-impl Client<'_> {
+impl Client {
     /// Connect to a relay
-    pub async fn connect<'a>(
+    pub async fn connect(
         relay_url: &str,
         timeout: Duration,
-        auth_as: Option<&'a dyn Signer>,
-    ) -> Result<Client<'a>, Error> {
+        auth_as: Option<Arc<dyn Signer>>,
+    ) -> Result<Client, Error> {
         let (host, uri) = url_to_host_and_uri(relay_url)?;
         let key: [u8; 16] = rand::random();
         let request = http::request::Request::builder()
@@ -244,7 +245,7 @@ impl Client<'_> {
                 kind: EventKind::Auth,
                 tags: vec![
                     Tag::new(&["relay", &self.relay_url]),
-                    Tag::new(&["challenge", challenge]),
+                    Tag::new(&["challenge", &challenge]),
                 ],
                 content: "".to_string(),
             };
