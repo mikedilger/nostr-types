@@ -72,7 +72,7 @@ pub struct Client {
     dup_auth: bool,
     next_sub_id: AtomicUsize,
     timeout: Duration,
-    auth_as: Option<Arc<dyn Signer + Send>>,
+    auth_as: Option<Arc<dyn Signer>>,
 }
 
 impl Client {
@@ -80,7 +80,7 @@ impl Client {
     pub async fn connect(
         relay_url: &str,
         timeout: Duration,
-        auth_as: Option<Arc<dyn Signer + Send>>,
+        auth_as: Option<Arc<dyn Signer>>,
     ) -> Result<Client, Error> {
         let (host, uri) = url_to_host_and_uri(relay_url)?;
         let key: [u8; 16] = rand::random();

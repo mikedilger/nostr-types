@@ -16,7 +16,7 @@ use std::thread::JoinHandle;
 
 /// Signer operations
 #[async_trait]
-pub trait Signer: fmt::Debug + Sync {
+pub trait Signer: fmt::Debug + Send + Sync {
     /// What is the signer's public key?
     fn public_key(&self) -> PublicKey;
 
