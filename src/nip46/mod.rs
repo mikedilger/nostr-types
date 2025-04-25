@@ -19,9 +19,49 @@ pub use response::Nip46Response;
 mod params;
 pub use params::Nip46ConnectionParameters;
 
+/// `BunkerClient` state data when locked with a password.
+/// Note that it is the local identity that is locked, not the bunker requiring a secret.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct BunkerStateLocked {}
+
+/// `BunkerClient` state data when unlocked but not running
+#[derive(Debug)]
+pub struct BunkerStateUnlocked {
+    /// Our local identity in action
+    local_identity: Arc<KeySigner>,
+}
+
+/// `BunkerClient` state data when connected to the relay, but not to the bunker
+#[derive(Debug)]
+pub struct BunkerStateRelayConnected {
+    /// Our local identity in action
+    local_identity: Arc<KeySigner>,
+
+    /// An active client to the relay
+    client: client::Client,
+}
+
+/// `BunkerClient` state data when fully connected through to the bunker
+#[derive(Debug)]
+pub struct BunkerStateConnected {
+    /// Our local identity in action
+    local_identity: Arc<KeySigner>,
+
+    /// An active client to the relay
+    client: client::Client,
+
+    /// The user's public key as told to us by the bunker
+    public_key: PublicKey,
+}
+
 /// This allows us to constrain BunkerClient type to four different subtypes using
 /// typestates
 pub trait BunkerClientState {}
+
+impl BunkerClientState for BunkerStateLocked {}
+impl BunkerClientState for BunkerStateUnlocked {}
+impl BunkerClientState for BunkerStateRelayConnected {}
+impl BunkerClientState for BunkerStateConnected {}
 
 /// This is a NIP-46 Bunker client in one of four different states
 #[derive(Debug, PartialEq, Eq)]
@@ -42,11 +82,6 @@ pub struct BunkerClient<S: BunkerClientState> {
     state_data: S,
 }
 
-/// A `BunkerClient` that is locked with a password.
-/// Note that it is the local identity that is locked, not the bunker requiring a secret.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct BunkerStateLocked {}
-impl BunkerClientState for BunkerStateLocked {}
 impl BunkerClient<BunkerStateLocked> {
     /// Create a new BunkerClient, generating a fresh local identity
     pub fn new(
@@ -130,13 +165,6 @@ impl BunkerClient<BunkerStateLocked> {
     }
 }
 
-/// A `BunkerClient` that is unlocked but not running
-#[derive(Debug)]
-pub struct BunkerStateUnlocked {
-    /// Our local identity in action
-    local_identity: Arc<KeySigner>,
-}
-impl BunkerClientState for BunkerStateUnlocked {}
 impl BunkerClient<BunkerStateUnlocked> {
     /// Create a new BunkerClient, generating a fresh local identity
     pub fn new(
@@ -203,16 +231,6 @@ impl BunkerClient<BunkerStateUnlocked> {
     }
 }
 
-/// A `BunkerClient` that is connected to the relay, but not to the bunker
-#[derive(Debug)]
-pub struct BunkerStateRelayConnected {
-    /// Our local identity in action
-    local_identity: Arc<KeySigner>,
-
-    /// An active client to the relay
-    client: client::Client,
-}
-impl BunkerClientState for BunkerStateRelayConnected {}
 impl BunkerClient<BunkerStateRelayConnected> {
     /// Send a `Nip46Request` and wait for a `Nip46Response` (up to our timeout)
     pub async fn call(&mut self, request: Nip46Request) -> Result<Nip46Response, Error> {
@@ -311,19 +329,6 @@ impl BunkerClient<BunkerStateRelayConnected> {
     }
 }
 
-/// A `BunkerClient` that is fully connected through to the bunker
-#[derive(Debug)]
-pub struct BunkerStateConnected {
-    /// Our local identity in action
-    local_identity: Arc<KeySigner>,
-
-    /// An active client to the relay
-    client: client::Client,
-
-    /// The user's public key as told to us by the bunker
-    public_key: PublicKey,
-}
-impl BunkerClientState for BunkerStateConnected {}
 impl BunkerClient<BunkerStateConnected> {
     /// Send a `Nip46Request` and wait for a `Nip46Response` (up to our timeout)
     pub async fn call(&mut self, request: Nip46Request) -> Result<Nip46Response, Error> {
