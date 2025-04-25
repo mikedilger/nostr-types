@@ -346,32 +346,41 @@ impl Signer for BunkerClient<BunkerStateConnected> {
     }
 
     fn encrypted_private_key(&self) -> Option<EncryptedPrivateKey> {
-        unimplemented!()
+        Some(self.epk.clone())
     }
 
-    async fn sign_id(&self, _id: Id) -> Result<Signature, Error> {
-        unimplemented!()
+    async fn sign_id(&self, id: Id) -> Result<Signature, Error> {
+        self.state_data.local_identity.sign_id(id).await
     }
 
-    async fn sign(&self, _message: &[u8]) -> Result<Signature, Error> {
-        unimplemented!()
+    async fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
+        self.state_data.local_identity.sign(message).await
     }
 
     async fn encrypt(
         &self,
-        _other: &PublicKey,
-        _plaintext: &str,
-        _algo: ContentEncryptionAlgorithm,
+        other: &PublicKey,
+        plaintext: &str,
+        algo: ContentEncryptionAlgorithm,
     ) -> Result<String, Error> {
-        unimplemented!()
+        self.state_data
+            .local_identity
+            .encrypt(other, plaintext, algo)
+            .await
     }
 
-    async fn decrypt(&self, _other: &PublicKey, _ciphertext: &str) -> Result<String, Error> {
-        unimplemented!()
+    async fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
+        self.state_data
+            .local_identity
+            .decrypt(other, ciphertext)
+            .await
     }
 
-    async fn nip44_conversation_key(&self, _other: &PublicKey) -> Result<[u8; 32], Error> {
-        unimplemented!()
+    async fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error> {
+        self.state_data
+            .local_identity
+            .nip44_conversation_key(other)
+            .await
     }
 
     fn key_security(&self) -> Result<KeySecurity, Error> {
