@@ -3,6 +3,9 @@ use crate::{
     KeySecurity, LockableSigner, PrivateKey, PublicKey, Signature, Signer,
 };
 use async_trait::async_trait;
+use serde::de::Error as DeError;
+use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
+use serde::ser::{Serialize, SerializeSeq, Serializer};
 use std::fmt;
 use std::sync::RwLock;
 
@@ -219,3 +222,70 @@ impl ExportableSigner for KeySigner {
 }
 
 impl FullSigner for KeySigner {}
+
+impl Serialize for KeySigner {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(2))?;
+        seq.serialize_element(&self.public_key)?;
+        seq.serialize_element(&*self.encrypted_private_key.read().unwrap())?;
+        seq.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for KeySigner {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_seq(KeySignerVisitor)
+    }
+}
+
+struct KeySignerVisitor;
+
+impl<'de> Visitor<'de> for KeySignerVisitor {
+    type Value = KeySigner;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a key signer structure as a sequence")
+    }
+
+    fn visit_seq<A>(self, mut access: A) -> Result<KeySigner, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let public_key = access
+            .next_element::<PublicKey>()?
+            .ok_or_else(|| DeError::custom("Missing or invalid pubkey"))?;
+        let epk = access
+            .next_element::<EncryptedPrivateKey>()?
+            .ok_or_else(|| DeError::custom("Missing or invalid epk"))?;
+
+        Ok(KeySigner {
+            public_key,
+            encrypted_private_key: RwLock::new(epk),
+            private_key: RwLock::new(None),
+        })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_key_signer_serde() {
+        let ks = KeySigner::generate("password", 16).unwrap();
+        let s = serde_json::to_string(&ks).unwrap();
+        println!("{s}");
+        let ks2: KeySigner = serde_json::from_str(&*s).unwrap();
+        assert_eq!(ks.public_key, ks2.public_key);
+        assert_eq!(
+            *ks.encrypted_private_key.read().unwrap(),
+            *ks2.encrypted_private_key.read().unwrap()
+        );
+    }
+}
