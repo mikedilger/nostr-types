@@ -105,10 +105,9 @@ pub use types::{
 
 mod versioned;
 pub use versioned::{
-    EventV1, EventV2, EventV3, FeeV1, FilterV1, FilterV2, MetadataV1, MetadataV2, Nip05V1,
-    PreEventV1, PreEventV2, PreEventV3, RelayFeesV1, RelayInformationDocumentV1,
-    RelayInformationDocumentV2, RelayLimitationV1, RelayLimitationV2, RelayRetentionV1, RumorV1,
-    RumorV2, RumorV3, TagV1, TagV2, TagV3, ZapDataV1, ZapDataV2,
+    EventV3, FeeV1, FilterV1, FilterV2, MetadataV1, MetadataV2, Nip05V1, PreEventV3, RelayFeesV1,
+    RelayInformationDocumentV1, RelayInformationDocumentV2, RelayLimitationV1, RelayLimitationV2,
+    RelayRetentionV1, RumorV3, TagV3, ZapDataV1, ZapDataV2,
 };
 
 #[inline]

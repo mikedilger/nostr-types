@@ -1,7 +1,7 @@
 use crate::{
-    ContentEncryptionAlgorithm, DelegationConditions, EncryptedPrivateKey, Error, Event, EventV1,
-    EventV2, FullSigner, Id, KeySecurity, KeySigner, LockableSigner, Metadata, PreEvent,
-    PrivateKey, PublicKey, Rumor, RumorV1, RumorV2, Signature,
+    ContentEncryptionAlgorithm, DelegationConditions, EncryptedPrivateKey, Error, Event,
+    FullSigner, Id, KeySecurity, KeySigner, LockableSigner, Metadata, PreEvent, PrivateKey,
+    PublicKey, Rumor, Signature,
 };
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
@@ -301,28 +301,6 @@ impl Identity {
             Self::Public(_) => Err(Error::NoPrivateKey),
             Self::LockableSigner(arcsigner) => arcsigner.unwrap_giftwrap(event).await,
             Self::FullSigner(arcsigner) => arcsigner.unwrap_giftwrap(event).await,
-        }
-    }
-
-    /// If a gift wrap event, unwrap and return the inner Rumor
-    /// @deprecated for migrations only
-    pub async fn unwrap_giftwrap1(&self, event: &EventV1) -> Result<RumorV1, Error> {
-        match self {
-            Self::None => Err(Error::NoPublicKey),
-            Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => arcsigner.unwrap_giftwrap1(event).await,
-            Self::FullSigner(arcsigner) => arcsigner.unwrap_giftwrap1(event).await,
-        }
-    }
-
-    /// If a gift wrap event, unwrap and return the inner Rumor
-    /// @deprecated for migrations only
-    pub async fn unwrap_giftwrap2(&self, event: &EventV2) -> Result<RumorV2, Error> {
-        match self {
-            Self::None => Err(Error::NoPublicKey),
-            Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => arcsigner.unwrap_giftwrap2(event).await,
-            Self::FullSigner(arcsigner) => arcsigner.unwrap_giftwrap2(event).await,
         }
     }
 

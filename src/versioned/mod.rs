@@ -1,9 +1,3 @@
-pub(crate) mod event1;
-pub use event1::{EventV1, PreEventV1, RumorV1};
-
-pub(crate) mod event2;
-pub use event2::{EventV2, PreEventV2, RumorV2};
-
 pub(crate) mod event3;
 pub use event3::{EventV3, PreEventV3, RumorV3};
 
@@ -28,12 +22,6 @@ pub use relay_information_document1::{
 };
 pub(crate) mod relay_information_document2;
 pub use relay_information_document2::{RelayInformationDocumentV2, RelayLimitationV2};
-
-pub(crate) mod tag1;
-pub use tag1::TagV1;
-
-pub(crate) mod tag2;
-pub use tag2::TagV2;
 
 pub(crate) mod tag3;
 pub use tag3::TagV3;
