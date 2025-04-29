@@ -465,31 +465,8 @@ impl Signer for BunkerClient<BunkerStateConnected> {
     }
 }
 
-impl LockableSigner for BunkerClient<BunkerStateConnected> {
-    fn is_locked(&self) -> bool {
-        self.state_data.local_identity.is_locked()
-    }
-
-    fn unlock(&self, password: &str) -> Result<(), Error> {
-        self.state_data.local_identity.unlock(password)
-    }
-
-    fn lock(&self) {
-        self.state_data.local_identity.lock()
-    }
-
-    /// Change the passphrase used for locking access to the private key
-    fn change_passphrase(&self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
-        self.state_data
-            .local_identity
-            .change_passphrase(old, new, log_n)
-    }
-
-    /// Upgrade the encrypted private key to the latest format
-    fn upgrade(&self, pass: &str, log_n: u8) -> Result<(), Error> {
-        self.state_data.local_identity.upgrade(pass, log_n)
-    }
-}
+// TBD: don't implement LockableSigner since it doesn't consider our state transitions.
+//   instead add a change_passphrase function and a lock function that goes backwards.
 
 impl Serialize for BunkerClient<BunkerStateLocked> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
