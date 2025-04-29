@@ -1,6 +1,6 @@
 use crate::{
     client, ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, EventKind, Filter, Id,
-    KeySecurity, KeySigner, LockableSigner, PrivateKey, PublicKey, RelayUrl, Signature, Signer,
+    KeySecurity, KeySigner, PrivateKey, PublicKey, RelayUrl, Signature, Signer,
 };
 use async_trait::async_trait;
 use serde::de::Error as DeError;
@@ -184,23 +184,7 @@ impl BunkerClient<BunkerStateUnlocked> {
         })
     }
 
-    /// Lock
-    pub fn lock(self) -> BunkerClient<BunkerStateLocked> {
-        BunkerClient {
-            remote_signer_pubkey: self.remote_signer_pubkey,
-            relay_url: self.relay_url,
-            connect_secret: self.connect_secret,
-            epk: self.epk,
-            state_data: BunkerStateLocked {},
-        }
-    }
-
-    /// Change passphrase
-    pub fn change_passphrase(&self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
-        self.state_data
-            .local_identity
-            .change_passphrase(old, new, log_n)
-    }
+    // TBD: lock
 }
 
 /// A `BunkerClient` that is connected to the relay, but not to the bunker
@@ -279,36 +263,8 @@ impl BunkerClient<BunkerStateRelayConnected> {
         })
     }
 
-    /// Disconnect
-    pub fn disconnect(self) -> BunkerClient<BunkerStateUnlocked> {
-        BunkerClient {
-            remote_signer_pubkey: self.remote_signer_pubkey,
-            relay_url: self.relay_url,
-            connect_secret: self.connect_secret,
-            epk: self.epk,
-            state_data: BunkerStateUnlocked {
-                local_identity: self.state_data.local_identity,
-            },
-        }
-    }
-
-    /// Disconnect and Lock
-    pub fn disconnect_and_lock(self) -> BunkerClient<BunkerStateLocked> {
-        BunkerClient {
-            remote_signer_pubkey: self.remote_signer_pubkey,
-            relay_url: self.relay_url,
-            connect_secret: self.connect_secret,
-            epk: self.epk,
-            state_data: BunkerStateLocked {},
-        }
-    }
-
-    /// Change passphrase
-    pub fn change_passphrase(&self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
-        self.state_data
-            .local_identity
-            .change_passphrase(old, new, log_n)
-    }
+    // TBD: disconnect
+    // TBD: disconnect_and_lock
 }
 
 /// A `BunkerClient` that is fully connected through to the bunker
@@ -336,36 +292,8 @@ impl BunkerClient<BunkerStateConnected> {
         .await
     }
 
-    /// Disconnect
-    pub fn disconnect(self) -> BunkerClient<BunkerStateUnlocked> {
-        BunkerClient {
-            remote_signer_pubkey: self.remote_signer_pubkey,
-            relay_url: self.relay_url,
-            connect_secret: self.connect_secret,
-            epk: self.epk,
-            state_data: BunkerStateUnlocked {
-                local_identity: self.state_data.local_identity,
-            },
-        }
-    }
-
-    /// Disconnect and Lock
-    pub fn disconnect_and_lock(self) -> BunkerClient<BunkerStateLocked> {
-        BunkerClient {
-            remote_signer_pubkey: self.remote_signer_pubkey,
-            relay_url: self.relay_url,
-            connect_secret: self.connect_secret,
-            epk: self.epk,
-            state_data: BunkerStateLocked {},
-        }
-    }
-
-    /// Change passphrase
-    pub fn change_passphrase(&self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
-        self.state_data
-            .local_identity
-            .change_passphrase(old, new, log_n)
-    }
+    // TBD: disconnect
+    // TBD: disconnect_and_lock
 }
 
 async fn call_fn(
