@@ -12,9 +12,6 @@ license = "MIT"
 
 [features]
 default = [ ]
-nip46 = [
-   "client"
-]
 client = [
    "futures-util",
    "http",

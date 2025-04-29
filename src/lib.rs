@@ -89,10 +89,6 @@ macro_rules! test_serde_val_async {
 #[cfg(feature = "client")]
 pub mod client;
 
-/// NIP-46 nsec bunker related types and functions
-#[cfg(feature = "nip46")]
-pub mod nip46;
-
 mod types;
 pub use types::{
     find_nostr_bech32_pos, find_nostr_url_pos, ClientMessage, ContentEncryptionAlgorithm,
