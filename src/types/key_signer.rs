@@ -1,6 +1,6 @@
 use crate::{
-    ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, ExportableSigner, FullSigner, Id,
-    KeySecurity, LockableSigner, PrivateKey, PublicKey, Signature, Signer,
+    ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, Event, ExportableSigner, Id,
+    KeySecurity, LockableSigner, PreEvent, PrivateKey, PublicKey, Signature, Signer, SignerExt,
 };
 use async_trait::async_trait;
 use serde::de::Error as DeError;
@@ -77,18 +77,27 @@ impl Signer for KeySigner {
         Some(self.encrypted_private_key.read().unwrap().clone())
     }
 
-    async fn sign_id(&self, id: Id) -> Result<Signature, Error> {
-        match &*self.private_key.read().unwrap() {
-            Some(pk) => pk.sign_id(id),
-            None => Err(Error::SignerIsLocked),
+    async fn sign_event(&self, input: PreEvent) -> Result<Event, Error> {
+        // Verify the pubkey matches
+        if input.pubkey != self.public_key() {
+            return Err(Error::InvalidPrivateKey);
         }
-    }
 
-    async fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
-        match &*self.private_key.read().unwrap() {
-            Some(pk) => pk.sign(message),
-            None => Err(Error::SignerIsLocked),
-        }
+        // Generate Id
+        let id = input.hash()?;
+
+        // Generate Signature
+        let signature = self.sign_id(id).await?;
+
+        Ok(Event {
+            id,
+            pubkey: input.pubkey,
+            created_at: input.created_at,
+            kind: input.kind,
+            tags: input.tags,
+            content: input.content,
+            sig: signature,
+        })
     }
 
     async fn encrypt(
@@ -110,17 +119,34 @@ impl Signer for KeySigner {
         }
     }
 
+    fn key_security(&self) -> Result<KeySecurity, Error> {
+        match &*self.private_key.read().unwrap() {
+            Some(pk) => Ok(pk.key_security()),
+            None => Err(Error::SignerIsLocked),
+        }
+    }
+}
+
+#[async_trait]
+impl SignerExt for KeySigner {
+    async fn sign_id(&self, id: Id) -> Result<Signature, Error> {
+        let Some(pk) = self.private_key.read().unwrap().clone() else {
+            return Err(Error::SignerIsLocked);
+        };
+        pk.sign_id(id).await
+    }
+
+    async fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
+        let Some(pk) = self.private_key.read().unwrap().clone() else {
+            return Err(Error::SignerIsLocked);
+        };
+        pk.sign(message).await
+    }
+
     async fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error> {
         let xpub = other.as_xonly_public_key();
         match &*self.private_key.read().unwrap() {
             Some(pk) => Ok(nip44::get_conversation_key(pk.as_secret_key(), xpub)),
-            None => Err(Error::SignerIsLocked),
-        }
-    }
-
-    fn key_security(&self) -> Result<KeySecurity, Error> {
-        match &*self.private_key.read().unwrap() {
-            Some(pk) => Ok(pk.key_security()),
             None => Err(Error::SignerIsLocked),
         }
     }
@@ -216,8 +242,6 @@ impl ExportableSigner for KeySigner {
         }
     }
 }
-
-impl FullSigner for KeySigner {}
 
 impl Serialize for KeySigner {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

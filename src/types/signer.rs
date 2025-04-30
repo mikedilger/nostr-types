@@ -22,60 +22,10 @@ pub trait Signer: fmt::Debug + Send + Sync {
     /// What is the signer's encrypted private key?
     fn encrypted_private_key(&self) -> Option<EncryptedPrivateKey>;
 
-    /// Sign a 32-bit hash asynchronously
-    async fn sign_id(&self, id: Id) -> Result<Signature, Error>;
+    /// Sign an event
+    async fn sign_event(&self, input: PreEvent) -> Result<Event, Error>;
 
-    /// Sign a message asynchronously (this hashes with SHA-256 first internally)
-    async fn sign(&self, message: &[u8]) -> Result<Signature, Error>;
-
-    /// Encrypt
-    async fn encrypt(
-        &self,
-        other: &PublicKey,
-        plaintext: &str,
-        algo: ContentEncryptionAlgorithm,
-    ) -> Result<String, Error>;
-
-    /// Decrypt NIP-04 or NIP-44
-    async fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error>;
-
-    /// Get NIP-44 conversation key
-    async fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error>;
-
-    /// Get the security level of the private key
-    fn key_security(&self) -> Result<KeySecurity, Error>;
-
-    /// Generate delegation signature
-    async fn generate_delegation_signature(
-        &self,
-        delegated_pubkey: PublicKey,
-        delegation_conditions: &DelegationConditions,
-    ) -> Result<Signature, Error> {
-        let input = format!(
-            "nostr:delegation:{}:{}",
-            delegated_pubkey.as_hex_string(),
-            delegation_conditions.as_string()
-        );
-
-        self.sign(input.as_bytes()).await
-    }
-
-    /// Verify delegation signature
-    fn verify_delegation_signature(
-        &self,
-        delegated_pubkey: PublicKey,
-        delegation_conditions: &DelegationConditions,
-        signature: &Signature,
-    ) -> Result<(), Error> {
-        let input = format!(
-            "nostr:delegation:{}:{}",
-            delegated_pubkey.as_hex_string(),
-            delegation_conditions.as_string()
-        );
-
-        self.public_key().verify(input.as_bytes(), signature)
-    }
-
+    /*
     /// Sign an event
     async fn sign_event(&self, input: PreEvent) -> Result<Event, Error> {
         // Verify the pubkey matches
@@ -99,102 +49,21 @@ pub trait Signer: fmt::Debug + Send + Sync {
             sig: signature,
         })
     }
+     */
 
-    /// Sign an event with Proof-of-Work
-    async fn sign_event_with_pow(
+    /// Encrypt
+    async fn encrypt(
         &self,
-        mut input: PreEvent,
-        zero_bits: u8,
-        work_sender: Option<Sender<u8>>,
-    ) -> Result<Event, Error> {
-        let target = format!("{zero_bits}");
+        other: &PublicKey,
+        plaintext: &str,
+        algo: ContentEncryptionAlgorithm,
+    ) -> Result<String, Error>;
 
-        // Verify the pubkey matches
-        if input.pubkey != self.public_key() {
-            return Err(Error::InvalidPrivateKey);
-        }
+    /// Decrypt NIP-04 or NIP-44
+    async fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error>;
 
-        // Strip any pre-existing nonce tags
-        input.tags.retain(|t| t.tagname() != "nonce");
-
-        // Add nonce tag to the end
-        input.tags.push(Tag::new(&["nonce", "0", &target]));
-        let index = input.tags.len() - 1;
-
-        let cores = num_cpus::get();
-
-        let quitting = Arc::new(AtomicBool::new(false));
-        let nonce = Arc::new(AtomicU64::new(0)); // will store the nonce that works
-        let best_work = Arc::new(AtomicU8::new(0));
-
-        let mut join_handles: Vec<JoinHandle<_>> = Vec::with_capacity(cores);
-
-        for core in 0..cores {
-            let mut attempt: u64 = core as u64 * (u64::MAX / cores as u64);
-            let mut input = input.clone();
-            let quitting = quitting.clone();
-            let nonce = nonce.clone();
-            let best_work = best_work.clone();
-            let work_sender = work_sender.clone();
-            let join_handle = thread::spawn(move || {
-                loop {
-                    // Lower the thread priority so other threads aren't starved
-                    let _ = thread_priority::set_current_thread_priority(
-                        thread_priority::ThreadPriority::Min,
-                    );
-
-                    if quitting.load(Ordering::Relaxed) {
-                        break;
-                    }
-
-                    input.tags[index].set_index(1, format!("{attempt}"));
-
-                    let Id(id) = input.hash().unwrap();
-
-                    let leading_zeroes = crate::get_leading_zero_bits(&id);
-                    if leading_zeroes >= zero_bits {
-                        nonce.store(attempt, Ordering::Relaxed);
-                        quitting.store(true, Ordering::Relaxed);
-                        if let Some(sender) = work_sender.clone() {
-                            sender.send(leading_zeroes).unwrap();
-                        }
-                        break;
-                    } else if leading_zeroes > best_work.load(Ordering::Relaxed) {
-                        best_work.store(leading_zeroes, Ordering::Relaxed);
-                        if let Some(sender) = work_sender.clone() {
-                            sender.send(leading_zeroes).unwrap();
-                        }
-                    }
-
-                    attempt += 1;
-
-                    // We don't update created_at, which is a bit tricky to synchronize.
-                }
-            });
-            join_handles.push(join_handle);
-        }
-
-        for joinhandle in join_handles {
-            let _ = joinhandle.join();
-        }
-
-        // We found the nonce. Do it for reals
-        input.tags[index].set_index(1, format!("{}", nonce.load(Ordering::Relaxed)));
-        let id = input.hash().unwrap();
-
-        // Signature
-        let signature = self.sign_id(id).await?;
-
-        Ok(Event {
-            id,
-            pubkey: input.pubkey,
-            created_at: input.created_at,
-            kind: input.kind,
-            tags: input.tags,
-            content: input.content,
-            sig: signature,
-        })
-    }
+    /// Get the security level of the private key
+    fn key_security(&self) -> Result<KeySecurity, Error>;
 
     /// Giftwrap an event
     async fn giftwrap(&self, input: PreEvent, pubkey: PublicKey) -> Result<Event, Error> {
@@ -388,6 +257,150 @@ pub trait Signer: fmt::Debug + Send + Sync {
     }
 }
 
+/// Extended Signer operations
+///
+/// These enable NIP-26 delegation, signing an event with PoW,
+/// signing of anything (not just events) and access to the NIP44 conversation key.
+/// none of which is available using NIP-07 (browser) or NIP-46 (bunker) signers.
+#[async_trait]
+pub trait SignerExt: Signer {
+    /// Sign a 32-bit hash asynchronously
+    async fn sign_id(&self, id: Id) -> Result<Signature, Error>;
+
+    /// Sign a message asynchronously (this hashes with SHA-256 first internally)
+    async fn sign(&self, message: &[u8]) -> Result<Signature, Error>;
+
+    /// Get NIP-44 conversation key
+    async fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error>;
+
+    /// Generate delegation signature
+    async fn generate_delegation_signature(
+        &self,
+        delegated_pubkey: PublicKey,
+        delegation_conditions: &DelegationConditions,
+    ) -> Result<Signature, Error> {
+        let input = format!(
+            "nostr:delegation:{}:{}",
+            delegated_pubkey.as_hex_string(),
+            delegation_conditions.as_string()
+        );
+
+        self.sign(input.as_bytes()).await
+    }
+
+    /// Verify delegation signature
+    fn verify_delegation_signature(
+        &self,
+        delegated_pubkey: PublicKey,
+        delegation_conditions: &DelegationConditions,
+        signature: &Signature,
+    ) -> Result<(), Error> {
+        let input = format!(
+            "nostr:delegation:{}:{}",
+            delegated_pubkey.as_hex_string(),
+            delegation_conditions.as_string()
+        );
+
+        self.public_key().verify(input.as_bytes(), signature)
+    }
+
+    /// Sign an event with Proof-of-Work
+    async fn sign_event_with_pow(
+        &self,
+        mut input: PreEvent,
+        zero_bits: u8,
+        work_sender: Option<Sender<u8>>,
+    ) -> Result<Event, Error> {
+        let target = format!("{zero_bits}");
+
+        // Verify the pubkey matches
+        if input.pubkey != self.public_key() {
+            return Err(Error::InvalidPrivateKey);
+        }
+
+        // Strip any pre-existing nonce tags
+        input.tags.retain(|t| t.tagname() != "nonce");
+
+        // Add nonce tag to the end
+        input.tags.push(Tag::new(&["nonce", "0", &target]));
+        let index = input.tags.len() - 1;
+
+        let cores = num_cpus::get();
+
+        let quitting = Arc::new(AtomicBool::new(false));
+        let nonce = Arc::new(AtomicU64::new(0)); // will store the nonce that works
+        let best_work = Arc::new(AtomicU8::new(0));
+
+        let mut join_handles: Vec<JoinHandle<_>> = Vec::with_capacity(cores);
+
+        for core in 0..cores {
+            let mut attempt: u64 = core as u64 * (u64::MAX / cores as u64);
+            let mut input = input.clone();
+            let quitting = quitting.clone();
+            let nonce = nonce.clone();
+            let best_work = best_work.clone();
+            let work_sender = work_sender.clone();
+            let join_handle = thread::spawn(move || {
+                loop {
+                    // Lower the thread priority so other threads aren't starved
+                    let _ = thread_priority::set_current_thread_priority(
+                        thread_priority::ThreadPriority::Min,
+                    );
+
+                    if quitting.load(Ordering::Relaxed) {
+                        break;
+                    }
+
+                    input.tags[index].set_index(1, format!("{attempt}"));
+
+                    let Id(id) = input.hash().unwrap();
+
+                    let leading_zeroes = crate::get_leading_zero_bits(&id);
+                    if leading_zeroes >= zero_bits {
+                        nonce.store(attempt, Ordering::Relaxed);
+                        quitting.store(true, Ordering::Relaxed);
+                        if let Some(sender) = work_sender.clone() {
+                            sender.send(leading_zeroes).unwrap();
+                        }
+                        break;
+                    } else if leading_zeroes > best_work.load(Ordering::Relaxed) {
+                        best_work.store(leading_zeroes, Ordering::Relaxed);
+                        if let Some(sender) = work_sender.clone() {
+                            sender.send(leading_zeroes).unwrap();
+                        }
+                    }
+
+                    attempt += 1;
+
+                    // We don't update created_at, which is a bit tricky to synchronize.
+                }
+            });
+            join_handles.push(join_handle);
+        }
+
+        for joinhandle in join_handles {
+            let _ = joinhandle.join();
+        }
+
+        // We found the nonce. Do it for reals
+        input.tags[index].set_index(1, format!("{}", nonce.load(Ordering::Relaxed)));
+        let id = input.hash().unwrap();
+
+        // Signature
+        let signature = self.sign_id(id).await?;
+
+        Ok(Event {
+            id,
+            pubkey: input.pubkey,
+            created_at: input.created_at,
+            kind: input.kind,
+            tags: input.tags,
+            content: input.content,
+            sig: signature,
+        })
+    }
+}
+
 /// Any `Signer` that can be locked and unlocked with a passphrase
 pub trait LockableSigner: Signer {
     /// Is the signer locked?
@@ -406,7 +419,8 @@ pub trait LockableSigner: Signer {
     fn upgrade(&self, pass: &str, log_n: u8) -> Result<(), Error>;
 }
 
-/// Any `Signer` that allows the secret to be exported
+/// Any `Signer` that allows the secret to be exported (with interior mutability
+/// or no mutability necessary)
 #[async_trait]
 pub trait ExportableSigner: Signer {
     /// Export the private key in hex.
@@ -436,7 +450,8 @@ pub trait ExportableSigner: Signer {
     ) -> Result<(String, bool), Error>;
 }
 
-/// Any `Signer` that allows the secret to be exported
+/// Any `Signer` that allows the secret to be exported, but requires Self to be mutable
+/// to do so.
 #[async_trait]
 pub trait MutExportableSigner: Signer {
     /// Export the private key in hex.
@@ -465,6 +480,3 @@ pub trait MutExportableSigner: Signer {
         log_n: u8,
     ) -> Result<(String, bool), Error>;
 }
-
-/// Any signer that is both lockable and exportable
-pub trait FullSigner: LockableSigner + ExportableSigner {}

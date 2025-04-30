@@ -1,4 +1,6 @@
-use crate::{Error, Id, MutExportableSigner, PublicKey, Signature, Signer};
+use crate::{
+    Error, Event, Id, MutExportableSigner, PreEvent, PublicKey, Signature, Signer, SignerExt,
+};
 use async_trait::async_trait;
 use rand_core::OsRng;
 use std::convert::TryFrom;
@@ -162,22 +164,6 @@ impl PrivateKey {
         self.0
     }
 
-    /// Sign a 32-bit hash
-    pub fn sign_id(&self, id: Id) -> Result<Signature, Error> {
-        let keypair = secp256k1::Keypair::from_secret_key(secp256k1::SECP256K1, &self.0);
-        let message = secp256k1::Message::from_digest_slice(id.0.as_slice())?;
-        Ok(Signature(keypair.sign_schnorr(message)))
-    }
-
-    /// Sign a message (this hashes with SHA-256 first internally)
-    pub fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
-        use secp256k1::hashes::{sha256, Hash};
-        let keypair = secp256k1::Keypair::from_secret_key(secp256k1::SECP256K1, &self.0);
-        let hash = sha256::Hash::hash(message).to_byte_array();
-        let message = secp256k1::Message::from_digest(hash);
-        Ok(Signature(keypair.sign_schnorr(message)))
-    }
-
     // Mock data for testing
     #[allow(dead_code)]
     pub(crate) fn mock() -> PrivateKey {
@@ -201,12 +187,27 @@ impl Signer for PrivateKey {
         None
     }
 
-    async fn sign_id(&self, id: Id) -> Result<Signature, Error> {
-        self.sign_id(id)
-    }
+    async fn sign_event(&self, input: PreEvent) -> Result<Event, Error> {
+        // Verify the pubkey matches
+        if input.pubkey != self.public_key() {
+            return Err(Error::InvalidPrivateKey);
+        }
 
-    async fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
-        self.sign(message)
+        // Generate Id
+        let id = input.hash()?;
+
+        // Generate Signature
+        let signature = self.sign_id(id).await?;
+
+        Ok(Event {
+            id,
+            pubkey: input.pubkey,
+            created_at: input.created_at,
+            kind: input.kind,
+            tags: input.tags,
+            content: input.content,
+            sig: signature,
+        })
     }
 
     async fn encrypt(
@@ -223,16 +224,32 @@ impl Signer for PrivateKey {
         self.decrypt(other, ciphertext)
     }
 
-    /// Get NIP-44 conversation key
+    fn key_security(&self) -> Result<KeySecurity, Error> {
+        Ok(KeySecurity::NotTracked)
+    }
+}
+
+#[async_trait]
+impl SignerExt for PrivateKey {
+    async fn sign_id(&self, id: Id) -> Result<Signature, Error> {
+        let keypair = secp256k1::Keypair::from_secret_key(secp256k1::SECP256K1, &self.0);
+        let message = secp256k1::Message::from_digest_slice(id.0.as_slice())?;
+        Ok(Signature(keypair.sign_schnorr(message)))
+    }
+
+    async fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
+        use secp256k1::hashes::{sha256, Hash};
+        let keypair = secp256k1::Keypair::from_secret_key(secp256k1::SECP256K1, &self.0);
+        let hash = sha256::Hash::hash(message).to_byte_array();
+        let message = secp256k1::Message::from_digest(hash);
+        Ok(Signature(keypair.sign_schnorr(message)))
+    }
+
     async fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error> {
         Ok(nip44::get_conversation_key(
             self.0,
             other.as_xonly_public_key(),
         ))
-    }
-
-    fn key_security(&self) -> Result<KeySecurity, Error> {
-        Ok(KeySecurity::NotTracked)
     }
 }
 

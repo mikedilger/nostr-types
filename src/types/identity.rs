@@ -1,7 +1,7 @@
 use crate::{
-    ContentEncryptionAlgorithm, DelegationConditions, EncryptedPrivateKey, Error, Event,
-    FullSigner, Id, KeySecurity, KeySigner, LockableSigner, Metadata, PreEvent, PrivateKey,
-    PublicKey, Rumor, Signature,
+    ContentEncryptionAlgorithm, DelegationConditions, EncryptedPrivateKey, Error, Event, Id,
+    KeySecurity, KeySigner, LockableSigner, Metadata, PreEvent, PrivateKey, PublicKey, Rumor,
+    Signature, Signer, SignerExt,
 };
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
@@ -16,11 +16,8 @@ pub enum Identity {
     /// Public key only
     Public(PublicKey),
 
-    /// Lockable signer
-    LockableSigner(Arc<dyn LockableSigner>),
-
-    /// Full signer (exportable too)
-    FullSigner(Arc<dyn FullSigner>),
+    /// Private key
+    Private(Arc<KeySigner>),
 }
 
 // No one besides the Identity has the internal Signer, so we can safely Send
@@ -38,52 +35,39 @@ impl Identity {
     /// New `Identity` from a private key
     pub fn from_private_key(pk: PrivateKey, pass: &str, log_n: u8) -> Result<Self, Error> {
         let key_signer = KeySigner::from_private_key(pk, pass, log_n)?;
-        Ok(Self::FullSigner(Arc::new(key_signer)))
+        Ok(Self::Private(Arc::new(key_signer)))
     }
 
     /// New `Identity` from an encrypted private key and a public key
     pub fn from_locked_parts(pk: PublicKey, epk: EncryptedPrivateKey) -> Self {
         let key_signer = KeySigner::from_locked_parts(epk, pk);
-        Self::FullSigner(Arc::new(key_signer))
+        Self::Private(Arc::new(key_signer))
     }
 
     /// New `Identity` from an encrypted private key and its password
     pub fn from_encrypted_private_key(epk: EncryptedPrivateKey, pass: &str) -> Result<Self, Error> {
         let key_signer = KeySigner::from_encrypted_private_key(epk, pass)?;
-        Ok(Self::FullSigner(Arc::new(key_signer)))
+        Ok(Self::Private(Arc::new(key_signer)))
     }
 
     /// Generate a new `Identity`
     pub fn generate(password: &str, log_n: u8) -> Result<Self, Error> {
         let key_signer = KeySigner::generate(password, log_n)?;
-        Ok(Self::FullSigner(Arc::new(key_signer)))
+        Ok(Self::Private(Arc::new(key_signer)))
     }
 
-    /// Get access to the inner `LockableSigner`
-    pub fn inner_lockable(&self) -> Option<Arc<dyn LockableSigner>> {
+    /// Get access to the inner `KeySigner`
+    pub fn inner_key_signer(&self) -> Option<Arc<KeySigner>> {
         match self {
             Self::None => None,
             Self::Public(_) => None,
-            Self::LockableSigner(b) => Some(b.clone()),
-            Self::FullSigner(b) => Some(b.clone()),
-        }
-    }
-
-    /// Get access to the inner `FullSigner`
-    pub fn inner_full(&self) -> Option<Arc<dyn FullSigner>> {
-        match self {
-            Self::None => None,
-            Self::Public(_) => None,
-            Self::LockableSigner(_) => None,
-            Self::FullSigner(b) => Some(b.clone()),
+            Self::Private(b) => Some(b.clone()),
         }
     }
 
     /// Unlock
     pub fn unlock(&self, password: &str) -> Result<(), Error> {
-        if let Self::LockableSigner(arcsigner) = self {
-            arcsigner.unlock(password)
-        } else if let Self::FullSigner(arcsigner) = self {
+        if let Self::Private(arcsigner) = self {
             arcsigner.unlock(password)
         } else {
             Ok(())
@@ -92,9 +76,7 @@ impl Identity {
 
     /// Lock access to the private key
     pub fn lock(&self) {
-        if let Self::LockableSigner(arcsigner) = self {
-            arcsigner.lock()
-        } else if let Self::FullSigner(arcsigner) = self {
+        if let Self::Private(arcsigner) = self {
             arcsigner.lock()
         }
     }
@@ -106,7 +88,7 @@ impl Identity {
 
     /// Has a private key
     pub fn has_private_key(&self) -> bool {
-        matches!(self, Self::LockableSigner(_)) || matches!(self, Self::FullSigner(_))
+        matches!(self, Self::Private(_))
     }
 
     /// Is the identity locked?
@@ -116,9 +98,7 @@ impl Identity {
 
     /// Is the identity unlocked?
     pub fn is_unlocked(&self) -> bool {
-        if let Self::LockableSigner(box_signer) = self {
-            !box_signer.is_locked()
-        } else if let Self::FullSigner(box_signer) = self {
+        if let Self::Private(box_signer) = self {
             !box_signer.is_locked()
         } else {
             false
@@ -130,8 +110,7 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => arcsigner.change_passphrase(old, new, log_n),
-            Self::FullSigner(arcsigner) => arcsigner.change_passphrase(old, new, log_n),
+            Self::Private(arcsigner) => arcsigner.change_passphrase(old, new, log_n),
         }
     }
 
@@ -140,16 +119,13 @@ impl Identity {
         match self {
             Self::None => None,
             Self::Public(pk) => Some(*pk),
-            Self::LockableSigner(arcsigner) => Some(arcsigner.public_key()),
-            Self::FullSigner(arcsigner) => Some(arcsigner.public_key()),
+            Self::Private(arcsigner) => Some(arcsigner.public_key()),
         }
     }
 
     /// What is the signer's encrypted private key?
     pub fn encrypted_private_key(&self) -> Option<EncryptedPrivateKey> {
-        if let Self::LockableSigner(arcsigner) = self {
-            arcsigner.encrypted_private_key()
-        } else if let Self::FullSigner(arcsigner) = self {
+        if let Self::Private(arcsigner) = self {
             arcsigner.encrypted_private_key()
         } else {
             None
@@ -161,8 +137,7 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => arcsigner.sign_id(id).await,
-            Self::FullSigner(arcsigner) => arcsigner.sign_id(id).await,
+            Self::Private(arcsigner) => arcsigner.sign_id(id).await,
         }
     }
 
@@ -171,8 +146,7 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => arcsigner.sign(message).await,
-            Self::FullSigner(arcsigner) => arcsigner.sign(message).await,
+            Self::Private(arcsigner) => arcsigner.sign(message).await,
         }
     }
 
@@ -186,8 +160,7 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => arcsigner.encrypt(other, plaintext, algo).await,
-            Self::FullSigner(arcsigner) => arcsigner.encrypt(other, plaintext, algo).await,
+            Self::Private(arcsigner) => arcsigner.encrypt(other, plaintext, algo).await,
         }
     }
 
@@ -196,8 +169,7 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => arcsigner.decrypt(other, ciphertext).await,
-            Self::FullSigner(arcsigner) => arcsigner.decrypt(other, ciphertext).await,
+            Self::Private(arcsigner) => arcsigner.decrypt(other, ciphertext).await,
         }
     }
 
@@ -206,8 +178,7 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => arcsigner.nip44_conversation_key(other).await,
-            Self::FullSigner(arcsigner) => arcsigner.nip44_conversation_key(other).await,
+            Self::Private(arcsigner) => arcsigner.nip44_conversation_key(other).await,
         }
     }
 
@@ -216,8 +187,7 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => arcsigner.key_security(),
-            Self::FullSigner(arcsigner) => arcsigner.key_security(),
+            Self::Private(arcsigner) => arcsigner.key_security(),
         }
     }
 
@@ -226,8 +196,7 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => arcsigner.upgrade(pass, log_n),
-            Self::FullSigner(arcsigner) => arcsigner.upgrade(pass, log_n),
+            Self::Private(arcsigner) => arcsigner.upgrade(pass, log_n),
         }
     }
 
@@ -240,10 +209,7 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => {
-                arcsigner.create_metadata_event(input, metadata).await
-            }
-            Self::FullSigner(arcsigner) => arcsigner.create_metadata_event(input, metadata).await,
+            Self::Private(arcsigner) => arcsigner.create_metadata_event(input, metadata).await,
         }
     }
 
@@ -259,18 +225,7 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => {
-                arcsigner
-                    .create_zap_request_event(
-                        recipient_pubkey,
-                        zapped_event,
-                        millisatoshis,
-                        relays,
-                        content,
-                    )
-                    .await
-            }
-            Self::FullSigner(arcsigner) => {
+            Self::Private(arcsigner) => {
                 arcsigner
                     .create_zap_request_event(
                         recipient_pubkey,
@@ -289,8 +244,7 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => arcsigner.decrypt_event_contents(event).await,
-            Self::FullSigner(arcsigner) => arcsigner.decrypt_event_contents(event).await,
+            Self::Private(arcsigner) => arcsigner.decrypt_event_contents(event).await,
         }
     }
 
@@ -299,8 +253,7 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => arcsigner.unwrap_giftwrap(event).await,
-            Self::FullSigner(arcsigner) => arcsigner.unwrap_giftwrap(event).await,
+            Self::Private(arcsigner) => arcsigner.unwrap_giftwrap(event).await,
         }
     }
 
@@ -313,12 +266,7 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => {
-                arcsigner
-                    .generate_delegation_signature(delegated_pubkey, delegation_conditions)
-                    .await
-            }
-            Self::FullSigner(arcsigner) => {
+            Self::Private(arcsigner) => {
                 arcsigner
                     .generate_delegation_signature(delegated_pubkey, delegation_conditions)
                     .await
@@ -331,8 +279,7 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => arcsigner.giftwrap(input, pubkey).await,
-            Self::FullSigner(arcsigner) => arcsigner.giftwrap(input, pubkey).await,
+            Self::Private(arcsigner) => arcsigner.giftwrap(input, pubkey).await,
         }
     }
 
@@ -341,8 +288,7 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => arcsigner.sign_event(input).await,
-            Self::FullSigner(arcsigner) => arcsigner.sign_event(input).await,
+            Self::Private(arcsigner) => arcsigner.sign_event(input).await,
         }
     }
 
@@ -356,12 +302,7 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => {
-                arcsigner
-                    .sign_event_with_pow(input, zero_bits, work_sender)
-                    .await
-            }
-            Self::FullSigner(arcsigner) => {
+            Self::Private(arcsigner) => {
                 arcsigner
                     .sign_event_with_pow(input, zero_bits, work_sender)
                     .await
@@ -379,12 +320,7 @@ impl Identity {
         match self {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
-            Self::LockableSigner(arcsigner) => arcsigner.verify_delegation_signature(
-                delegated_pubkey,
-                delegation_conditions,
-                signature,
-            ),
-            Self::FullSigner(arcsigner) => arcsigner.verify_delegation_signature(
+            Self::Private(arcsigner) => arcsigner.verify_delegation_signature(
                 delegated_pubkey,
                 delegation_conditions,
                 signature,
