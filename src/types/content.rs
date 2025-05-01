@@ -142,6 +142,7 @@ fn shatter_content_2(content: &str) -> Vec<ContentSegment> {
 }
 
 // Pass 3 - URLs
+#[allow(clippy::string_slice)]
 fn shatter_content_3(content: &str) -> Vec<ContentSegment> {
     let mut segments: Vec<ContentSegment> = Vec::new();
 
@@ -162,6 +163,7 @@ fn shatter_content_3(content: &str) -> Vec<ContentSegment> {
 }
 
 // Pass 4 - Hashtags
+#[allow(clippy::string_slice)]
 fn shatter_content_4(content: &str) -> Vec<ContentSegment> {
     lazy_static! {
         static ref HTAG_RE: Regex =

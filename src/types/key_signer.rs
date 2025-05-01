@@ -52,7 +52,11 @@ impl KeySigner {
     pub fn from_encrypted_private_key(epk: EncryptedPrivateKey, pass: &str) -> Result<Self, Error> {
         let priv_key = epk.decrypt(pass)?;
         let pub_key = priv_key.public_key();
-        Ok(Self::from_locked_parts(epk, pub_key))
+        Ok(Self {
+            encrypted_private_key: RwLock::new(epk),
+            public_key: pub_key,
+            private_key: RwLock::new(Some(priv_key)),
+        })
     }
 
     /// Create a Signer by generating a new `PrivateKey`
@@ -301,7 +305,7 @@ mod test {
         let ks = KeySigner::generate("password", 16).unwrap();
         let s = serde_json::to_string(&ks).unwrap();
         println!("{s}");
-        let ks2: KeySigner = serde_json::from_str(&*s).unwrap();
+        let ks2: KeySigner = serde_json::from_str(&s).unwrap();
         assert_eq!(ks.public_key, ks2.public_key);
         assert_eq!(
             *ks.encrypted_private_key.read().unwrap(),

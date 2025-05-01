@@ -1072,7 +1072,7 @@ impl EventV3 {
         if bytes.len() < 32 {
             None
         } else if let Ok(arr) = <[u8; 32]>::try_from(&bytes[0..32]) {
-            Some(unsafe { std::mem::transmute(arr) })
+            Some(unsafe { std::mem::transmute::<[u8; 32], Id>(arr) })
         } else {
             None
         }
@@ -1161,11 +1161,9 @@ impl EventV3 {
         for tag in &tags {
             match tag.tagname() {
                 "content-warning" => {
-                    if let Ok(ParsedTag::ContentWarning(warning)) = tag.parse() {
-                        if let Some(w) = warning {
-                            if re.is_match(w.as_ref()) {
-                                return Ok(true);
-                            }
+                    if let Ok(ParsedTag::ContentWarning(Some(w))) = tag.parse() {
+                        if re.is_match(w.as_ref()) {
+                            return Ok(true);
                         }
                     }
                 }
@@ -1237,7 +1235,7 @@ impl TryFrom<PreEventV3> for RumorV3 {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::types::{DelegationConditions, Signer, UncheckedUrl};
+    use crate::types::{DelegationConditions, Signer, SignerExt, UncheckedUrl};
 
     test_serde_async! {EventV3, test_event_serde}
 
@@ -1297,7 +1295,7 @@ mod test {
     // helper
     async fn create_event_with_delegation<S>(created_at: Unixtime, real_signer: &S) -> EventV3
     where
-        S: Signer,
+        S: Signer + SignerExt,
     {
         let delegated_signer = {
             let privkey = PrivateKey::mock();
@@ -1417,8 +1415,8 @@ mod test {
     }
 
     #[cfg(feature = "speedy")]
-    #[test]
-    fn test_speedy_encoded_direct_field_access() {
+    #[tokio::test]
+    async fn test_speedy_encoded_direct_field_access() {
         use speedy::Writable;
 
         let signer = {
@@ -1442,7 +1440,7 @@ mod test {
             ],
             content: "Hello World!".to_string(),
         };
-        let event = signer.sign_event(preevent).unwrap();
+        let event = signer.sign_event(preevent).await.unwrap();
         let bytes = event.write_to_vec().unwrap();
 
         let id = EventV3::get_id_from_speedy_bytes(&bytes).unwrap();
@@ -1502,7 +1500,7 @@ mod test {
 
         let pre = PreEventV3 {
             pubkey: signer1.public_key(),
-            created_at: Unixtime(1692_000_000),
+            created_at: Unixtime(1_692_000_000),
             kind: EventKind::TextNote,
             content: "Hey man, this rocks! Please reply for a test.".to_string(),
             tags: vec![],

@@ -544,10 +544,7 @@ impl<'de> Visitor<'de> for RidVisitor {
             rid.description = Some(s);
         }
         if let Some(Value::String(s)) = map.remove("pubkey") {
-            rid.pubkey = match PublicKeyHex::try_from_string(s) {
-                Ok(pkh) => Some(pkh),
-                Err(_) => None,
-            };
+            rid.pubkey = PublicKeyHex::try_from_string(s).ok();
         }
         if let Some(Value::String(s)) = map.remove("contact") {
             rid.contact = Some(s);

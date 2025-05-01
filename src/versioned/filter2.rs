@@ -352,7 +352,7 @@ mod test {
         filter.add_tag_value('t', "footstr".to_string());
         filter.add_tag_value('t', "bitcoin".to_string());
         filter.del_tag_value('t', "bitcoin".to_string());
-        assert!(filter.tags.get(&'t').is_some());
+        assert!(filter.tags.contains_key(&'t'));
     }
 
     #[tokio::test]

@@ -245,7 +245,7 @@ impl Client {
                 kind: EventKind::Auth,
                 tags: vec![
                     Tag::new(&["relay", &self.relay_url]),
-                    Tag::new(&["challenge", &challenge]),
+                    Tag::new(&["challenge", challenge]),
                 ],
                 content: "".to_string(),
             };

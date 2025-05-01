@@ -115,9 +115,9 @@ mod test {
     test_serde_async! {Signature, test_signature_serde}
 
     #[cfg(feature = "speedy")]
-    #[test]
-    fn test_speedy_signature() {
-        let sig = Signature::mock();
+    #[tokio::test]
+    async fn test_speedy_signature() {
+        let sig = Signature::mock().await;
         let bytes = sig.write_to_vec().unwrap();
         let sig2 = Signature::read_from_buffer(&bytes).unwrap();
         assert_eq!(sig, sig2);
