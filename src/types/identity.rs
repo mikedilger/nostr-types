@@ -5,11 +5,12 @@ use crate::{
     KeySecurity, KeySigner, LockableSigner, Metadata, PreEvent, PrivateKey, PublicKey, Rumor,
     Signature, Signer, SignerExt,
 };
+use serde::{Deserialize, Serialize};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
 /// All states that your identity can be in
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub enum Identity {
     /// No identity information
     #[default]
