@@ -1,8 +1,8 @@
 use super::TagV3;
 use crate::types::{
     EventDelegation, EventKind, EventReference, FileMetadata, Id, KeySigner, MilliSatoshi,
-    NostrBech32, NostrUrl, ParsedTag, PrivateKey, PublicKey, RelayUrl, Signature, Signer,
-    SignerExt, Unixtime, ZapData,
+    NostrBech32, NostrUrl, ParsedTag, PrivateKey, PublicKey, RelayUrl, Signature, Signer, Unixtime,
+    ZapData,
 };
 use crate::{Error, IntoVec};
 use lightning_invoice::Bolt11Invoice;
@@ -199,17 +199,7 @@ impl EventV3 {
             tags: vec![TagV3::mock(), TagV3::mock()],
             content: "This is a test".to_string(),
         };
-        let id = pre.hash().unwrap();
-        let sig = signer.sign_id(id).await.unwrap();
-        EventV3 {
-            id,
-            pubkey: pre.pubkey,
-            created_at: pre.created_at,
-            kind: pre.kind,
-            tags: pre.tags,
-            content: pre.content,
-            sig,
-        }
+        signer.sign_event(pre).await.unwrap()
     }
 
     /// Get the k-tag kind, if any
@@ -1259,17 +1249,7 @@ mod test {
             .into_tag()],
             content: "Hello World!".to_string(),
         };
-        let id = preevent.hash().unwrap();
-        let sig = signer.sign_id(id).await.unwrap();
-        let mut event = EventV3 {
-            id,
-            pubkey: preevent.pubkey,
-            created_at: preevent.created_at,
-            kind: preevent.kind,
-            tags: preevent.tags,
-            content: preevent.content,
-            sig,
-        };
+        let mut event = signer.sign_event(preevent).await?;
 
         assert!(event.verify(None).is_ok());
 
@@ -1333,17 +1313,7 @@ mod test {
             ],
             content: "Hello World!".to_string(),
         };
-        let id = preevent.hash().unwrap();
-        let sig = delegated_signer.sign_id(id).await.unwrap();
-        EventV3 {
-            id,
-            pubkey: preevent.pubkey,
-            created_at: preevent.created_at,
-            kind: preevent.kind,
-            tags: preevent.tags,
-            content: preevent.content,
-            sig,
-        }
+        delegated_signer.sign_event(preevent).await?
     }
 
     #[tokio::test]

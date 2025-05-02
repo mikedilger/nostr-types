@@ -1,3 +1,5 @@
+#[cfg(feature = "nip46")]
+use crate::nip46::BunkerClient;
 use crate::{
     ContentEncryptionAlgorithm, DelegationConditions, EncryptedPrivateKey, Error, Event, Id,
     KeySecurity, KeySigner, LockableSigner, Metadata, PreEvent, PrivateKey, PublicKey, Rumor,
@@ -18,6 +20,10 @@ pub enum Identity {
 
     /// Private key
     Private(Arc<KeySigner>),
+
+    /// Remote Signer (Bunker)
+    #[cfg(feature = "nip46")]
+    Remote(BunkerClient),
 }
 
 // No one besides the Identity has the internal Signer, so we can safely Send
@@ -62,6 +68,8 @@ impl Identity {
             Self::None => None,
             Self::Public(_) => None,
             Self::Private(b) => Some(b.clone()),
+            #[cfg(feature = "nip46")]
+            Self::Remote(_) => None,
         }
     }
 
@@ -111,6 +119,8 @@ impl Identity {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
             Self::Private(arcsigner) => arcsigner.change_passphrase(old, new, log_n),
+            #[cfg(feature = "nip46")]
+            Self::Remote(bunkerclient) => bunkerclient.change_passphrase(old, new, log_n),
         }
     }
 
@@ -120,6 +130,8 @@ impl Identity {
             Self::None => None,
             Self::Public(pk) => Some(*pk),
             Self::Private(arcsigner) => Some(arcsigner.public_key()),
+            #[cfg(feature = "nip46")]
+            Self::Remote(bunkerclient) => Some(bunkerclient.public_key()),
         }
     }
 
@@ -138,6 +150,8 @@ impl Identity {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
             Self::Private(arcsigner) => arcsigner.sign_id(id).await,
+            #[cfg(feature = "nip46")]
+            Self::Remote(_bunkerclient) => Err(Error::NoPrivateKey),
         }
     }
 
@@ -147,6 +161,8 @@ impl Identity {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
             Self::Private(arcsigner) => arcsigner.sign(message).await,
+            #[cfg(feature = "nip46")]
+            Self::Remote(_bunkerclient) => Err(Error::NoPrivateKey),
         }
     }
 
@@ -161,6 +177,8 @@ impl Identity {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
             Self::Private(arcsigner) => arcsigner.encrypt(other, plaintext, algo).await,
+            #[cfg(feature = "nip46")]
+            Self::Remote(bunkerclient) => bunkerclient.encrypt(other, plaintext, algo).await,
         }
     }
 
@@ -170,6 +188,8 @@ impl Identity {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
             Self::Private(arcsigner) => arcsigner.decrypt(other, ciphertext).await,
+            #[cfg(feature = "nip46")]
+            Self::Remote(bunkerclient) => bunkerclient.decrypt(other, ciphertext).await,
         }
     }
 
@@ -179,6 +199,8 @@ impl Identity {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
             Self::Private(arcsigner) => arcsigner.nip44_conversation_key(other).await,
+            #[cfg(feature = "nip46")]
+            Self::Remote(_bunkerclient) => Err(Error::NoPrivateKey),
         }
     }
 
@@ -188,6 +210,8 @@ impl Identity {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
             Self::Private(arcsigner) => arcsigner.key_security(),
+            #[cfg(feature = "nip46")]
+            Self::Remote(bunkerclient) => bunkerclient.key_security(),
         }
     }
 
@@ -197,6 +221,8 @@ impl Identity {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
             Self::Private(arcsigner) => arcsigner.upgrade(pass, log_n),
+            #[cfg(feature = "nip46")]
+            Self::Remote(_bunkerclient) => Err(Error::NoPrivateKey),
         }
     }
 
@@ -210,6 +236,8 @@ impl Identity {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
             Self::Private(arcsigner) => arcsigner.create_metadata_event(input, metadata).await,
+            #[cfg(feature = "nip46")]
+            Self::Remote(bunkerclient) => bunkerclient.create_metadata_event(input, metadata).await,
         }
     }
 
@@ -236,6 +264,18 @@ impl Identity {
                     )
                     .await
             }
+            #[cfg(feature = "nip46")]
+            Self::Remote(bunkerclient) => {
+                bunkerclient
+                    .create_zap_request_event(
+                        recipient_pubkey,
+                        zapped_event,
+                        millisatoshis,
+                        relays,
+                        content,
+                    )
+                    .await
+            }
         }
     }
 
@@ -245,6 +285,8 @@ impl Identity {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
             Self::Private(arcsigner) => arcsigner.decrypt_event_contents(event).await,
+            #[cfg(feature = "nip46")]
+            Self::Remote(bunkerclient) => bunkerclient.decrypt_event_contents(event).await,
         }
     }
 
@@ -254,6 +296,8 @@ impl Identity {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
             Self::Private(arcsigner) => arcsigner.unwrap_giftwrap(event).await,
+            #[cfg(feature = "nip46")]
+            Self::Remote(bunkerclient) => bunkerclient.unwrap_giftwrap(event).await,
         }
     }
 
@@ -271,6 +315,8 @@ impl Identity {
                     .generate_delegation_signature(delegated_pubkey, delegation_conditions)
                     .await
             }
+            #[cfg(feature = "nip46")]
+            Self::Remote(_bunkerclient) => Err(Error::NoPrivateKey),
         }
     }
 
@@ -280,6 +326,8 @@ impl Identity {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
             Self::Private(arcsigner) => arcsigner.giftwrap(input, pubkey).await,
+            #[cfg(feature = "nip46")]
+            Self::Remote(bunkerclient) => bunkerclient.giftwrap(input, pubkey).await,
         }
     }
 
@@ -289,6 +337,8 @@ impl Identity {
             Self::None => Err(Error::NoPublicKey),
             Self::Public(_) => Err(Error::NoPrivateKey),
             Self::Private(arcsigner) => arcsigner.sign_event(input).await,
+            #[cfg(feature = "nip46")]
+            Self::Remote(bunkerclient) => bunkerclient.sign_event(input).await,
         }
     }
 
@@ -307,6 +357,8 @@ impl Identity {
                     .sign_event_with_pow(input, zero_bits, work_sender)
                     .await
             }
+            #[cfg(feature = "nip46")]
+            Self::Remote(_bunkerclient) => Err(Error::NoPrivateKey),
         }
     }
 
@@ -325,6 +377,8 @@ impl Identity {
                 delegation_conditions,
                 signature,
             ),
+            #[cfg(feature = "nip46")]
+            Self::Remote(_bunkerclient) => Err(Error::NoPrivateKey),
         }
     }
 }

@@ -67,6 +67,11 @@ impl BunkerClient {
         self.local_signer.unlock(password)
     }
 
+    /// Change passphrase
+    pub fn change_passphrase(&self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
+        self.local_signer.change_passphrase(old, new, log_n)
+    }
+
     /// Is the signer connected to the relay?
     pub async fn is_connected(&self) -> bool {
         self.client.read().await.is_some()
