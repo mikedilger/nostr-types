@@ -11,7 +11,7 @@ keywords = [ "nostr" ]
 license = "MIT"
 
 [features]
-default = [ ]
+default = []
 nip46 = [
    "client"
 ]
@@ -23,6 +23,30 @@ client = [
    "tokio",
    "tokio-tungstenite",
    "tungstenite",
+   # Note that you must also select one of the 3 TLS choices below.
+   # Cargo makes it hard to specify that, but without any of them,
+   # you won't get TLS support.
+]
+
+# Use Native TLS code and native root certs
+native-tls = [
+  "reqwest/native-tls",
+  "tungstenite/native-tls",
+  "tokio-tungstenite/native-tls"
+]
+
+# Use Rust TLS code with WebPKI compiled-in root certs
+rustls-tls = [
+  "reqwest/rustls-tls-webpki-roots",
+  "tungstenite/rustls-tls-webpki-roots",
+  "tokio-tungstenite/rustls-tls-webpki-roots"
+]
+
+# Use Rust TLS  code with native root certs
+rustls-tls-native = [
+  "reqwest/rustls-tls-native-roots",
+  "tungstenite/rustls-tls-native-roots",
+  "tokio-tungstenite/rustls-tls-native-roots"
 ]
 
 [dependencies]
