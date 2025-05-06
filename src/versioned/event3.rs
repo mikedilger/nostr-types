@@ -1249,7 +1249,7 @@ mod test {
             .into_tag()],
             content: "Hello World!".to_string(),
         };
-        let mut event = signer.sign_event(preevent).await?;
+        let mut event = signer.sign_event(preevent).await.unwrap();
 
         assert!(event.verify(None).is_ok());
 
@@ -1313,7 +1313,7 @@ mod test {
             ],
             content: "Hello World!".to_string(),
         };
-        delegated_signer.sign_event(preevent).await?
+        delegated_signer.sign_event(preevent).await.unwrap()
     }
 
     #[tokio::test]
