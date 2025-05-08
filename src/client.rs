@@ -274,6 +274,51 @@ impl Client {
         Ok(())
     }
 
+    /// Fetch just one event from the relay on this subscription
+    ///
+    /// If EOSE happens before this function is called, quit_on_eose has no effect.
+    pub async fn fetch_one_event(
+        &mut self,
+        sub_id: SubscriptionId,
+        filter: Filter,
+        quit_on_eose: bool,
+    ) -> Result<Option<Event>, Error> {
+        let mut eose_happened: bool = false;
+
+        loop {
+            // If EOSE and we are closing on EOSE
+            if quit_on_eose && eose_happened {
+                return Ok(None);
+            }
+
+            let opt_message = self.wait_for_message().await?;
+
+            // If timed out waiting
+            if opt_message.is_none() {
+                return Ok(None);
+            }
+
+            match opt_message.unwrap() {
+                RelayMessage::Event(sub, box_event) => {
+                    if sub == sub_id && filter.event_matches(&box_event) {
+                        return Ok(Some((*box_event).clone()));
+                    }
+                }
+                RelayMessage::Closed(sub, _msg) => {
+                    if sub == sub_id {
+                        return Ok(None);
+                    }
+                }
+                RelayMessage::Eose(sub) => {
+                    if sub == sub_id {
+                        eose_happened = true;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
     /// Fetch events from the relay, and close the subscription on EOSE
     pub async fn fetch_events(
         &mut self,
