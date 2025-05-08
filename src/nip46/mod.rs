@@ -67,6 +67,11 @@ impl BunkerClient {
         self.local_signer.unlock(password)
     }
 
+    /// Lock
+    pub fn lock(&self) {
+        self.local_signer.lock()
+    }
+
     /// Change passphrase
     pub fn change_passphrase(&self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
         self.local_signer.change_passphrase(old, new, log_n)

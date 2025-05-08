@@ -76,17 +76,21 @@ impl Identity {
 
     /// Unlock
     pub fn unlock(&self, password: &str) -> Result<(), Error> {
-        if let Self::Private(arcsigner) = self {
-            arcsigner.unlock(password)
-        } else {
-            Ok(())
+        match self {
+            Self::Private(arcsigner) => arcsigner.unlock(password),
+            #[cfg(feature = "nip46")]
+            Self::Remote(bc) => bc.unlock(password),
+            _ => Ok(()),
         }
     }
 
     /// Lock access to the private key
     pub fn lock(&self) {
-        if let Self::Private(arcsigner) = self {
-            arcsigner.lock()
+        match self {
+            Self::Private(arcsigner) => arcsigner.lock(),
+            #[cfg(feature = "nip46")]
+            Self::Remote(bc) => bc.lock(),
+            _ => (),
         }
     }
 
@@ -102,16 +106,17 @@ impl Identity {
 
     /// Is the identity locked?
     pub fn is_locked(&self) -> bool {
-        !self.is_unlocked()
+        match self {
+            Self::Private(box_signer) => box_signer.is_locked(),
+            #[cfg(feature = "nip46")]
+            Self::Remote(bc) => bc.is_locked(),
+            _ => false,
+        }
     }
 
     /// Is the identity unlocked?
     pub fn is_unlocked(&self) -> bool {
-        if let Self::Private(box_signer) = self {
-            !box_signer.is_locked()
-        } else {
-            false
-        }
+        !self.is_locked()
     }
 
     /// Can sign if unlocked
@@ -120,7 +125,7 @@ impl Identity {
             Self::Private(_) => true,
             #[cfg(feature = "nip46")]
             Self::Remote(_) => true,
-            _ => false
+            _ => false,
         }
     }
 
