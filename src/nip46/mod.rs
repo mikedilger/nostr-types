@@ -101,6 +101,21 @@ impl BunkerClient {
             return Err(Error::Nip46Error("Not Connected to Relay".to_owned()));
         }
 
+        // Subscribe first
+        let mut filter = Filter::new();
+        filter.add_author(self.remote_signer_pubkey);
+        filter.add_event_kind(EventKind::NostrConnect);
+        filter.add_tag_value('p', self.local_signer.public_key().as_hex_string());
+        filter.limit = Some(1);
+        let sub_id = self
+            .client
+            .write()
+            .await
+            .as_mut()
+            .unwrap()
+            .subscribe(filter.clone())
+            .await?;
+
         let event = request
             .to_event(self.remote_signer_pubkey, self.local_signer.clone())
             .await?;
@@ -118,44 +133,32 @@ impl BunkerClient {
             return Err(Error::Nip46FailedToPost(msg));
         }
 
-        let mut filter = Filter::new();
-        filter.add_author(self.remote_signer_pubkey);
-        filter.add_event_kind(EventKind::NostrConnect);
-        filter.add_tag_value('p', self.local_signer.public_key().as_hex_string());
-        filter.limit = Some(1);
-        let sub_id = self
-            .client
-            .write()
-            .await
-            .as_mut()
-            .unwrap()
-            .subscribe(filter.clone())
-            .await?;
-
         // Wait for a response
-        let relay_fetch_result = self
+        let maybe_event = self
             .client
             .write()
             .await
             .as_mut()
             .unwrap()
-            .fetch_events_keep_open(sub_id, filter)
+            .fetch_one_event(sub_id.clone(), filter, false)
             .await?;
 
-        let event = if !relay_fetch_result.pre_eose_events.is_empty() {
-            relay_fetch_result.pre_eose_events[0].clone()
-        } else if let Some(v) = relay_fetch_result.post_eose_events {
-            if !v.is_empty() {
-                v[0].clone()
-            } else {
-                return Err(Error::Nip46NoResponse);
-            }
-        } else {
-            return Err(Error::Nip46NoResponse);
+        let event = match maybe_event {
+            Some(e) => e,
+            None => return Err(Error::Nip46NoResponse),
         };
 
         // Convert into a response
         let response: Nip46Response = serde_json::from_str(&event.content)?;
+
+        // Close the subscription
+        self.client
+            .write()
+            .await
+            .as_mut()
+            .unwrap()
+            .close_subscription(sub_id)
+            .await?;
 
         Ok(response)
     }

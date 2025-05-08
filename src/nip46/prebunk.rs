@@ -98,7 +98,6 @@ impl PreBunkerClient {
             self.call(&mut client, connect_request).await?
         };
 
-        // Verify there is no error
         if let Some(error) = connect_response.error {
             if !error.is_empty() {
                 return Err(Error::Nip46Error(error));
@@ -142,12 +141,7 @@ impl PreBunkerClient {
             .to_event(self.remote_signer_pubkey, self.local_signer.clone())
             .await?;
 
-        // Post event to server
-        let (ok, msg) = client.post_event(event).await?;
-        if !ok {
-            return Err(Error::Nip46FailedToPost(msg));
-        }
-
+        // Subscribe
         let mut filter = Filter::new();
         filter.add_author(self.remote_signer_pubkey);
         filter.add_event_kind(EventKind::NostrConnect);
@@ -155,19 +149,18 @@ impl PreBunkerClient {
         filter.limit = Some(1);
         let sub_id = client.subscribe(filter.clone()).await?;
 
-        // Wait for a response
-        let relay_fetch_result = client.fetch_events_keep_open(sub_id, filter).await?;
+        // Post event to server
+        let (ok, msg) = client.post_event(event).await?;
+        if !ok {
+            return Err(Error::Nip46FailedToPost(msg));
+        }
 
-        let event = if !relay_fetch_result.pre_eose_events.is_empty() {
-            relay_fetch_result.pre_eose_events[0].clone()
-        } else if let Some(v) = relay_fetch_result.post_eose_events {
-            if !v.is_empty() {
-                v[0].clone()
-            } else {
-                return Err(Error::Nip46NoResponse);
-            }
-        } else {
-            return Err(Error::Nip46NoResponse);
+        // Wait for a response on the subscription
+        let maybe_event = client.fetch_one_event(sub_id, filter, false).await?;
+
+        let event = match maybe_event {
+            Some(e) => e,
+            None => return Err(Error::Nip46NoResponse),
         };
 
         // Convert into a response
