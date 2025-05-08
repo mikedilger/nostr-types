@@ -163,8 +163,10 @@ impl PreBunkerClient {
             None => return Err(Error::Nip46NoResponse),
         };
 
+        let contents = self.local_signer.decrypt_event_contents(&event).await?;
+
         // Convert into a response
-        let response: Nip46Response = serde_json::from_str(&event.content)?;
+        let response: Nip46Response = serde_json::from_str(&contents)?;
 
         Ok(response)
     }
