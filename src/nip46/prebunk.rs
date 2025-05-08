@@ -149,9 +149,10 @@ impl PreBunkerClient {
         filter.add_event_kind(EventKind::NostrConnect);
         filter.add_tag_value('p', self.local_signer.public_key().as_hex_string());
         filter.limit = Some(1);
+        let sub_id = client.subscribe(filter.clone()).await?;
 
         // Wait for a response
-        let relay_fetch_result = client.fetch_events_keep_open(filter).await?;
+        let relay_fetch_result = client.fetch_events_keep_open(sub_id, filter).await?;
 
         let event = if !relay_fetch_result.pre_eose_events.is_empty() {
             relay_fetch_result.pre_eose_events[0].clone()

@@ -123,6 +123,14 @@ impl BunkerClient {
         filter.add_event_kind(EventKind::NostrConnect);
         filter.add_tag_value('p', self.local_signer.public_key().as_hex_string());
         filter.limit = Some(1);
+        let sub_id = self
+            .client
+            .write()
+            .await
+            .as_mut()
+            .unwrap()
+            .subscribe(filter.clone())
+            .await?;
 
         // Wait for a response
         let relay_fetch_result = self
@@ -131,7 +139,7 @@ impl BunkerClient {
             .await
             .as_mut()
             .unwrap()
-            .fetch_events_keep_open(filter)
+            .fetch_events_keep_open(sub_id, filter)
             .await?;
 
         let event = if !relay_fetch_result.pre_eose_events.is_empty() {

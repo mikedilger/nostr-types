@@ -275,28 +275,29 @@ impl Client {
     }
 
     /// Fetch events from the relay, and close the subscription on EOSE
-    pub async fn fetch_events(&mut self, filter: Filter) -> Result<RelayFetchResult, Error> {
-        self.fetch_events_inner(filter, true).await
+    pub async fn fetch_events(
+        &mut self,
+        sub_id: SubscriptionId,
+        filter: Filter,
+    ) -> Result<RelayFetchResult, Error> {
+        self.fetch_events_inner(sub_id, filter, true).await
     }
 
     /// Fetch events from the relay, and keep open the subscription after EOSE
     pub async fn fetch_events_keep_open(
         &mut self,
+        sub_id: SubscriptionId,
         filter: Filter,
     ) -> Result<RelayFetchResult, Error> {
-        self.fetch_events_inner(filter, false).await
+        self.fetch_events_inner(sub_id, filter, false).await
     }
 
     async fn fetch_events_inner(
         &mut self,
+        sub_id: SubscriptionId,
         filter: Filter,
         close: bool,
     ) -> Result<RelayFetchResult, Error> {
-        let sub_id_usize = self.next_sub_id.fetch_add(1, Ordering::Relaxed);
-        let sub_id = SubscriptionId(format!("sub{}", sub_id_usize));
-        let client_message = ClientMessage::Req(sub_id.clone(), filter.clone());
-        self.send_message(client_message).await?;
-
         let mut pre_eose_events: Vec<Event> = Vec::new();
         let mut post_eose_events: Vec<Event> = Vec::new();
         let mut eose_happened: bool = false;
