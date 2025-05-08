@@ -114,6 +114,16 @@ impl Identity {
         }
     }
 
+    /// Can sign if unlocked
+    pub fn can_sign_if_unlocked(&self) -> bool {
+        match self {
+            Self::Private(_) => true,
+            #[cfg(feature = "nip46")]
+            Self::Remote(_) => true,
+            _ => false
+        }
+    }
+
     /// Change the passphrase used for locking access to the private key
     pub fn change_passphrase(&self, old: &str, new: &str, log_n: u8) -> Result<(), Error> {
         match self {
