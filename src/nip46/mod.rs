@@ -195,7 +195,9 @@ impl Signer for BunkerClient {
         let request = Nip46Request::new("sign_event".to_owned(), vec![pre_event_string]);
         let response = self.call(request).await?;
         if let Some(error) = response.error {
-            return Err(Error::Nip46Error(error));
+            if !error.is_empty() {
+                return Err(Error::Nip46Error(error));
+            }
         }
         let event: Event = serde_json::from_str(&response.result)?;
         Ok(event)
@@ -228,7 +230,9 @@ impl Signer for BunkerClient {
 
         let response = self.call(request).await?;
         if let Some(error) = response.error {
-            return Err(Error::Nip46Error(error));
+            if !error.is_empty() {
+                return Err(Error::Nip46Error(error));
+            }
         }
 
         let ciphertext: String = serde_json::from_str(&response.result)?;
@@ -257,7 +261,9 @@ impl Signer for BunkerClient {
 
         let response = self.call(request).await?;
         if let Some(error) = response.error {
-            return Err(Error::Nip46Error(error));
+            if !error.is_empty() {
+                return Err(Error::Nip46Error(error));
+            }
         }
 
         let plaintext: String = serde_json::from_str(&response.result)?;

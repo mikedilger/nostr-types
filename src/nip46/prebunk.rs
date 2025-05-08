@@ -100,7 +100,9 @@ impl PreBunkerClient {
 
         // Verify there is no error
         if let Some(error) = connect_response.error {
-            return Err(Error::Nip46Error(error));
+            if !error.is_empty() {
+                return Err(Error::Nip46Error(error));
+            }
         }
 
         // Ask for our pubkey
@@ -115,7 +117,9 @@ impl PreBunkerClient {
 
         // Verify there is no error
         if let Some(error) = pubkey_response.error {
-            return Err(Error::Nip46Error(error));
+            if !error.is_empty() {
+                return Err(Error::Nip46Error(error));
+            }
         }
 
         let public_key = PublicKey::try_from_hex_string(&pubkey_response.result, true)?;
