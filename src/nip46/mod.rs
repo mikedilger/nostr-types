@@ -91,7 +91,7 @@ impl BunkerClient {
         *self.client.write().await = Some(
             client::Client::connect(
                 self.relay_url.as_str(),
-                Duration::from_secs(5),
+                Duration::from_secs(20),
                 Some(self.local_signer.clone()),
             )
             .await?,
