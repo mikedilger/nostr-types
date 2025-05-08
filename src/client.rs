@@ -143,6 +143,22 @@ impl Client {
         Ok(())
     }
 
+    /// Subscribe to a filter. This does not wait for results.
+    pub async fn subscribe(&mut self, filter: Filter) -> Result<SubscriptionId, Error> {
+        let sub_id_usize = self.next_sub_id.fetch_add(1, Ordering::Relaxed);
+        let sub_id = SubscriptionId(format!("sub{}", sub_id_usize));
+        let client_message = ClientMessage::Req(sub_id.clone(), filter.clone());
+        self.send_message(client_message).await?;
+        Ok(sub_id)
+    }
+
+    /// Close subscription
+    pub async fn close_subscription(&mut self, sub_id: SubscriptionId) -> Result<(), Error> {
+        let client_message = ClientMessage::Close(sub_id);
+        self.send_message(client_message).await?;
+        Ok(())
+    }
+
     async fn inner_send_message(&mut self, msg: tungstenite::Message) -> Result<(), Error> {
         if self.disconnected {
             self.reconnect().await?;
@@ -371,12 +387,6 @@ impl Client {
                 }
             }
         }
-    }
-
-    async fn close_subscription(&mut self, sub_id: SubscriptionId) -> Result<(), Error> {
-        let client_message = ClientMessage::Close(sub_id);
-        self.send_message(client_message).await?;
-        Ok(())
     }
 
     /// Post an event to the relay
