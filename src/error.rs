@@ -137,6 +137,10 @@ pub enum Error {
     #[error("Invalid Recipient")]
     InvalidRecipient,
 
+    /// Invalid state
+    #[error("Invalid state: \"{0}\"")]
+    InvalidState(String),
+
     /// Invalid URL
     #[error("Invalid URL: \"{0}\"")]
     InvalidUrl(#[from] url::ParseError),
@@ -196,6 +200,26 @@ pub enum Error {
     /// Parse integer error
     #[error("Parse integer error")]
     ParseInt(#[from] std::num::ParseIntError),
+
+    /// Relay did not AUTH
+    #[error("Relay (broken) says auth-required before challenging with AUTH")]
+    RelayDidNotAuth,
+
+    /// Relay forgot that we successfully AUTHed
+    #[error("Relay (broken) forgot that we already successfully AUTHed")]
+    RelayForgotAuth,
+
+    /// Relay rejected our post
+    #[error("Relay rejected our post")]
+    RelayRejectedPost,
+
+    /// Relay rejected our AUTH
+    #[error("Relay rejected our AUTH")]
+    RelayRejectedAuth,
+
+    /// Relay requires AUTH but we aren't supplying it
+    #[error("Relay requires AUTH")]
+    RelayRequiresAuth,
 
     /// HTTP request eror
     #[cfg(feature = "client")]

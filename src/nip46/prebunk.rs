@@ -4,7 +4,6 @@ use crate::{Error, EventKind, Filter, KeySigner, LockableSigner, PublicKey, Rela
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::RwLock;
 
 /// This is a Remote Signer setup that has not yet discovered the user's PublicKey
 /// As a result, it cannot implement Signer yet.
@@ -21,6 +20,9 @@ pub struct PreBunkerClient {
 
     /// Our local identity
     pub local_signer: Arc<KeySigner>,
+
+    /// Timeout
+    pub timeout: Duration,
 }
 
 impl PreBunkerClient {
@@ -30,6 +32,7 @@ impl PreBunkerClient {
         relay_url: RelayUrl,
         connect_secret: Option<String>,
         new_password: &str,
+        timeout: Duration,
     ) -> Result<PreBunkerClient, Error> {
         let local_signer = Arc::new(KeySigner::generate(new_password, 18)?);
 
@@ -38,6 +41,7 @@ impl PreBunkerClient {
             relay_url,
             connect_secret,
             local_signer,
+            timeout,
         })
     }
 
@@ -45,7 +49,11 @@ impl PreBunkerClient {
     ///
     /// This connects to the relay, but does not contact the bunker yet. Use `connect()` to
     /// initiate contact with the bunker.
-    pub fn new_from_url(url: &str, new_password: &str) -> Result<PreBunkerClient, Error> {
+    pub fn new_from_url(
+        url: &str,
+        new_password: &str,
+        timeout: Duration,
+    ) -> Result<PreBunkerClient, Error> {
         let Nip46ConnectionParameters {
             remote_signer_pubkey,
             relays,
@@ -59,6 +67,7 @@ impl PreBunkerClient {
             relay_url: relays[0].clone(),
             connect_secret: secret,
             local_signer,
+            timeout,
         })
     }
 
@@ -75,12 +84,7 @@ impl PreBunkerClient {
     /// Connect to the relay and bunker, learn our user's PublicKey,
     /// and return a full BunkerClient which impl Signer
     pub async fn initialize(&mut self) -> Result<BunkerClient, Error> {
-        let mut client = Client::connect(
-            self.relay_url.as_str(),
-            Duration::from_secs(5),
-            Some(self.local_signer.clone()),
-        )
-        .await?;
+        let client = Client::new(self.relay_url.as_str());
 
         let connect_response = {
             let connect_request = {
@@ -95,7 +99,7 @@ impl PreBunkerClient {
                 Nip46Request::new("connect".to_string(), params)
             };
 
-            self.call(&mut client, connect_request).await?
+            self.call(&client, connect_request).await?
         };
 
         if let Some(error) = connect_response.error {
@@ -111,7 +115,7 @@ impl PreBunkerClient {
                 Nip46Request::new("get_public_key".to_string(), params)
             };
 
-            self.call(&mut client, pubkey_request).await?
+            self.call(&client, pubkey_request).await?
         };
 
         // Verify there is no error
@@ -128,15 +132,12 @@ impl PreBunkerClient {
             relay_url: self.relay_url.clone(),
             local_signer: self.local_signer.clone(),
             public_key,
-            client: RwLock::new(Some(client)),
+            timeout: self.timeout,
+            client,
         })
     }
 
-    async fn call(
-        &self,
-        client: &mut Client,
-        request: Nip46Request,
-    ) -> Result<Nip46Response, Error> {
+    async fn call(&self, client: &Client, request: Nip46Request) -> Result<Nip46Response, Error> {
         let event = request
             .to_event(self.remote_signer_pubkey, self.local_signer.clone())
             .await?;
@@ -147,22 +148,20 @@ impl PreBunkerClient {
         filter.add_event_kind(EventKind::NostrConnect);
         filter.add_tag_value('p', self.local_signer.public_key().as_hex_string());
         filter.limit = Some(1);
-        let sub_id = client.subscribe(filter.clone()).await?;
+        let sub_id = client.subscribe(filter.clone(), self.timeout).await?;
 
         // Post event to server
-        let (ok, msg) = client.post_event(event).await?;
+        let event_id = event.id;
+        client.post_event(event, self.timeout).await?;
+        let (ok, msg) = client.wait_for_ok(event_id, self.timeout).await?;
         if !ok {
             return Err(Error::Nip46FailedToPost(msg));
         }
 
         // Wait for a response on the subscription
-        let maybe_event = client.fetch_one_event(sub_id, filter, false).await?;
-
-        let event = match maybe_event {
-            Some(e) => e,
-            None => return Err(Error::Nip46NoResponse),
-        };
-
+        let event = client
+            .wait_for_subscribed_event(sub_id, self.timeout)
+            .await?;
         let contents = self.local_signer.decrypt_event_contents(&event).await?;
 
         // Convert into a response

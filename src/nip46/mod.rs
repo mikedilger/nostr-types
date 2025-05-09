@@ -6,7 +6,6 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::RwLock;
 
 mod request;
 pub use request::Nip46Request;
@@ -21,7 +20,7 @@ mod prebunk;
 pub use prebunk::PreBunkerClient;
 
 /// This is a NIP-46 Bunker client
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct BunkerClient {
     /// The pubkey of the bunker
     pub remote_signer_pubkey: PublicKey,
@@ -35,25 +34,31 @@ pub struct BunkerClient {
     /// User Public Key
     pub public_key: PublicKey,
 
+    /// Timeout
+    pub timeout: Duration,
+
     /// Client
-    #[serde(skip)]
-    pub client: RwLock<Option<client::Client>>,
+    #[serde(skip_serializing)]
+    pub client: client::Client,
 }
 
 impl BunkerClient {
     /// Create a new BunkerClient from stored data. This will be in the locked state.
-    pub fn from_stored_data(
+    pub async fn from_stored_data(
         remote_signer_pubkey: PublicKey,
         relay_url: RelayUrl,
         keysigner: KeySigner,
         public_key: PublicKey,
+        timeout: Duration,
     ) -> BunkerClient {
+        let client = client::Client::new(relay_url.as_str());
         BunkerClient {
             remote_signer_pubkey,
             relay_url,
             local_signer: Arc::new(keysigner),
             public_key,
-            client: RwLock::new(None),
+            timeout,
+            client,
         }
     }
 
@@ -77,81 +82,32 @@ impl BunkerClient {
         self.local_signer.change_passphrase(old, new, log_n)
     }
 
-    /// Is the signer connected to the relay?
-    pub async fn is_connected(&self) -> bool {
-        self.client.read().await.is_some()
-    }
-
-    /// Connect to the relay
-    pub async fn connect(&self) -> Result<(), Error> {
-        if self.is_connected().await {
-            return Ok(());
-        }
-
-        *self.client.write().await = Some(
-            client::Client::connect(
-                self.relay_url.as_str(),
-                Duration::from_secs(20),
-                Some(self.local_signer.clone()),
-            )
-            .await?,
-        );
-
-        Ok(())
-    }
-
     /// Send a `Nip46Request` and wait for a `Nip46Response` (up to our timeout)
     pub async fn call(&self, request: Nip46Request) -> Result<Nip46Response, Error> {
-        if !self.is_connected().await {
-            return Err(Error::Nip46Error("Not Connected to Relay".to_owned()));
-        }
-
         // Subscribe first
         let mut filter = Filter::new();
         filter.add_author(self.remote_signer_pubkey);
         filter.add_event_kind(EventKind::NostrConnect);
         filter.add_tag_value('p', self.local_signer.public_key().as_hex_string());
         filter.limit = Some(1);
-        let sub_id = self
-            .client
-            .write()
-            .await
-            .as_mut()
-            .unwrap()
-            .subscribe(filter.clone())
-            .await?;
-
+        let sub_id = self.client.subscribe(filter.clone(), self.timeout).await?;
         let event = request
             .to_event(self.remote_signer_pubkey, self.local_signer.clone())
             .await?;
 
-        // Post event to server
-        let (ok, msg) = self
-            .client
-            .write()
-            .await
-            .as_mut()
-            .unwrap()
-            .post_event(event)
-            .await?;
+        // Post event to server and wait for OK
+        let event_id = event.id;
+        self.client.post_event(event, self.timeout).await?;
+        let (ok, msg) = self.client.wait_for_ok(event_id, self.timeout).await?;
         if !ok {
             return Err(Error::Nip46FailedToPost(msg));
         }
 
         // Wait for a response
-        let maybe_event = self
+        let event = self
             .client
-            .write()
-            .await
-            .as_mut()
-            .unwrap()
-            .fetch_one_event(sub_id.clone(), filter, false)
+            .wait_for_subscribed_event(sub_id.clone(), self.timeout)
             .await?;
-
-        let event = match maybe_event {
-            Some(e) => e,
-            None => return Err(Error::Nip46NoResponse),
-        };
 
         let contents = self.local_signer.decrypt_event_contents(&event).await?;
 
@@ -159,26 +115,21 @@ impl BunkerClient {
         let response: Nip46Response = serde_json::from_str(&contents)?;
 
         // Close the subscription
-        self.client
-            .write()
-            .await
-            .as_mut()
-            .unwrap()
-            .close_subscription(sub_id)
-            .await?;
+        self.client.close_subscription(sub_id).await?;
 
         Ok(response)
     }
 
     /// Disconnect from the relay
-    pub async fn disconnect(&self) {
-        *self.client.write().await = None;
+    pub async fn disconnect(&self) -> Result<(), Error> {
+        self.client.disconnect().await
     }
 
     /// Disconnect from the relay and lock
-    pub async fn disconnect_and_lock(&self) {
-        self.disconnect().await;
+    pub async fn disconnect_and_lock(&self) -> Result<(), Error> {
+        self.client.disconnect().await?;
         self.local_signer.lock();
+        Ok(())
     }
 }
 
@@ -196,9 +147,6 @@ impl Signer for BunkerClient {
     async fn sign_event(&self, pre_event: PreEvent) -> Result<Event, Error> {
         if self.is_locked() {
             return Err(Error::SignerIsLocked);
-        }
-        if !self.is_connected().await {
-            self.connect().await?;
         }
 
         let pre_event_string = serde_json::to_string(&pre_event)?;
@@ -221,9 +169,6 @@ impl Signer for BunkerClient {
     ) -> Result<String, Error> {
         if self.is_locked() {
             return Err(Error::SignerIsLocked);
-        }
-        if !self.is_connected().await {
-            self.connect().await?;
         }
 
         let cmd = match algo {
@@ -254,9 +199,6 @@ impl Signer for BunkerClient {
         if self.is_locked() {
             return Err(Error::SignerIsLocked);
         }
-        if !self.is_connected().await {
-            self.connect().await?;
-        }
 
         let cmd = if ciphertext.contains("?iv=") {
             "nip04_decrypt"
@@ -283,6 +225,59 @@ impl Signer for BunkerClient {
 
     fn key_security(&self) -> Result<KeySecurity, Error> {
         Ok(KeySecurity::NotTracked)
+    }
+}
+
+use serde::de::Error as DeError;
+use serde::de::{Deserializer, SeqAccess, Visitor};
+use std::fmt;
+
+impl<'de> Deserialize<'de> for BunkerClient {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_seq(BunkerClientVisitor)
+    }
+}
+
+struct BunkerClientVisitor;
+
+impl<'de> Visitor<'de> for BunkerClientVisitor {
+    type Value = BunkerClient;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a serialized BunkerClient as a sequence")
+    }
+
+    fn visit_seq<A>(self, mut access: A) -> Result<BunkerClient, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let remote_signer_pubkey = access
+            .next_element::<PublicKey>()?
+            .ok_or_else(|| DeError::custom("Missing remote_signer_pubkey"))?;
+        let relay_url = access
+            .next_element::<RelayUrl>()?
+            .ok_or_else(|| DeError::custom("Missing relay_url"))?;
+        let local_signer = access
+            .next_element::<Arc<KeySigner>>()?
+            .ok_or_else(|| DeError::custom("Missing local_signer"))?;
+        let public_key = access
+            .next_element::<PublicKey>()?
+            .ok_or_else(|| DeError::custom("Missing public_key"))?;
+        let timeout = access
+            .next_element::<Duration>()?
+            .ok_or_else(|| DeError::custom("Missing timeout"))?;
+        let client = client::Client::new(relay_url.as_str());
+        Ok(BunkerClient {
+            remote_signer_pubkey,
+            relay_url,
+            local_signer,
+            public_key,
+            timeout,
+            client,
+        })
     }
 }
 
