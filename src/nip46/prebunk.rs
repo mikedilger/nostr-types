@@ -4,6 +4,7 @@ use crate::{Error, EventKind, Filter, KeySigner, LockableSigner, PublicKey, Rela
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
+use tracing::{event, span, Level};
 
 /// This is a Remote Signer setup that has not yet discovered the user's PublicKey
 /// As a result, it cannot implement Signer yet.
@@ -84,6 +85,9 @@ impl PreBunkerClient {
     /// Connect to the relay and bunker, learn our user's PublicKey,
     /// and return a full BunkerClient which impl Signer
     pub async fn initialize(&mut self) -> Result<BunkerClient, Error> {
+        let span = span!(Level::DEBUG, "nip46 Prebunk initializing");
+        let _enter = span.enter();
+
         let client = Client::new(self.relay_url.as_str());
 
         let connect_response = {
@@ -99,6 +103,7 @@ impl PreBunkerClient {
                 Nip46Request::new("connect".to_string(), params)
             };
 
+            event!(Level::DEBUG, "Calling with connect request event");
             self.call(&client, connect_request).await?
         };
 
@@ -115,6 +120,7 @@ impl PreBunkerClient {
                 Nip46Request::new("get_public_key".to_string(), params)
             };
 
+            event!(Level::DEBUG, "Calling with pubkey request event");
             self.call(&client, pubkey_request).await?
         };
 
@@ -138,6 +144,9 @@ impl PreBunkerClient {
     }
 
     async fn call(&self, client: &Client, request: Nip46Request) -> Result<Nip46Response, Error> {
+        let span = span!(Level::DEBUG, "nip46 Prebunk callfn");
+        let _enter = span.enter();
+
         let event = request
             .to_event(self.remote_signer_pubkey, self.local_signer.clone())
             .await?;
@@ -148,17 +157,27 @@ impl PreBunkerClient {
         filter.add_event_kind(EventKind::NostrConnect);
         filter.add_tag_value('p', self.local_signer.public_key().as_hex_string());
         filter.limit = Some(1);
+        event!(
+            Level::DEBUG,
+            "calling client subscribe to subscribe to responses from the remote signer"
+        );
         let sub_id = client.subscribe(filter.clone(), self.timeout).await?;
 
         // Post event to server
         let event_id = event.id;
+        event!(Level::DEBUG, "posting our event");
         client.post_event(event, self.timeout).await?;
+        event!(Level::DEBUG, "waiting for OK response");
         let (ok, msg) = client.wait_for_ok(event_id, self.timeout).await?;
         if !ok {
             return Err(Error::Nip46FailedToPost(msg));
         }
 
         // Wait for a response on the subscription
+        event!(
+            Level::DEBUG,
+            "waiting for a response event on the remote signer subscription"
+        );
         let event = client
             .wait_for_subscribed_event(sub_id, self.timeout)
             .await?;

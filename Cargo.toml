@@ -85,6 +85,7 @@ thiserror = "1.0"
 thread-priority = "1.0"
 tokio = { version = "1", features = ["full"], optional = true }
 tokio-tungstenite = { version = "0.26", default-features = false, features = [ "connect", "handshake" ], optional = true }
+tracing = "0.1"
 tungstenite = { version = "0.26", default-features = false, optional = true }
 unicode-normalization = "0.1"
 url = "2.5"

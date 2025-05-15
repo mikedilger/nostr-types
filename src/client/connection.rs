@@ -7,6 +7,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{Mutex, Notify, RwLock};
+use tracing::{event, span, Level};
 use tungstenite::protocol::Message;
 
 /// A WebSocket
@@ -97,51 +98,62 @@ impl ClientConnection {
 
         // Start a task to handle the incoming stream
         let _listener_task = tokio::task::spawn(Box::pin(async move {
+            let span = span!(Level::DEBUG, "connection listener thread");
+            let _enter = span.enter();
             while let Some(message) = stream.next().await {
+                event!(Level::DEBUG, "websocket wessage received");
                 match message {
                     Ok(Message::Text(s)) => {
-                        if let Ok(rm) = serde_json::from_str(&s) {
-                            // Maybe update authentication state
-                            match rm {
-                                RelayMessage::Auth(challenge) => {
-                                    match *auth_state2.read().await {
-                                        AuthState::NotYetRequested => {
-                                            *auth_state2.write().await =
-                                                AuthState::Challenged(challenge)
+                        match serde_json::from_str(&s) {
+                            Ok(rm) => {
+                                // Maybe update authentication state
+                                match rm {
+                                    RelayMessage::Auth(challenge) => {
+                                        match *auth_state2.read().await {
+                                            AuthState::NotYetRequested => {
+                                                *auth_state2.write().await =
+                                                    AuthState::Challenged(challenge)
+                                            }
+                                            _ => continue, // dup auth ignored
                                         }
-                                        _ => continue, // dup auth ignored
+                                        // No need to store into incoming
+                                        event!(Level::DEBUG, "waking, received AUTH");
+                                        wake2.notify_waiters();
+                                        continue;
                                     }
-                                    // No need to store into incoming
-                                    wake2.notify_waiters();
-                                    continue;
-                                }
-                                RelayMessage::Ok(id, is_ok, ref reason) => {
-                                    if let AuthState::InProgress(sent_id) =
-                                        *auth_state2.read().await
-                                    {
-                                        if id == sent_id {
-                                            *auth_state2.write().await = if is_ok {
-                                                AuthState::Success
-                                            } else {
-                                                AuthState::Failure(reason.clone())
-                                            };
-                                            // No need to store into incoming
-                                            wake2.notify_waiters();
-                                            continue;
+                                    RelayMessage::Ok(id, is_ok, ref reason) => {
+                                        if let AuthState::InProgress(sent_id) =
+                                            *auth_state2.read().await
+                                        {
+                                            if id == sent_id {
+                                                *auth_state2.write().await = if is_ok {
+                                                    AuthState::Success
+                                                } else {
+                                                    AuthState::Failure(reason.clone())
+                                                };
+                                                // No need to store into incoming
+                                                event!(Level::DEBUG, "waking, received OK");
+                                                wake2.notify_waiters();
+                                                continue;
+                                            }
                                         }
                                     }
+                                    _ => {}
                                 }
-                                _ => {}
-                            }
 
-                            (*incoming2.write().await).push(rm);
-                            wake2.notify_waiters();
+                                event!(Level::DEBUG, "waking, received something else");
+                                (*incoming2.write().await).push(rm);
+                                wake2.notify_waiters();
+                            }
+                            Err(e) => {
+                                event!(Level::DEBUG, "websocket wessage failed to deserialize: {e}")
+                            }
                         }
                     }
                     Ok(Message::Close(_)) => break,
                     Ok(_) => {}
                     Err(e) => {
-                        eprintln!("{e}");
+                        event!(Level::ERROR, "{e}");
                         break;
                     }
                 }
