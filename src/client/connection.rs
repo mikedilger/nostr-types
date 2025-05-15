@@ -110,15 +110,15 @@ impl ClientConnection {
                                 // Maybe update authentication state
                                 match rm {
                                     RelayMessage::Auth(challenge) => {
-                                        match *auth_state2.read().await {
+                                        let mut lock = auth_state2.write().await;
+                                        match *lock {
                                             AuthState::NotYetRequested => {
-                                                *auth_state2.write().await =
-                                                    AuthState::Challenged(challenge)
-                                            },
+                                                *lock = AuthState::Challenged(challenge)
+                                            }
                                             _ => {
                                                 event!(Level::DEBUG, "dup auth ignored");
                                                 continue; // dup auth ignored
-                                            },
+                                            }
                                         }
                                         // No need to store into incoming
                                         event!(Level::DEBUG, "waking, received AUTH");
@@ -126,11 +126,10 @@ impl ClientConnection {
                                         continue;
                                     }
                                     RelayMessage::Ok(id, is_ok, ref reason) => {
-                                        if let AuthState::InProgress(sent_id) =
-                                            *auth_state2.read().await
-                                        {
+                                        let mut lock = auth_state2.write().await;
+                                        if let AuthState::InProgress(sent_id) = *lock {
                                             if id == sent_id {
-                                                *auth_state2.write().await = if is_ok {
+                                                *lock = if is_ok {
                                                     AuthState::Success
                                                 } else {
                                                     AuthState::Failure(reason.clone())
@@ -157,14 +156,14 @@ impl ClientConnection {
                     Ok(Message::Close(_)) => {
                         event!(Level::DEBUG, "remote websocket is closing the connection");
                         break;
-                    },
+                    }
                     Ok(m) => {
                         event!(Level::DEBUG, "unhandled websocket message kind: {m:?}");
-                    },
+                    }
                     Err(e) => {
                         event!(Level::ERROR, "{e}");
                         break;
-                    },
+                    }
                 }
             }
 
@@ -264,13 +263,13 @@ impl ClientConnection {
     {
         loop {
             // Check incoming for a match
-            if let Some(found) = self.incoming.read().await.iter().position(|x| predicate(x)) {
+            if let Some(found) = self.incoming.read().await.iter().position(&predicate) {
                 let relay_message = self.incoming.write().await.remove(found);
                 return Ok(relay_message);
             }
 
             // Wait for something to happen, or timeout
-            let _res = tokio::time::timeout(timeout, self.wake.notified()).await?;
+            tokio::time::timeout(timeout, self.wake.notified()).await?;
 
             self.fail_if_disconnected()?;
         }
@@ -291,7 +290,7 @@ impl ClientConnection {
             }
 
             // Wait for something to happen, or timeout
-            let _res = tokio::time::timeout(timeout, self.wake.notified()).await?;
+            tokio::time::timeout(timeout, self.wake.notified()).await?;
 
             self.fail_if_disconnected()?;
         }
