@@ -101,9 +101,10 @@ impl ClientConnection {
             let span = span!(Level::DEBUG, "connection listener thread");
             let _enter = span.enter();
             while let Some(message) = stream.next().await {
-                event!(Level::DEBUG, "websocket wessage received");
+                event!(Level::DEBUG, "websocket message received");
                 match message {
                     Ok(Message::Text(s)) => {
+                        event!(Level::DEBUG, "websocket text message received");
                         match serde_json::from_str(&s) {
                             Ok(rm) => {
                                 // Maybe update authentication state
@@ -113,8 +114,11 @@ impl ClientConnection {
                                             AuthState::NotYetRequested => {
                                                 *auth_state2.write().await =
                                                     AuthState::Challenged(challenge)
-                                            }
-                                            _ => continue, // dup auth ignored
+                                            },
+                                            _ => {
+                                                event!(Level::DEBUG, "dup auth ignored");
+                                                continue; // dup auth ignored
+                                            },
                                         }
                                         // No need to store into incoming
                                         event!(Level::DEBUG, "waking, received AUTH");
@@ -150,12 +154,17 @@ impl ClientConnection {
                             }
                         }
                     }
-                    Ok(Message::Close(_)) => break,
-                    Ok(_) => {}
+                    Ok(Message::Close(_)) => {
+                        event!(Level::DEBUG, "remote websocket is closing the connection");
+                        break;
+                    },
+                    Ok(m) => {
+                        event!(Level::DEBUG, "unhandled websocket message kind: {m:?}");
+                    },
                     Err(e) => {
                         event!(Level::ERROR, "{e}");
                         break;
-                    }
+                    },
                 }
             }
 
