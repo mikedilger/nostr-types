@@ -173,7 +173,7 @@ impl ClientConnection {
         Ok(ClientConnection {
             sink: Mutex::new(sink),
             next_sub_id: AtomicUsize::new(0),
-            auth_state: Arc::new(RwLock::new(AuthState::NotYetRequested)),
+            auth_state,
             incoming,
             wake,
             disconnected,
