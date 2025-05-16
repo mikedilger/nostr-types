@@ -262,10 +262,13 @@ impl ClientConnection {
         P: Fn(&RelayMessage) -> bool,
     {
         loop {
-            // Check incoming for a match
-            if let Some(found) = self.incoming.read().await.iter().position(&predicate) {
-                let relay_message = self.incoming.write().await.remove(found);
-                return Ok(relay_message);
+            {
+                // Check incoming for a match
+                let mut incoming = self.incoming.write().await;
+                if let Some(found) = incoming.iter().position(&predicate) {
+                    let relay_message = incoming.remove(found);
+                    return Ok(relay_message);
+                }
             }
 
             // Wait for something to happen, or timeout
