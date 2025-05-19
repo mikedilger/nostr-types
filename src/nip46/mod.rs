@@ -188,9 +188,7 @@ impl Signer for BunkerClient {
             }
         }
 
-        let ciphertext: String = serde_json::from_str(&response.result)?;
-
-        Ok(ciphertext)
+        Ok(response.result)
     }
 
     async fn decrypt(&self, other: &PublicKey, ciphertext: &str) -> Result<String, Error> {
@@ -216,9 +214,7 @@ impl Signer for BunkerClient {
             }
         }
 
-        let plaintext: String = serde_json::from_str(&response.result)?;
-
-        Ok(plaintext)
+        Ok(response.result)
     }
 
     fn key_security(&self) -> Result<KeySecurity, Error> {
