@@ -101,10 +101,8 @@ impl ClientConnection {
             let span = span!(Level::DEBUG, "connection listener thread");
             let _enter = span.enter();
             while let Some(message) = stream.next().await {
-                event!(Level::DEBUG, "websocket message received");
                 match message {
                     Ok(Message::Text(s)) => {
-                        event!(Level::DEBUG, "websocket text message received");
                         match serde_json::from_str(&s) {
                             Ok(rm) => {
                                 // Maybe update authentication state
@@ -121,7 +119,7 @@ impl ClientConnection {
                                             }
                                         }
                                         // No need to store into incoming
-                                        event!(Level::DEBUG, "waking, received AUTH");
+                                        event!(Level::DEBUG, "waking (received AUTH)");
                                         wake2.notify_waiters();
                                         continue;
                                     }
@@ -135,16 +133,32 @@ impl ClientConnection {
                                                     AuthState::Failure(reason.clone())
                                                 };
                                                 // No need to store into incoming
-                                                event!(Level::DEBUG, "waking, received OK");
+                                                event!(Level::DEBUG, "waking (received OK)");
                                                 wake2.notify_waiters();
                                                 continue;
                                             }
                                         }
                                     }
-                                    _ => {}
+                                    RelayMessage::Closed(_, _) => {
+                                        event!(Level::DEBUG, "waking (received CLOSED)");
+                                    }
+                                    RelayMessage::Eose(_) => {
+                                        event!(Level::DEBUG, "waking (received EOSE)");
+                                    }
+                                    RelayMessage::Event(_, _) => {
+                                        event!(Level::DEBUG, "waking (received EVENT)");
+                                    }
+                                    RelayMessage::Notice(ref n) => {
+                                        event!(Level::DEBUG, "waking (received NOTICE: {n})");
+                                    }
+                                    RelayMessage::Notify(ref n) => {
+                                        event!(Level::DEBUG, "waking (received NOTIFY: {n})");
+                                    }
+                                    RelayMessage::Count(_, _) => {
+                                        event!(Level::DEBUG, "waking (received COUNT)");
+                                    }
                                 }
 
-                                event!(Level::DEBUG, "waking, received something else");
                                 (*incoming2.write().await).push(rm);
                                 wake2.notify_waiters();
                             }
