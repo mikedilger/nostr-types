@@ -3,7 +3,6 @@ use crate::{
     KeySecurity, KeySigner, LockableSigner, PreEvent, PublicKey, RelayUrl, Signer,
 };
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -20,7 +19,7 @@ mod prebunk;
 pub use prebunk::PreBunkerClient;
 
 /// This is a NIP-46 Bunker client
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub struct BunkerClient {
     /// The pubkey of the bunker
     pub remote_signer_pubkey: PublicKey,
@@ -38,7 +37,6 @@ pub struct BunkerClient {
     pub timeout: Duration,
 
     /// Client
-    #[serde(skip_serializing)]
     pub client: client::Client,
 }
 
@@ -229,8 +227,24 @@ impl Signer for BunkerClient {
 }
 
 use serde::de::Error as DeError;
-use serde::de::{Deserializer, SeqAccess, Visitor};
+use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
+use serde::ser::{Serialize, SerializeSeq, Serializer};
 use std::fmt;
+
+impl Serialize for BunkerClient {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(5))?;
+        seq.serialize_element(&self.remote_signer_pubkey)?;
+        seq.serialize_element(&self.relay_url)?;
+        seq.serialize_element(&self.local_signer)?;
+        seq.serialize_element(&self.public_key)?;
+        seq.serialize_element(&self.timeout)?;
+        seq.end()
+    }
+}
 
 impl<'de> Deserialize<'de> for BunkerClient {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
