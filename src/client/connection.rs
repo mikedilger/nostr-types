@@ -5,7 +5,7 @@ use futures_util::stream::SplitSink;
 use futures_util::{SinkExt, StreamExt};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, Notify, RwLock};
 use tracing::{event, span, Level};
 use tungstenite::protocol::Message;
@@ -275,6 +275,8 @@ impl ClientConnection {
     where
         P: Fn(&RelayMessage) -> bool,
     {
+        let giveup = Instant::now() + timeout;
+
         loop {
             {
                 // Check incoming for a match
@@ -283,6 +285,10 @@ impl ClientConnection {
                     let relay_message = incoming.remove(found);
                     return Ok(relay_message);
                 }
+            }
+
+            if Instant::now() > giveup {
+                return Err(Error::TimedOut);
             }
 
             // Wait for something to happen, or timeout
