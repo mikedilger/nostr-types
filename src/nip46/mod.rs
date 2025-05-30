@@ -1,9 +1,9 @@
 use crate::{
     client, ContentEncryptionAlgorithm, EncryptedPrivateKey, Error, Event, EventKind, Filter,
-    KeySecurity, KeySigner, LockableSigner, PreEvent, PublicKey, RelayUrl, Signer,
+    KeySecurity, KeySigner, LockableSigner, PreEvent, PublicKey, RelayUrl, Signer, SubscriptionId,
 };
 use async_trait::async_trait;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 mod request;
@@ -38,6 +38,9 @@ pub struct BunkerClient {
 
     /// Client
     pub client: client::Client,
+
+    /// Sub id
+    pub sub_id: RwLock<Option<SubscriptionId>>,
 }
 
 impl BunkerClient {
@@ -57,6 +60,7 @@ impl BunkerClient {
             public_key,
             timeout,
             client,
+            sub_id: RwLock::new(None),
         }
     }
 
@@ -82,18 +86,22 @@ impl BunkerClient {
 
     /// Send a `Nip46Request` and wait for a `Nip46Response` (up to our timeout)
     pub async fn call(&self, request: Nip46Request) -> Result<Nip46Response, Error> {
-        // Subscribe first
-        let mut filter = Filter::new();
-        filter.add_author(self.remote_signer_pubkey);
-        filter.add_event_kind(EventKind::NostrConnect);
-        filter.add_tag_value('p', self.local_signer.public_key().as_hex_string());
-        filter.limit = Some(1);
-        let sub_id = self.client.subscribe(filter.clone(), self.timeout).await?;
+        // Maybe subscribe
+        let missing_sub_id = self.sub_id.read().unwrap().is_none();
+        if missing_sub_id {
+            let mut filter = Filter::new();
+            filter.add_author(self.remote_signer_pubkey);
+            filter.add_event_kind(EventKind::NostrConnect);
+            filter.add_tag_value('p', self.local_signer.public_key().as_hex_string());
+            let sub_id = self.client.subscribe(filter.clone(), self.timeout).await?;
+            *self.sub_id.write().unwrap() = Some(sub_id);
+        }
+        let sub_id = self.sub_id.read().unwrap().clone().unwrap();
+
+        // Post event to server and wait for OK
         let event = request
             .to_event(self.remote_signer_pubkey, self.local_signer.clone())
             .await?;
-
-        // Post event to server and wait for OK
         let event_id = event.id;
         self.client.post_event(event, self.timeout).await?;
         let (ok, msg) = self.client.wait_for_ok(event_id, self.timeout).await?;
@@ -120,11 +128,13 @@ impl BunkerClient {
 
     /// Disconnect from the relay
     pub async fn disconnect(&self) -> Result<(), Error> {
+        *self.sub_id.write().unwrap() = None;
         self.client.disconnect().await
     }
 
     /// Disconnect from the relay and lock
     pub async fn disconnect_and_lock(&self) -> Result<(), Error> {
+        *self.sub_id.write().unwrap() = None;
         self.client.disconnect().await?;
         self.local_signer.lock();
         Ok(())
@@ -287,6 +297,7 @@ impl<'de> Visitor<'de> for BunkerClientVisitor {
             public_key,
             timeout,
             client,
+            sub_id: RwLock::new(None),
         })
     }
 }

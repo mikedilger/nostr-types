@@ -140,6 +140,7 @@ impl PreBunkerClient {
             public_key,
             timeout: self.timeout,
             client,
+            sub_id: std::sync::RwLock::new(None),
         })
     }
 
@@ -185,6 +186,9 @@ impl PreBunkerClient {
 
         // Convert into a response
         let response: Nip46Response = serde_json::from_str(&contents)?;
+
+        // Unsubscribe
+        client.close_subscription(sub_id).await?;
 
         Ok(response)
     }
