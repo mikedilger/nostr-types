@@ -180,7 +180,7 @@ impl PreBunkerClient {
             "waiting for a response event on the remote signer subscription"
         );
         let event = client
-            .wait_for_subscribed_event(sub_id, self.timeout)
+            .wait_for_subscribed_event(sub_id.clone(), self.timeout)
             .await?;
         let contents = self.local_signer.decrypt_event_contents(&event).await?;
 
