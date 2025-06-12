@@ -116,7 +116,16 @@ impl Identity {
 
     /// Is the identity unlocked?
     pub fn is_unlocked(&self) -> bool {
-        !self.is_locked()
+        // Not quite this: !self.is_locked()
+        // Instead we want to know if it is usable
+        // So None and Public are NOT unlocked and NOT locked either.
+
+        match self {
+            Self::Private(box_signer) => !box_signer.is_locked(),
+            #[cfg(feature = "nip46")]
+            Self::Remote(bc) => !bc.is_locked(),
+            _ => false,
+        }
     }
 
     /// Can sign if unlocked
