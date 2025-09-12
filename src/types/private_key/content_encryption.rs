@@ -240,11 +240,7 @@ impl PrivateKey {
             let end_plaintext = 4 + plaintext.len();
 
             // forced padding, up to a minimum of 32 bytes total so far (4 used for the u32 length)
-            let forced_padding = if end_plaintext < 32 {
-                32 - end_plaintext
-            } else {
-                0
-            };
+            let forced_padding = 32_usize.saturating_sub(end_plaintext);
             let end_forced_padding = end_plaintext + forced_padding;
 
             // random length padding, up to 50% more
