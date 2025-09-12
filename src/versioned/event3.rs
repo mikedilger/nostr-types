@@ -1,6 +1,6 @@
 use super::TagV3;
 use crate::types::{
-    EventDelegation, EventKind, EventReference, FileMetadata, Id, KeySigner, MilliSatoshi,
+    EventDelegation, EventKind, EventReference, FileMetadata, Id, KeySigner, MilliSatoshi, NAddr,
     NostrBech32, NostrUrl, ParsedTag, PrivateKey, PublicKey, RelayUrl, Signature, Signer, Unixtime,
     ZapData,
 };
@@ -905,6 +905,16 @@ impl EventV3 {
         } else {
             None
         }
+    }
+
+    /// If this event has an address, get it
+    pub fn address(&self) -> Option<NAddr> {
+        self.parameter().map(|parameter| NAddr {
+            d: parameter,
+            relays: vec![],
+            kind: self.kind,
+            author: self.pubkey,
+        })
     }
 
     /// Return all the hashtags this event refers to
