@@ -303,6 +303,10 @@ pub enum Error {
     #[error("Wrong event kind")]
     WrongEventKind,
 
+    /// Wrong length
+    #[error("Wrong length")]
+    WrongLength,
+
     /// Wrong length hex string
     #[error("Wrong length hex string")]
     WrongLengthHexString,

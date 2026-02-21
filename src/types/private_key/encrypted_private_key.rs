@@ -9,7 +9,7 @@ use chacha20poly1305::{
 use derive_more::Display;
 use hmac::Hmac;
 use pbkdf2::pbkdf2;
-use rand_core::{OsRng, RngCore};
+use rand_core::RngCore;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 #[cfg(feature = "speedy")]
@@ -118,11 +118,12 @@ impl PrivateKey {
         // Generate a random 16-byte salt
         let salt = {
             let mut salt: [u8; 16] = [0; 16];
-            OsRng.fill_bytes(&mut salt);
+            rand::rng().fill_bytes(&mut salt);
             salt
         };
 
-        let nonce = XChaCha20Poly1305::generate_nonce(&mut OsRng);
+        let mut rng = chacha20poly1305::aead::rand_core::OsRng;
+        let nonce = XChaCha20Poly1305::generate_nonce(&mut rng);
 
         let associated_data: Vec<u8> = {
             let key_security: u8 = match self.1 {
@@ -253,7 +254,8 @@ impl PrivateKey {
             _ => return Err(Error::InvalidEncryptedPrivateKey),
         };
 
-        let signing_key = secp256k1::SecretKey::from_slice(&inner_secret)?;
+        let signing_key =
+            secp256k1::SecretKey::from_byte_array(inner_secret.as_slice().try_into().unwrap())?;
         inner_secret.zeroize();
 
         Ok(PrivateKey(signing_key, key_security))
@@ -299,7 +301,9 @@ impl PrivateKey {
         // Get the key security
         let ks = KeySecurity::try_from(plaintext[plaintext.len() - 1])?;
         let output = PrivateKey(
-            secp256k1::SecretKey::from_slice(&plaintext[..plaintext.len() - 12])?,
+            secp256k1::SecretKey::from_byte_array(
+                plaintext[..plaintext.len() - 12].try_into().unwrap(),
+            )?,
             ks,
         );
 
@@ -336,7 +340,10 @@ impl PrivateKey {
 
         // Get the key security
         let ks = KeySecurity::try_from(pt[pt.len() - 1])?;
-        let output = PrivateKey(secp256k1::SecretKey::from_slice(&pt[..pt.len() - 12])?, ks);
+        let output = PrivateKey(
+            secp256k1::SecretKey::from_byte_array(pt[..pt.len() - 12].try_into().unwrap())?,
+            ks,
+        );
 
         // Here we zeroize pt:
         pt.zeroize();

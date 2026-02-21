@@ -2,7 +2,6 @@ use crate::{
     Error, Event, Id, MutExportableSigner, PreEvent, PublicKey, Signature, Signer, SignerExt,
 };
 use async_trait::async_trait;
-use rand_core::OsRng;
 use std::convert::TryFrom;
 use std::fmt;
 
@@ -88,7 +87,7 @@ impl PrivateKey {
     pub fn generate() -> PrivateKey {
         let mut secret_key;
         loop {
-            secret_key = secp256k1::SecretKey::new(&mut OsRng);
+            secret_key = secp256k1::SecretKey::new(&mut rand::rng());
             let (_, parity) = secret_key.x_only_public_key(secp256k1::SECP256K1);
             if parity == secp256k1::Parity::Even {
                 break;
@@ -125,7 +124,7 @@ impl PrivateKey {
     pub fn try_from_hex_string(v: &str) -> Result<PrivateKey, Error> {
         let vec: Vec<u8> = hex::decode(v)?;
         Ok(PrivateKey(
-            secp256k1::SecretKey::from_slice(&vec)?,
+            secp256k1::SecretKey::from_byte_array(vec.try_into().map_err(|_| Error::WrongLength)?)?,
             KeySecurity::Weak,
         ))
     }
@@ -153,7 +152,9 @@ impl PrivateKey {
             ))
         } else {
             Ok(PrivateKey(
-                secp256k1::SecretKey::from_slice(&data.1)?,
+                secp256k1::SecretKey::from_byte_array(
+                    data.1.try_into().map_err(|_| Error::WrongLength)?,
+                )?,
                 KeySecurity::Weak,
             ))
         }
@@ -233,8 +234,8 @@ impl Signer for PrivateKey {
 impl SignerExt for PrivateKey {
     async fn sign_id(&self, id: Id) -> Result<Signature, Error> {
         let keypair = secp256k1::Keypair::from_secret_key(secp256k1::SECP256K1, &self.0);
-        let message = secp256k1::Message::from_digest_slice(id.0.as_slice())?;
-        Ok(Signature(keypair.sign_schnorr(message)))
+        let message = secp256k1::Message::from_digest(id.0);
+        Ok(Signature(keypair.sign_schnorr(message.as_ref().as_slice())))
     }
 
     async fn sign(&self, message: &[u8]) -> Result<Signature, Error> {
@@ -242,7 +243,7 @@ impl SignerExt for PrivateKey {
         let keypair = secp256k1::Keypair::from_secret_key(secp256k1::SECP256K1, &self.0);
         let hash = sha256::Hash::hash(message).to_byte_array();
         let message = secp256k1::Message::from_digest(hash);
-        Ok(Signature(keypair.sign_schnorr(message)))
+        Ok(Signature(keypair.sign_schnorr(message.as_ref().as_slice())))
     }
 
     async fn nip44_conversation_key(&self, other: &PublicKey) -> Result<[u8; 32], Error> {

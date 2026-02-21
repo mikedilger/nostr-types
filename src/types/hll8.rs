@@ -157,15 +157,15 @@ mod test {
 
     #[test]
     fn test_hll8() {
-        use rand::seq::SliceRandom;
-        use rand_core::{OsRng, RngCore};
-        let mut rng = rand::thread_rng();
+        use rand::prelude::IndexedRandom;
+        use rand_core::RngCore;
+        let mut rng = rand::rng();
 
         // Create 2500 well known different keys
         let mut input: Vec<[u8; 32]> = Vec::new();
         for _ in 0..2500 {
             let mut key = [0u8; 32];
-            OsRng.fill_bytes(&mut key);
+            rng.fill_bytes(&mut key);
             input.push(key);
         }
 

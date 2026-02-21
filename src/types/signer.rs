@@ -5,7 +5,6 @@ use crate::{
 };
 use async_trait::async_trait;
 use rand::Rng;
-use rand_core::OsRng;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::mpsc::Sender;
@@ -76,11 +75,11 @@ pub trait Signer: fmt::Debug + Send + Sync {
 
         let seal_backdate = Unixtime(
             input.created_at.0
-                - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 2)),
+                - rand::rng().sample(rand::distr::Uniform::new(30, 60 * 60 * 24 * 2).unwrap()),
         );
         let giftwrap_backdate = Unixtime(
             input.created_at.0
-                - OsRng.sample(rand::distributions::Uniform::new(30, 60 * 60 * 24 * 2)),
+                - rand::rng().sample(rand::distr::Uniform::new(30, 60 * 60 * 24 * 2).unwrap()),
         );
 
         let seal = {

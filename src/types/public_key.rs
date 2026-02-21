@@ -31,10 +31,11 @@ impl PublicKey {
         if vec.len() != 32 {
             Err(Error::InvalidPublicKey)
         } else {
+            let array: [u8; 32] = vec.try_into().unwrap();
             if verify {
-                let _ = XOnlyPublicKey::from_slice(&vec)?;
+                let _ = XOnlyPublicKey::from_byte_array(array)?;
             }
-            Ok(PublicKey(vec.try_into().unwrap()))
+            Ok(PublicKey(array))
         }
     }
 
@@ -45,7 +46,7 @@ impl PublicKey {
 
     /// Export as XOnlyPublicKey
     pub fn as_xonly_public_key(&self) -> XOnlyPublicKey {
-        XOnlyPublicKey::from_slice(&self.0).unwrap()
+        XOnlyPublicKey::from_byte_array(self.0).unwrap()
     }
 
     /// Import from a bech32 encoded string
@@ -62,10 +63,11 @@ impl PublicKey {
         } else if data.1.len() != 32 {
             Err(Error::InvalidPublicKey)
         } else {
+            let array: [u8; 32] = data.1.try_into().unwrap();
             if verify {
-                let _ = XOnlyPublicKey::from_slice(&data.1)?;
+                let _ = XOnlyPublicKey::from_byte_array(array)?;
             }
-            Ok(PublicKey(data.1.try_into().unwrap()))
+            Ok(PublicKey(array))
         }
     }
 
@@ -75,7 +77,7 @@ impl PublicKey {
             Err(Error::InvalidPublicKey)
         } else {
             if verify {
-                let _ = XOnlyPublicKey::from_slice(bytes)?;
+                let _ = XOnlyPublicKey::from_byte_array(bytes.try_into().unwrap())?;
             }
             Ok(PublicKey(bytes.try_into().unwrap()))
         }
@@ -96,10 +98,10 @@ impl PublicKey {
     /// Verify a signed message
     pub fn verify(&self, message: &[u8], signature: &Signature) -> Result<(), Error> {
         use secp256k1::hashes::{sha256, Hash};
-        let pk = XOnlyPublicKey::from_slice(self.0.as_slice())?;
+        let pk = XOnlyPublicKey::from_byte_array(self.0)?;
         let hash = sha256::Hash::hash(message).to_byte_array();
         let message = secp256k1::Message::from_digest(hash);
-        Ok(SECP256K1.verify_schnorr(&signature.0, &message, &pk)?)
+        Ok(SECP256K1.verify_schnorr(&signature.0, message.as_ref().as_slice(), &pk)?)
     }
 
     /// This provides a u32 hash input for HyperLogLog that is based on

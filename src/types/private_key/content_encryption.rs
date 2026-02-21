@@ -2,7 +2,7 @@ use super::{base64flex, PrivateKey};
 use crate::{Error, PublicKey};
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use base64::Engine;
-use rand_core::{OsRng, RngCore};
+use rand_core::RngCore;
 use sha2::{Digest, Sha256};
 use zeroize::Zeroize;
 
@@ -168,7 +168,7 @@ impl PrivateKey {
         let mut shared_secret = self.shared_secret_nip04(other);
         let iv = {
             let mut iv: [u8; 16] = [0; 16];
-            OsRng.fill_bytes(&mut iv);
+            rand::rng().fill_bytes(&mut iv);
             iv
         };
 
@@ -227,7 +227,7 @@ impl PrivateKey {
             output[0] = 1; // Version
             match forced_nonce {
                 Some(nonce) => output[1..=24].copy_from_slice(nonce.as_slice()),
-                None => OsRng.fill_bytes(&mut output[1..=24]),
+                None => rand::rng().fill_bytes(&mut output[1..=24]),
             }
             output.extend(plaintext); // Plaintext (will encrypt in place)
             let mut cipher = chacha20::XChaCha20::new(&shared_secret.into(), output[1..=24].into());
@@ -244,8 +244,8 @@ impl PrivateKey {
             let end_forced_padding = end_plaintext + forced_padding;
 
             // random length padding, up to 50% more
-            let random_padding =
-                OsRng.sample(rand::distributions::Uniform::new(0, end_forced_padding / 2));
+            let uniform = rand::distr::Uniform::new(0, end_forced_padding / 2).unwrap();
+            let random_padding = rand::rng().sample(uniform);
             let end_random_padding = end_forced_padding + random_padding;
 
             // Make space
@@ -253,7 +253,7 @@ impl PrivateKey {
 
             new_plaintext[0..4].copy_from_slice((plaintext.len() as u32).to_be_bytes().as_slice());
             new_plaintext[4..end_plaintext].copy_from_slice(plaintext);
-            OsRng.fill_bytes(&mut new_plaintext[end_plaintext..]); // random padding
+            rand::rng().fill_bytes(&mut new_plaintext[end_plaintext..]); // random padding
 
             let output = encrypt(&new_plaintext);
             new_plaintext.zeroize();

@@ -19,12 +19,14 @@ impl Signature {
     /// Create from a hexadecimal string
     pub fn try_from_hex_string(v: &str) -> Result<Signature, Error> {
         let vec: Vec<u8> = hex::decode(v)?;
-        Ok(Signature(secp256k1::schnorr::Signature::from_slice(&vec)?))
+        Ok(Signature(secp256k1::schnorr::Signature::from_byte_array(
+            vec.try_into().map_err(|_| Error::WrongLength)?,
+        )))
     }
 
     /// A dummy signature of all zeroes
     pub fn zeroes() -> Signature {
-        Signature(secp256k1::schnorr::Signature::from_slice(&[0; 64]).unwrap())
+        Signature(secp256k1::schnorr::Signature::from_byte_array([0; 64]))
     }
 
     // Mock data for testing

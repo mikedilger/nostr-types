@@ -59,37 +59,37 @@ cbc = { version = "0.1", features = [ "std" ] }
 chacha20poly1305 = "0.10"
 chacha20 = "0.9"
 core-net = "0.1"
-derive_more = "0.99"
+derive_more = { version = "2.1", features = [ 'add', 'as_ref', 'deref', 'display', 'from', 'from_str', 'into'] }
 futures-util = { version = "0.3", optional = true, features = [ "sink" ] }
 hex = "0.4"
 hmac = "0.12"
-http = { version = "1.1", optional = true }
-lazy_static = "1.4"
-lightning-invoice = "0.33"
+http = { version = "1.4", optional = true }
+lazy_static = "1.5"
+lightning-invoice = "0.34"
 linkify = "0.10"
-nip44 = { git = "https://github.com/mikedilger/nip44", rev="386c8bc879e0ddf392df81a60610d3123330846b" }
+nip44 = { git = "https://github.com/mikedilger/nip44", rev="61b72ea1c5bea60b1522f2cb6ea0166b92b39caf" }
 num_cpus = "1"
 pbkdf2 = { version = "0.12", default-features = false, features = [ "hmac", "sha2", "std" ] }
-rand_core = "0.6"
-rand = "0.8"
+rand_core = { version = "0.9", features = [ "os_rng" ] }
+rand = { version = "0.9", features = [ "thread_rng" ] }
 regex = "1.10"
 reqwest = { version = "0.12", default-features=false, features = ["brotli", "deflate", "gzip", "json", "stream"], optional = true }
 scrypt = "0.11"
-secp256k1 = { version = "0.29", features = [ "hashes", "global-context", "rand-std", "serde" ] }
+secp256k1 = { version = "0.31", features = [ "hashes", "global-context", "rand", "std", "serde" ] }
 serde = { version = "1.0", features = [ "derive", "rc" ] }
 serde_json = "1.0"
 sha2 = "0.10"
 speedy = { version = "0.8.7", optional = true }
 textnonce = { version = "1", optional = true }
-thiserror = "1.0"
+thiserror = "2.0"
 thread-priority = "1.0"
 tokio = { version = "1", features = ["full"], optional = true }
 tokio-tungstenite = { version = "0.26", default-features = false, features = [ "connect", "handshake" ], optional = true }
 tracing = "0.1"
-tungstenite = { version = "0.26", default-features = false, optional = true }
+tungstenite = { version = "0.28", default-features = false, optional = true }
 unicode-normalization = "0.1"
 url = "2.5"
-zeroize = "1.7"
+zeroize = "1.8"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
