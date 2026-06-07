@@ -89,30 +89,8 @@ impl Url {
             return Err(Error::InvalidUrlMissingAuthority);
         }
 
-        if let Some(host) = url.host() {
-            match host {
-                url::Host::Domain(_) => {
-                    // Strange that we can't access as a string
-                    let s = format!("{host}");
-                    if s != s.trim() || s.starts_with("localhost") {
-                        return Err(Error::InvalidUrlHost(s));
-                    }
-                }
-                url::Host::Ipv4(addr) => {
-                    let addrx = core_net::Ipv4Addr::from(addr.octets());
-                    if !addrx.is_global() {
-                        return Err(Error::InvalidUrlHost(format!("{host}")));
-                    }
-                }
-                url::Host::Ipv6(addr) => {
-                    let addrx = core_net::Ipv6Addr::from(addr.octets());
-                    if !addrx.is_global() {
-                        return Err(Error::InvalidUrlHost(format!("{host}")));
-                    }
-                }
-            }
-        } else {
-            return Err(Error::InvalidUrlHost("".to_string()));
+        if url.host().is_none() {
+            return Err(Error::InvalidUrlHost("".into()));
         }
 
         Ok(Url(url.as_str().to_owned()))
